@@ -56,11 +56,22 @@ typedef struct gmb_3d_target {
     int w, h;
     uint32_t* argb;   /* w*h, 0x00RRGGBB (alpha 0, come le pagine 2D) */
     float* depth;     /* w*h, valori piccoli = vicino */
+    /* Buffer di ID per pixel (SCENE PICK), ADDITIVO e opzionale: NULL = spento,
+     * nessuna allocazione e nessuna scrittura, quindi gli stessi byte di sempre.
+     * Acceso, ogni pixel che vince il depth test porta l'id dell'oggetto che l'ha
+     * scritto (1..256; 0 = fondo/cielo/thing: nessun oggetto mesh). */
+    uint32_t* id;     /* w*h, NULL quando il pick e' spento */
 } gmb_3d_target_t;
 
 /* Alloca (o riusa) il target. w,h > 0. */
 int  gmb_3d_target_alloc(gmb_3d_target_t* t, int w, int h);
 void gmb_3d_target_free(gmb_3d_target_t* t);
+
+/* Accende/spegne il buffer di ID del target (SCENE PICK). `on` != 0 alloca (o
+ * riusa) w*h word e lo azzera; 0 lo libera e lo mette a NULL. Additivo: colore
+ * e profondita' non cambiano, e chi non lo accende non paga ne' memoria ne'
+ * scritture. Errori espliciti (target non allocato, memoria). */
+int  gmb_3d_target_ids(gmb_3d_target_t* t, int on);
 
 /* Colora tutto il target (argb mascherato a 0x00RRGGBB) e riempie la profondità. */
 int  gmb_3d_target_clear(gmb_3d_target_t* t, uint32_t argb, float depth);
@@ -118,6 +129,15 @@ typedef struct gmb_3d_material {
      * gia' scritto: alpha 255 del texel = meta' e meta', alpha < 255 = quella
      * frazione; senza texture il blend e' 50/50. Masked e opachi ignorano l'alpha. */
     int translucent;
+    /* SSAA 2x (SCENE AA on): il DRAW va in un target interno doppio, allineato a
+     * 1/4 e 3/4 del pixel, e si risolve con una media 2x2 UNA volta per draw (i
+     * triangoli che condividono un bordo non si fondono due volte). I campioni non
+     * coperti valgono il colore gia' nel pixel: il bordo si fonde col fondo. 0 =
+     * un campione al centro e nessun target doppio: gli stessi byte di sempre. */
+    int aa;
+    /* ID dell'oggetto per il buffer di pick (SCENE PICK): 0 = nessun id. Si
+     * scrive solo se il TARGET ha il buffer acceso; altrimenti e' ignorato. */
+    unsigned id;
 } gmb_3d_material_t;
 
 /* Mesh indicizzata, vertici in coordinate MONDO: pos nv*3, uv nv*2 (NULL quando
@@ -129,6 +149,12 @@ typedef struct gmb_3d_mesh {
     int nv;
     const int* idx;
     int nt;
+    /* Normali per vertice (nv*3) nello spazio dell'OGGETTO, FACOLTATIVE: ruotano
+     * con OBJPOS come la geometria. NULL = nessuna: la luce delle
+     * lampade non dipende dall'orientamento e il risultato e' quello di P4, byte per
+     * byte (le golden restano valide). Presenti = N.L per lampada (M-LIGHT-N).
+     * In coda alla struct per non rompere gli inizializzatori posizionali esistenti. */
+    const float* nrm;
 } gmb_3d_mesh_t;
 
 /* Contatori del pass: `tris_drawn` è ciò che SCENE.DRAWN espone, `tris_culled`
@@ -202,6 +228,14 @@ void gmb_3d_env_clear(gmb_3d_env_t* env);
  * al rasterizzatore, che chiamano la stessa funzione (una sola formula). */
 unsigned char gmb_3d_light_eval(const gmb_3d_env_t* env, float x, float y, float z,
                                 unsigned char base, float dist);
+
+/* Come gmb_3d_light_eval, con la normale del punto (M-LIGHT-N): ogni lampada
+ * contribuisce solo se la superficie la guarda (`max(0, N.L)`, L verso la lampada).
+ * La normale viene normalizzata qui; lunghezza ~0 = nessuna normale, quindi lo
+ * stesso risultato di gmb_3d_light_eval. E' la STESSA formula: le due funzioni
+ * chiamano un solo nucleo interno. */
+unsigned char gmb_3d_light_eval_n(const gmb_3d_env_t* env, float x, float y, float z,
+                                  const float n[3], unsigned char base, float dist);
 
 /* Come gmb_3d_mesh_draw, con l'ambiente: luce per pixel (M-LIGHT), fog (M-FOG)
  * e FAR (i triangoli interamente oltre la distanza si scartano). Con env NULL o
@@ -400,6 +434,11 @@ int64_t gmb_scene_texture_file(const char* path);
 int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b);
 int64_t gmb_scene_object_flags(int64_t r, int64_t g, int64_t b, int64_t flags, int64_t light);
 int64_t gmb_scene_vertex(double x, double y, double z, double u, double v);
+/* VERTEX a 8 argomenti: come sopra, con la normale MONDO del vertice (M-LIGHT-N).
+ * In un oggetto le normali ci sono per TUTTI i vertici o per nessuno; mescolarle
+ * e' un errore esplicito (GMB_3D_E_ARG). */
+int64_t gmb_scene_vertex_n(double x, double y, double z, double u, double v,
+                           double nx, double ny, double nz);
 int64_t gmb_scene_tri(int64_t a, int64_t b, int64_t c);
 int64_t gmb_scene_quad(int64_t a, int64_t b, int64_t c, int64_t d);
 int64_t gmb_scene_box(double x0, double y0, double z0,
@@ -442,6 +481,15 @@ int64_t gmb_scene_thing_light(int64_t n, int64_t level);
 int64_t gmb_scene_smooth(int64_t on);
 int64_t gmb_scene_alpha(int64_t on);
 int64_t gmb_scene_twosided(int64_t on);
+/* SCENE AA on|off: antialiasing SSAA 2x, spento di default. Acceso, ogni DRAW di
+ * mesh va in un target interno doppio e viene risolto con una media 2x2: i quattro
+ * campioni stanno a 1/4 e 3/4 del pixel, quelli fuori dal triangolo valgono il
+ * colore gia' nel pixel, quindi il bordo si fonde col fondo. SAVE/PRESENT/
+ * SCENE.PIXEL non cambiano: leggono sempre il target logico. Con AA spento nessun
+ * target doppio e un campione al centro: gli stessi byte di sempre. Sky e thing
+ * non sono antialiasati (nessun bordo geometrico: texture bilineare). Lo stato di
+ * scena sopravvive a RESET. */
+int64_t gmb_scene_aa(int64_t on);
 /* SCENE PRESENT: porta il TARGET 3D nella pagina 2D corrente (canvas attivo, altrimenti
  * pagina dello schermo), copia 1:1 dall'angolo in alto a sinistra senza scalatura. È
  * l'unico ponte verso la finestra: il present vero (SDL) resta al pump sul MAIN thread,
@@ -467,12 +515,33 @@ int64_t gmb_scene_culled(void);
 int64_t gmb_scene_pixels(void);
 int64_t gmb_scene_hash(void);                        /* FNV-1a del frame (0..2^32-1) */
 int64_t gmb_scene_pixel(int64_t x, int64_t y);       /* 0x00RRGGBB, -1 fuori target */
+/* SCENE PICK on|off: buffer di ID per pixel, ADDITIVO e spento di default.
+ * Acceso, RENDER scrive in ogni pixel l'id dell'oggetto che vince il depth test
+ * (1..256, ordine di dichiarazione degli OBJECT); fondo, cielo e thing restano 0.
+ * Colore, profondita', PIXEL, HASH, SAVE e PRESENT non cambiano. Lo stato
+ * sopravvive a RESET, come gli altri flag di scena. */
+int64_t gmb_scene_pick_enable(int64_t on);
+/* SCENE.PICK(x, y): id dell'oggetto nel pixel — 0 fondo, 1..256 oggetto,
+ * -1 senza target o fuori dal target (la stessa sentinella di SCENE.PIXEL),
+ * -2 buffer spento con un target che esiste (manca SCENE PICK on). */
+int64_t gmb_scene_pick(int64_t x, int64_t y);
 
 /* Load che hanno parcheggiato il task (R11): 0 in T3, +1 per ogni load dentro
  * un task. Osservabile come alloc_count per R4. */
 unsigned long gmb_3d_load_park_count(void);
 
 const char* gmb_3d_last_error(void);
+
+/* Chiamata CONTROLLATA delle superfici SCENE: se `rc` != GMB_3D_OK il messaggio
+ * canonico di gmb_3d_last_error() diventa un errore BASIC (codice 5, riga
+ * `line`) catturabile da ON ERROR/TRY. È la forma che usa l'emitter C99; VM/C fa
+ * lo stesso controllo attorno al dispatch SCENE, IL/PCode nei wrapper P/Invoke.
+ * Con rc di successo azzera l'errore e ritorna rc. */
+int64_t gmb_scene_checked(int64_t rc, int64_t line);
+
+/* Azzera gmb_3d_last_error() prima di una superficie SCENE (usata dal dispatch
+ * VM/C per non leggere un messaggio stantio di un comando precedente). */
+void gmb_scene_clear_error(void);
 
 #ifdef __cplusplus
 }

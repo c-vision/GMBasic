@@ -393,6 +393,9 @@ set(GMB_ALL_SRCS
     # (DOEVENTS) e, insieme, punto unico dove si decide quanto tempo e' passato.
     src/gmb_clock.c
     src/gmb_3d_cmd.c
+    # SCENE PICK (buffer di id additivo, spento di default): stato del flag e
+    # superficie, separati per non superare le 1200 righe del dominio.
+    src/gmb_3d_pick.c
     # F3 multimodale (2026-09-11): dominio immagini (decode/resize/crop/encode PNG condivisi).
     src/gmb_image.c
     # F2 multimodale (2026-09-11): estrazione strutturata documenti (euristiche + LLM).

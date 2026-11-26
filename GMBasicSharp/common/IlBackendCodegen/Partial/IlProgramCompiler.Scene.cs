@@ -63,7 +63,13 @@ public sealed partial class IlProgramCompiler
                 return;
 
             case TokenKind.SceneVertex:
-                RequireSceneArgs(stmt, 5, "SCENE VERTEX x, y, z, u, v");
+                if (a.Length == 8)
+                {
+                    for (int i = 0; i < 8; i++) EmitDoubleArgument(a[i]);
+                    _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneVertexN)));
+                    return;
+                }
+                RequireSceneArgs(stmt, 5, "SCENE VERTEX x, y, z, u, v [, nx, ny, nz]");
                 for (int i = 0; i < 5; i++) EmitDoubleArgument(a[i]);
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneVertex)));
                 return;
@@ -97,13 +103,17 @@ public sealed partial class IlProgramCompiler
             case TokenKind.SceneSmooth:
             case TokenKind.SceneAlpha:
             case TokenKind.SceneTwoSided:
+            case TokenKind.SceneAa:
+            case TokenKind.ScenePick:
             {
-                RequireSceneArgs(stmt, 1, "SCENE SMOOTH|ALPHA|TWOSIDED on|off");
+                RequireSceneArgs(stmt, 1, "SCENE SMOOTH|ALPHA|TWOSIDED|AA|PICK on|off");
                 EmitInt64Argument(a[0]);
                 string method = stmt.Command.Kind switch
                 {
                     TokenKind.SceneSmooth => nameof(IlRuntime.SceneSmooth),
                     TokenKind.SceneAlpha => nameof(IlRuntime.SceneAlpha),
+                    TokenKind.SceneAa => nameof(IlRuntime.SceneAa),
+                    TokenKind.ScenePick => nameof(IlRuntime.ScenePickEnable),
                     _ => nameof(IlRuntime.SceneTwoSided)
                 };
                 _il.Emit(OpCodes.Call, RuntimeMethod(method));

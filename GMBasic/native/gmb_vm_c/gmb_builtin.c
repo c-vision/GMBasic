@@ -142,6 +142,10 @@ __attribute__((constructor)) static void gmbvm_register_pdf_grep(void) {
 #define GML_VM_REQUIRE() if (gmb_ml_load_lib() != 0) { vm_error(task, "TORCH non caricato: esegui gmb ml setup"); return; }
 
 static double vm_num(gmb_stack_entry_t* a) { if (!a) return 0; if (a->type == 1) return a->num; if (a->type == 2 && a->ref && a->ref->kind == GMB_OBJ_STRING) return gmb_parse_num(((gmb_obj_string_t*)a->ref)->data, &(int){0}); return 0; }
+/* Il dispatcher la definisce in fondo al file (rilascio degli argomenti posseduti). I builtin
+ * che PARCHEGGIANO il task devono rilasciarli prima di uscire: su BLOCKED il dispatcher
+ * ritorna subito e non arriva al rilascio (vedi gmb_bf_sleep_c1271). */
+
 static void gmb_bf_0(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
         { bout->result = args[0].type == 1 ? gmb_int(gmb_round(args[0].num, 0)) : 0; }
@@ -11401,6 +11405,14 @@ static void gmb_bf_scene_pixel(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, 
     bout->result = (double)gmb_scene_pixel(argc >= 1 ? (int64_t)vm_num(&args[0]) : 0,
                                           argc >= 2 ? (int64_t)vm_num(&args[1]) : 0);
 }
+/* SCENE.PICK(x, y): id dell'oggetto nel pixel dal buffer di SCENE PICK
+ * (0 fondo, 1..256 oggetto, -1 senza target o fuori target, -2 buffer spento). */
+static void gmb_bf_scene_pick(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)task; (void)func_code;
+    bout->result = (double)gmb_scene_pick(argc >= 1 ? (int64_t)vm_num(&args[0]) : 0,
+                                         argc >= 2 ? (int64_t)vm_num(&args[1]) : 0);
+}
 
 /* ── TEMPO A PASSO FISSO / CLOCK (2026-11-20) ────────────────────────────────────────────
  * Letture del dominio CLOCK. Come le altre gambe: nessuno stato qui, si chiama la facciata
@@ -14428,9 +14440,28 @@ static void gmb_bf_verifyraw_c3509(gmb_vm_t* vm, gmb_stack_entry_t* args, int ar
 
 static void gmb_bf_sleep_c1271(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
-    (void)vm; (void)func_code; (void)task;
+    (void)vm; (void)func_code;
     double ms = (argc > 0 && args[0].type == 1) ? args[0].num : 0.0;
-    if (ms > 0) usleep((useconds_t)(ms * 1000.0));
+    if (ms > 0 && task && task->scheduler)
+    {
+        /* §0ter — PARK del task, non attesa del worker. Prima era un `usleep` che dormiva il
+         * worker per tutta l'attesa e non passava da gmb_sleep_ms, quindi la guardia non lo
+         * vedeva: il task riprende alla scadenza, già OLTRE OP_CALL_BUILTIN.
+         * Il risultato va pushato PRIMA del park: su BLOCKED il dispatcher non ne pusha un
+         * altro (rilascia gli argomenti e chiude la chiamata). Niente riesecuzione con residuo
+         * sullo stack: SLEEP non ha una condizione da rivalutare, ri-dormirebbe ogni volta. */
+        gmb_obj_string_t* empty = gmb_str_cstr("");
+        push_ref_new(task, (gmb_obj_t*)empty, GMB_BT_STRING);
+        bout->is_num = 0; bout->result_ref = NULL;
+        /* Oltre ~30 giorni il cast a int64 sarebbe UB: si clampa (nessuna attesa reale lo
+         * supera; PCode fa lo stesso cast, senza guardia). */
+        gmb_task_park_ms(task, NULL, (int64_t)((ms > 2592000000.0 ? 2592000000.0 : ms) + 0.5));
+        return;
+    }
+    if (ms > 0)
+        usleep((useconds_t)(ms * 1000.0));   /* programma lineare, nessun worker: attesa legittima */
+    else if (task)
+        task->force_yield = 1;               /* ms<=0: nessun park, yield cooperativo come PCode */
     gmb_obj_string_t* s = gmb_str_cstr("");
     bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
 }
@@ -16903,6 +16934,7 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3916, gmb_bf_scene_pixels },
     { 3917, gmb_bf_scene_hash },
     { 3918, gmb_bf_scene_pixel },
+    { 3919, gmb_bf_scene_pick },
     { 826, gmb_bf_796_c826 },
     { 827, gmb_bf_796_c827 },
     { 828, gmb_bf_796_c828 },
@@ -17348,7 +17380,10 @@ void gmb_builtin_dispatch(gmb_vm_t* vm, gmb_task_t* task, int func_code, int arg
                 }
                 free(hook_err);
             }
-            if (task->state == GMB_TS_BLOCKED) return;
+            /* Un builtin che parcheggia il task ha già pushato il suo risultato: gli argomenti
+             * restano da rilasciare qui, unico punto valido per TUTTI i builtin che parkano
+             * (il ramo normale li rilascia più sotto). */
+            if (task->state == GMB_TS_BLOCKED) { gmb_builtin_release_args(args, argc); return; }
             if (task->pending_exception != NULL)
             {
                 /* Il builtin ha segnalato un errore (vm_error): instradalo nello schema a 3

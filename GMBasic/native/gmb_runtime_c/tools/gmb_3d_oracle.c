@@ -297,7 +297,7 @@ static int scene_mesh_cube(gmb_3d_target_t* t)
     gmb_3d_material_t mat;
     mesh_material(&mat, &tex, 0);
     gmb_3d_mesh_t m;
-    m.pos = CUBE_POS; m.uv = CUBE_UV; m.nv = 24; m.idx = CUBE_IDX; m.nt = 12;
+    m.pos = CUBE_POS; m.uv = CUBE_UV; m.nv = 24; m.idx = CUBE_IDX; m.nt = 12; m.nrm = NULL;
     gmb_3d_draw_stats_t st;
     int rc = gmb_3d_mesh_draw(t, mvp, &m, &mat, &st);
     gm_tex_free(&tex);
@@ -447,6 +447,7 @@ static gmb_3d_mesh_t p4_mesh(const p4_quad_t* q)
 {
     gmb_3d_mesh_t m;
     m.pos = q->pos; m.uv = q->uv; m.nv = 4; m.idx = q->idx; m.nt = 2;
+    m.nrm = NULL;
     return m;
 }
 
@@ -640,24 +641,84 @@ static int p4_scene_order(gmb_3d_target_t* t)
     return gmb_3d_mesh_draw(t, mvp, &mg, &matg, &st) == GMB_3D_OK ? 0 : -1;
 }
 
+/* 10) normali per vertice (M-LIGHT-N): due quad identici, tinta bianca e luce
+ * base 40; il sinistro ha la normale verso la lampada (si accende), il destro
+ * quella opposta (resta al solo ambiente). La differenza e' tutta nel N.L. */
+static int p4_scene_normals(gmb_3d_target_t* t)
+{
+    if (gmb_3d_target_clear(t, 0x000000u, 0.0f) != GMB_3D_OK) return -1;
+    float mvp[16];
+    p4_camera(mvp, 60.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h);
+
+    gmb_3d_env_t env;
+    gmb_3d_env_clear(&env);
+    env.nlamps = 1;
+    env.lamps[0].radius = 100.0f;
+    env.lamps[0].amount = 255;
+
+    static const float nfront[12] = { 0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1 };
+    static const float nback[12]  = { 0,0, 1, 0,0, 1, 0,0, 1, 0,0, 1 };
+
+    p4_quad_t ql;
+    p4_quad_init(&ql, -2.6f, -1.6f, -0.3f, 1.6f, 2.0f);
+    gmb_3d_mesh_t ml = p4_mesh(&ql);
+    ml.nrm = nfront;
+    gmb_3d_material_t matl;
+    p4_flat_material(&matl, 255, 255, 255, 40);
+    gmb_3d_draw_stats_t sl;
+    if (gmb_3d_mesh_draw_env(t, mvp, &ml, &matl, &env, &sl) != GMB_3D_OK) return -1;
+
+    p4_quad_t qr;
+    p4_quad_init(&qr, 0.3f, -1.6f, 2.6f, 1.6f, 2.0f);
+    gmb_3d_mesh_t mr = p4_mesh(&qr);
+    mr.nrm = nback;
+    gmb_3d_material_t matr;
+    p4_flat_material(&matr, 255, 255, 255, 40);
+    gmb_3d_draw_stats_t sr;
+    return gmb_3d_mesh_draw_env(t, mvp, &mr, &matr, &env, &sr) == GMB_3D_OK ? 0 : -1;
+}
+
+/* 11) antialiasing SSAA 2x per pixel: stesso quad, bordo quasi verticale vicino
+ * al centro. Con AA il pixel di bordo fonde bianco e fondo; l'interno non cambia. */
+static int p4_scene_aa(gmb_3d_target_t* t)
+{
+    if (gmb_3d_target_clear(t, 0x0F1729u, 0.0f) != GMB_3D_OK) return -1;
+    float mvp[16];
+    /* Camera a -3 e quad a z=0, come `scene_aa.bas`: il bordo cade vicino al
+     * centro e la golden ha bianco, fusione e fondo. */
+    const float eye[3] = { 0.0f, 0.0f, -3.0f }, at[3] = { 0.0f, 0.0f, 0.0f };
+    mvp_build(mvp, eye, at, 60.0f * MESH_PI / 180.0f, (float)t->w / (float)t->h, 0.1f, 100.0f);
+
+    p4_quad_t q;
+    p4_quad_init(&q, 0.2f, -2.0f, 4.0f, 2.0f, 0.0f);
+    gmb_3d_mesh_t m = p4_mesh(&q);
+    gmb_3d_material_t mat;
+    p4_flat_material(&mat, 255, 255, 255, 255);
+    mat.two_sided = 1;    /* il quad e' specchiato: la faccia utile e' il retro */
+    mat.aa = 1;
+    gmb_3d_draw_stats_t st;
+    return gmb_3d_mesh_draw_env(t, mvp, &m, &mat, NULL, &st) == GMB_3D_OK ? 0 : -1;
+}
+
 /* P1: triangoli. P2: settori (room/door/pitch) e mappa demo. P3: mesh sul
  * target ARGB+depth (cubo, piano, clip, z-buffer, back-face). P4: luce, fog,
- * cielo, thing e ordine. L'accettazione della fase passa da qui, non da
- * un'impressione.
+ * cielo, thing, ordine e normali per vertice (M-LIGHT-N). L'accettazione della
+ * fase passa da qui, non da un'impressione.
  */
-#define NSCENES 18
+#define NSCENES 20
 static const char* const SCENE_NAMES[NSCENES] = {
     "tri_tex", "tri_mask", "tri_depth",
     "sector_room", "sector_door", "sector_pitch", "demo",
     "mesh_cube", "mesh_plane", "mesh_clip", "mesh_depth", "mesh_cull",
-    "lamp_point", "lamp_spot", "fog", "sky", "thing", "order"
+    "lamp_point", "lamp_spot", "fog", "sky", "thing", "order", "normals",
+    "aa"
 };
 static const scene_fn SCENE_FNS[NSCENES] = {
     scene_tri_tex, scene_tri_mask, scene_tri_depth,
     w_scene_room, w_scene_door, w_scene_pitch, w_scene_demo,
     scene_mesh_cube, scene_mesh_plane, scene_mesh_clip, scene_mesh_depth, scene_mesh_cull,
     p4_scene_lamp_point, p4_scene_lamp_spot, p4_scene_fog, p4_scene_sky,
-    p4_scene_thing, p4_scene_order
+    p4_scene_thing, p4_scene_order, p4_scene_normals, p4_scene_aa
 };
 
 /* --- golden -------------------------------------------------------------- */
@@ -1029,6 +1090,27 @@ static void p4_checks(int* ok, int* fail)
     P4CHECK(gmb_3d_light_eval(&env, 0.0f, 0.0f, 10.0f, 0, 10.0f) == 230, "spot: asse = falloff pieno (230)");
     P4CHECK(gmb_3d_light_eval(&env, 8.660254f, 0.0f, 5.0f, 0, 10.0f) == 0, "spot: fuori cono = buio");
 
+    /* M-LIGHT-N: senza normale il risultato e' IDENTICO (P4 intatto). */
+    {
+        gmb_3d_env_t le;
+        gmb_3d_env_clear(&le);
+        le.nlamps = 1;
+        le.lamps[0].radius = 10.0f;
+        le.lamps[0].amount = 255;
+        const float nf[3] = { 0.0f, 0.0f, -1.0f };
+        const float nb[3] = { 0.0f, 0.0f,  1.0f };
+        const float np[3] = { 1.0f, 0.0f,  0.0f };
+        P4CHECK(gmb_3d_light_eval_n(&le, 0.0f, 0.0f, 5.0f, NULL, 0, 5.0f)
+                == gmb_3d_light_eval(&le, 0.0f, 0.0f, 5.0f, 0, 5.0f),
+                "M-LIGHT-N: senza normale = P4, byte per byte");
+        P4CHECK(gmb_3d_light_eval_n(&le, 0.0f, 0.0f, 5.0f, nf, 0, 5.0f) == 128,
+                "M-LIGHT-N: faccia verso la luce = falloff pieno (128)");
+        P4CHECK(gmb_3d_light_eval_n(&le, 0.0f, 0.0f, 5.0f, nb, 0, 5.0f) == 0,
+                "M-LIGHT-N: faccia girata = buio");
+        P4CHECK(gmb_3d_light_eval_n(&le, 0.0f, 0.0f, 5.0f, np, 0, 5.0f) == 0,
+                "M-LIGHT-N: normale perpendicolare = buio");
+    }
+
     /* M-FOG: buio lineare alla distanza dichiarata. */
     gmb_3d_env_clear(&env);
     env.fog = 100.0f;
@@ -1039,6 +1121,45 @@ static void p4_checks(int* ok, int* fail)
     gmb_3d_env_clear(&env);
     env.colormap = 1;
     P4CHECK(gmb_3d_light_eval(&env, 0.0f, 0.0f, 0.0f, 100, 0.0f) == 98, "colormap: 100 -> 98 su 32 livelli");
+
+    /* M-AA: SSAA 2x per pixel. Stessa geometria e due materiali: con AA spento un
+     * campione, acceso quattro. L'area piatta non cambia, il bordo si fonde. */
+    {
+        gmb_3d_target_t ta, tb;
+        memset(&ta, 0, sizeof(ta)); memset(&tb, 0, sizeof(tb));
+        if (gmb_3d_target_alloc(&ta, 16, 16) == GMB_3D_OK
+            && gmb_3d_target_alloc(&tb, 16, 16) == GMB_3D_OK)
+        {
+            float amvp[16];
+            /* Stessa camera della superficie in `scene_aa.bas` (occhio a -3): i pixel
+             * di bordo e area piatta sono quelli del MiniTest. */
+            const float aeye[3] = { 0.0f, 0.0f, -3.0f }, aat[3] = { 0.0f, 0.0f, 0.0f };
+            mvp_build(amvp, aeye, aat, 60.0f * MESH_PI / 180.0f, 1.0f, 0.1f, 100.0f);
+            p4_quad_t q;
+            p4_quad_init(&q, 0.2f, -2.0f, 4.0f, 2.0f, 0.0f);
+            gmb_3d_mesh_t m = p4_mesh(&q);
+            gmb_3d_material_t mat;
+            p4_flat_material(&mat, 255, 255, 255, 255);
+            mat.two_sided = 1;
+            gmb_3d_draw_stats_t st;
+            gmb_3d_target_clear(&ta, 0x0F1729u, 0.0f);
+            gmb_3d_target_clear(&tb, 0x0F1729u, 0.0f);
+            mat.aa = 0;
+            int drawn_ok = gmb_3d_mesh_draw_env(&ta, amvp, &m, &mat, NULL, &st) == GMB_3D_OK;
+            mat.aa = 1;
+            drawn_ok = drawn_ok && gmb_3d_mesh_draw_env(&tb, amvp, &m, &mat, NULL, &st) == GMB_3D_OK;
+            P4CHECK(drawn_ok, "AA: due draw ok");
+            P4CHECK(ta.argb[(size_t)8 * 16 + 3] == tb.argb[(size_t)8 * 16 + 3],
+                    "AA: area piatta identica");
+            P4CHECK(ta.argb[(size_t)8 * 16 + 6] != tb.argb[(size_t)8 * 16 + 6],
+                    "AA: pixel di bordo diverso");
+            P4CHECK(tb.argb[(size_t)8 * 16 + 6] != 0xFFFFFFu
+                    && tb.argb[(size_t)8 * 16 + 6] != 0x0F1729u,
+                    "AA: il bordo e' una fusione (ne' bianco ne' fondo)");
+        }
+        else P4CHECK(0, "AA: alloc dei due target");
+        gmb_3d_target_free(&ta); gmb_3d_target_free(&tb);
+    }
 
     gmb_3d_target_t t;
     memset(&t, 0, sizeof(t));

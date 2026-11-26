@@ -522,6 +522,7 @@ public sealed partial class IlProgramCompiler
             case TokenKind.ScenePixels: EmitSceneReadNoArg(expr, nameof(IlRuntime.ScenePixels)); break;
             case TokenKind.SceneHash: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneHash)); break;
             case TokenKind.ScenePixel: EmitSceneReadPixel(expr, nameof(IlRuntime.ScenePixel)); break;
+            case TokenKind.ScenePick: EmitSceneReadPixel(expr, nameof(IlRuntime.ScenePick)); break;
             case TokenKind.MatrixColumnCount: EmitMatrixValueOrHandleUnary(expr, nameof(IlRuntime.MatrixValueColumnCount), RuntimeMethod(nameof(IlRuntime.MatrixColumnCount))); break;
             case TokenKind.MatrixClone: EmitMatrixUnaryValue(expr, RuntimeMethod(nameof(IlRuntime.MatrixCloneValue)), nameof(IlRuntime.MatrixValueClone)); break;
             // MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS.

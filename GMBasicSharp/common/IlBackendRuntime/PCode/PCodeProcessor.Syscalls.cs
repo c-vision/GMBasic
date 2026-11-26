@@ -250,6 +250,22 @@ internal sealed partial class PCodeProcessor
 
     private void ExecuteSyscall(PCodeTask task, ushort code, int argCount)
     {
+        /* SCENE: la facciata C segnala l'errore con una BasicException (Scene3DNative).
+         * Qui diventa un errore BASIC della gamba PCode — schema RaiseBasicError, quindi
+         * catturabile da TRY/CATCH e ON ERROR — con lo STESSO testo delle altre gambe.
+         * Senza questo catch l'eccezione sfuggiva al TRY (divergenza misurata su
+         * scene_texture_file: il file inesistente fermava la gamba). */
+        if (code >= (ushort)SysCall.SCENE_RESET && code <= (ushort)SysCall.SCENE_PICK)
+        {
+            try { ExecuteSyscallInner(task, code, argCount); }
+            catch (Basic.BasicException bex) { RaiseBasicError(task, 5.0, bex.Message); }
+            return;
+        }
+        ExecuteSyscallInner(task, code, argCount);
+    }
+
+    private void ExecuteSyscallInner(PCodeTask task, ushort code, int argCount)
+    {
         var call = (SysCall)code;
         // DBF_CLOSE_DATABASES tocca tutti e 4 i sottosistemi: acquisisce tutti e 4 i lock in un
         // ordine FISSO (isam -> dbf -> speed -> ledger) per prevenire deadlock con qualunque
@@ -937,6 +953,14 @@ internal sealed partial class PCodeProcessor
                 CommonLib.Scene3DNative.Vertex(x, y, z, u, v);
                 break;
             }
+            case SysCall.SCENE_VERTEX_N:
+            {
+                var nz = PopNum(task); var ny = PopNum(task); var nx = PopNum(task);
+                var v = PopNum(task); var u = PopNum(task); var z = PopNum(task);
+                var y = PopNum(task); var x = PopNum(task);
+                CommonLib.Scene3DNative.VertexN(x, y, z, u, v, nx, ny, nz);
+                break;
+            }
             case SysCall.SCENE_QUAD:
             {
                 var d = PopInt(task); var c = PopInt(task); var b = PopInt(task); var a = PopInt(task);
@@ -1026,6 +1050,12 @@ internal sealed partial class PCodeProcessor
                 break;
             case SysCall.SCENE_TWOSIDED:
                 CommonLib.Scene3DNative.TwoSided((long)PopNum(task));
+                break;
+            case SysCall.SCENE_AA:
+                CommonLib.Scene3DNative.Aa((long)PopNum(task));
+                break;
+            case SysCall.SCENE_PICK:
+                CommonLib.Scene3DNative.PickEnable((long)PopNum(task));
                 break;
             case SysCall.SCENE_LIGHT:
             {

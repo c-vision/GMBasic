@@ -38,6 +38,7 @@ Il dominio segue la regola del linguaggio: **il comando scrive, la funzione legg
 | Comando | `SCENE SMOOTH on\|off` | filtro della texture: bilineare o nearest |
 | Comando | `SCENE ALPHA on\|off` | alpha-test: i texel trasparenti si scartano o si disegnano |
 | Comando | `SCENE TWOSIDED on\|off` | facce visibili da entrambi i lati (niente back-face cull) |
+| Comando | `SCENE PICK on\|off` | buffer di id per pixel per `SCENE.PICK` (additivo, default off) |
 | Comando | `SCENE RENDER` | rasterizza la scena nel target |
 | Comando | `SCENE PRESENT` | copia il target 3D nella pagina 2D corrente |
 | Comando | `SCENE SAVE path$` | salva il frame corrente in PNG |
@@ -48,6 +49,7 @@ Il dominio segue la regola del linguaggio: **il comando scrive, la funzione legg
 | Funzione | `SCENE.PIXELS()` | pixel passati dal depth test nell'ultimo `RENDER` |
 | Funzione | `SCENE.HASH()` | FNV-1a del frame (stesso frame ⇒ stesso numero) |
 | Funzione | `SCENE.PIXEL(x, y)` | colore `0x00RRGGBB` del target, `−1` fuori dai limiti |
+| Funzione | `SCENE.PICK(x, y)` | id dell'oggetto nel pixel: `0` fondo, `1..256` oggetto, `−1` senza target o fuori, `−2` buffer spento |
 
 `IMPORT SCENE` è **obbligatoria**: il dominio non è implicito (come `WORLD` e `CLOCK`). Senza
 l'import il programma non compila, sia per il comando sia per le letture qualificate:
@@ -375,6 +377,29 @@ SCENE RENDER
 (alpha-test, cull e hash bilineare/nearest). Sample: `Samples3D/MaterialFlags.bas` (fogliame
 con buchi attorno a un anello di lastre, tre fasi con i flag scambiati).
 
+### `SCENE PICK on|off`
+
+Accende un **buffer di id per pixel**, additivo e **spento di default**: serve a sapere *quale
+oggetto* ha scritto un pixel (`SCENE.PICK(x, y)`), per esempio per il click del mouse su una
+scena 3D. Acceso, il rasterizzatore scrive in ogni pixel che vince il depth test l'id
+dell'oggetto — l'**ordine di dichiarazione** degli `SCENE OBJECT` (`1..256`); fondo, cielo e
+thing restano `0`. Con il pick spento **non si alloca nulla e non si scrive nulla**: colore,
+`SCENE.PIXEL`, `HASH`, `SAVE` e `PRESENT` sono identici a una scena senza pick (le golden
+restano valide). Lo stato **sopravvive a `SCENE RESET`**, come gli altri flag.
+
+```basic
+SCENE PICK ON
+SCENE RENDER
+PRINT "oggetto sotto il mouse: "; SCENE.PICK(MOUSE.X, MOUSE.Y)
+```
+
+Le sentinelle sono **due** e dicono cose diverse: `−2` = hai acceso la lettura senza
+`SCENE PICK on`; `−1` = non c'è target (manca `SCENE VIEW`) oppure le coordinate sono fuori
+— la stessa sentinella di `SCENE.PIXEL`. `0` è il fondo, non un errore.
+
+MiniTest: `shared/minitests/3d/scene_pick.bas` (nessun target `−1`, pick spento `−2`,
+occlusione, fondo `0` e fuori target `−1`, identico su C99Native, IL, PCode e VM/C).
+
 ### `SCENE RENDER`
 
 Rasterizza tutti gli oggetti nel target: clip contro i sei piani del frustum, divisione
@@ -502,29 +527,68 @@ Fuori dai limiti (`x < 0`, `y < 0`, `x ≥ w`, `y ≥ h`) restituisce `−1`: la
 numero, non un colore, quindi non si confonde con il nero. Prima del primo `RENDER` restituisce
 `−1` perché il target non esiste ancora.
 
+### `SCENE.PICK(x, y)`
+
+Id dell'oggetto che ha vinto il depth test nel pixel: `1..256` secondo l'ordine di
+dichiarazione degli `SCENE OBJECT`, `0` dove non c'è geometria (fondo, cielo, thing). È il
+complemento di `SCENE.PIXEL`: quello dice *che colore*, questo dice *chi*. Occlusione
+compresa: se due oggetti si sovrappongono vince il più vicino, anche quando è disegnato per
+primo. Richiede `SCENE PICK on`: con il target creato e il buffer spento risponde `−2`, che è
+l'unico significato di `−2`. **Senza target** (`SCENE VIEW` mai chiamato) e **fuori dai
+limiti** risponde `−1`, come `SCENE.PIXEL`: "assente o fuori" è la stessa sentinella in tutto
+il dominio, quindi `−1` non si confonde col fondo (`0`) né con un pick spento (`−2`). Funziona
+anche con `SCENE AA on` (l'id è quello del campione più vicino).
+
 ---
 
 ## 4. Errori e diagnosi
 
-I comandi **non hanno valore di ritorno** leggibile (§1): un comando rifiutato non ferma il
-programma e non produce un numero da controllare. Gli errori si vedono **dallo stato**:
+I comandi **non hanno valore di ritorno** leggibile (§1), ma un comando **rifiutato è un errore
+BASIC di runtime** (codice `5`), catturabile con `ON ERROR`/`TRY`: non è più un no-op silenzioso.
+Il messaggio è quello canonico della facciata C e il gate
+`tools/sh/check_scene_negatives.sh` verifica che sia **identico** su C99Native, IL, PCode e VM/C,
+con lo **stesso exit code** (`6` a runtime; `2` per arità sbagliata, che è un errore di
+compilazione).
+
+**Arità esatta.** Ogni verbo accetta solo le forme dichiarate: `OBJECT` 3 o 5 argomenti, `VERTEX`
+5 o 8, `LAMP` 6 o 10, gli altri un numero fisso. Le forme intermedie (`OBJECT` a 4, `LAMP` a 7-9)
+e gli argomenti in più sono un errore di compilazione con il testo della forma, non un comando a
+metà.
+
+**Valori rifiutati** (NaN/Inf compresi: un non-finito non entra nel kernel):
+
+| Verbo | Regola | Messaggio |
+|---|---|---|
+| `VIEW` | `w`,`h` 1..8192; `fov` 1..179 e finito | `SCENE VIEW: …` |
+| `TEXTURE` | celle 1..64; PNG leggibile, max 4096 per lato | `SCENE TEXTURE: …` |
+| `VERTEX`/`BOX`/`OBJPOS`/`CAMERA` | coordinate finite; serve un oggetto corrente | `SCENE …: coordinate non finite` / `… serve un oggetto corrente` |
+| `QUAD` | indici dentro i vertici dell'oggetto | `SCENE QUAD: indice di vertice fuori range` |
+| `CAMERA` | `pitch` tra −89 e 89 | `SCENE CAMERA: pitch tra -89 e 89 gradi` |
+| `LIGHT` | direzione non nulla e finita | `SCENE LIGHT: direzione nulla` / `… non finita` |
+| `LAMP` | slot 0..7; raggio ≥ 0 e finito | `SCENE LAMP: lo slot deve essere tra 0 e 7` |
+| `LAMP` (spot) | direzione non nulla; angolo 0..90 | `SCENE LAMP SPOT: …` |
+| `FOG`/`FAR` | distanza ≥ 0 e finita | `SCENE FOG: distanza non negativa e finita` |
+| `SKY` | texture impostata; `repeat`/`shift` finiti | `SCENE SKY: nessuna texture (SCENE TEXTURE prima di SKY)` |
+| `THING` | slot 0..255; `w`,`h` > 0 e finiti | `SCENE THING: indice tra 0 e 255` |
+| `RENDER`/`SAVE`/`PRESENT` | target creato da `VIEW`/`RENDER` | `SCENE RENDER: nessun target (SCENE VIEW prima)` |
+| `OBJECT` | massimo 256 oggetti per scena | `SCENE OBJECT: massimo 256 oggetti per scena` |
+
+I colori di `OBJECT` e i livelli di `LIGHT`/`LAMP` restano **clampati** 0..255 (comportamento
+documentato, non un errore).
+
+Sintomi che restano **diagnostica di scena** (nessun errore, si leggono dallo stato):
 
 | Sintomo | Causa probabile |
 |---|---|
-| `DRAWN() = 0` e `TRIS() > 0` | camera fuori scena, `yaw` sbagliato, `pitch` oltre `±89`, oppure `VIEW` mai chiamato |
-| `DRAWN() = TRIS()` | nessuna faccia scartata: vertici in ordine **orario** (fronti tutte verso la camera) o scena dentro il frustum per intero |
-| un oggetto non compare | `OBJPOS` chiamato **prima** di `OBJECT` (agisce sull'oggetto precedente), oppure oggetto aperto e mai riempito |
-| il frame è tutto del colore di fondo | `RENDER` prima di dichiarare la geometria, oppure `RESET` dopo averla dichiarata |
-| `VERTS()`/`TRIS()` più bassi del previsto | il comando è stato rifiutato per limite (`256` oggetti, `32768` vertici, `16384` triangoli) |
-| `PIXEL()` sempre `−1` | `VIEW` mai chiamato, o coordinate fuori dal target |
-| un oggetto resta nero | luce base `0` e nessuna lampada, oppure `FOG` più corto della distanza della scena |
-| il cielo non compare | `SCENE SKY` senza `TEXTURE`, oppure `RESET` dopo `SKY` |
-| `THING` invisibile | texture mai impostata, `w`/`h` non positivi, o slot `> 255` |
-| una lampada non si vede | slot `> 7`, `raggio 0`, `quantità 0`, oppure oggetto già a luce `255` |
-| `SCENE SAVE` non scrive | percorso non scrivibile dalla cartella di esecuzione del programma |
+| `DRAWN() = 0` e `TRIS() > 0` | camera fuori scena, `yaw` sbagliato, oppure `VIEW` mai chiamato |
+| `DRAWN() = TRIS()` | vertici in ordine **orario** (fronti tutte verso la camera) o scena dentro il frustum |
+| un oggetto non compare | `OBJPOS` chiamato **prima** di `OBJECT`, oppure oggetto aperto e mai riempito |
+| il frame è tutto del colore di fondo | `RESET` dopo aver dichiarato la geometria |
+| `PIXEL()` sempre `−1` | coordinate fuori dal target |
+| un oggetto resta nero | luce base `0` e nessuna lampada, oppure `FOG` più corto della distanza |
+| una lampada non si vede | `raggio 0`, `quantità 0`, oppure oggetto già a luce `255` |
 
-`IMPORT SCENE` dimenticata: il programma non compila (`namespace non importato: SCENE`). È un
-errore di compilazione, quindi si vede subito e su tutte le gambe.
+`IMPORT SCENE` dimenticata: il programma non compila (`namespace non importato: SCENE`).
 
 ---
 

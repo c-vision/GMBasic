@@ -2751,9 +2751,14 @@ typedef enum gmb_tokenkind {
     GMB_TOK_SceneSky,
     GMB_TOK_SceneColormap,
     GMB_TOK_SceneThing,
+    /* SCENE AA on|off — antialiasing SSAA 2x (spento di default). */
+    GMB_TOK_SceneAa,
+    /* SCENE PICK on|off + lettura SCENE.PICK(x, y) — buffer di id per pixel,
+     * additivo e spento di default. */
+    GMB_TOK_ScenePick,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2722
+  #define GMB_TOK_COUNT 2724
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

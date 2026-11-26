@@ -827,6 +827,7 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_ScenePixels, 0 },
     { GMB_TOK_SceneHash, 0 },
     { GMB_TOK_ScenePixel, 0 },
+    { GMB_TOK_ScenePick, 0 },
     { GMB_TOK_SpeedSetDurability, 1 },
     { GMB_TOK_SpeedFlushDurability, 0 },
     { GMB_TOK_SpeedBeginGroupCommit, 0 },

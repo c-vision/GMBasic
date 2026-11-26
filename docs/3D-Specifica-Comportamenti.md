@@ -25,7 +25,7 @@
 | `C-WIND` | Triangolo **antiorario visto dal fronte**: la normale `(b−a)×(c−a)` punta all'osservatore. Un oggetto a una faccia non disegna né collide dal retro. | Un triangolo noto dà normale con segno atteso; `two-sided` disegna entrambi i lati. |
 | `C-INDEX0` | **Alpha 0 del texel = trasparente** (nel riferimento: indice 0 di palette) dove serve (thing, oggetti masked/translucent, cielo); su parete o pavimento **pieno** lascia il pixel trasparente, cioè mostra i layer sotto. | Scena con texture bucata sopra un layer colorato: il colore sotto resta visibile. |
 | `C-NOPIC` | Numero di texture mai definito → si disegna **`palette_rgb(n)` del runtime** (non un errore, non il magenta): lo stesso colore che darebbe il 2D. | `TEXTURE` non chiamata: il pixel ha esattamente il colore di `palette_rgb(n)`. |
-| `C-SENTINEL` | Sentinelle: `−1` = **entità assente** ovunque (`TON`, `SECTORAT`, `ZONE`, `USE`, `SEES`); "fuori dal mondo" per le quote `−1000000`; `SEES` **`1` = vede, `0` = non vede, `−1` = thing inesistente** (corretta rispetto al riferimento: `C-DIVERGE-SEES`, §12.3); `WALLS(s)` = il numero che prenderà la prossima parete. | Un controllo per sentinella, con il caso "fuori" e il caso "dentro". |
+| `C-SENTINEL` | Sentinelle: `−1` = **entità assente** ovunque (`TON`, `SECTORAT`, `ZONE`, `USE`, `SEES`); `SCENE.PIXEL` e `SCENE.PICK` = `−1` **assente o fuori dal target** (target mai creato, coordinate fuori), e `SCENE.PICK` ha in più `−2` = **buffer spento** (`M-PICK-SENT`), che non significa "assente"; "fuori dal mondo" per le quote `−1000000`; `SEES` **`1` = vede, `0` = non vede, `−1` = thing inesistente** (corretta rispetto al riferimento: `C-DIVERGE-SEES`, §12.3); `WALLS(s)` = il numero che prenderà la prossima parete. | Un controllo per sentinella, con il caso "fuori" e il caso "dentro". |
 | `C-LAYER` | Il 3D disegna **in un layer** indicato dal target grafico, sostituendo i pixel della vista; l'HUD si disegna sopra con le primitive 2D. Lo scambio di buffer è del programma, non del renderer. | Scena resa su page A, HUD su B, swap: il fotogramma composto contiene entrambi. |
 | `C-NOENV` | Nessun parametro passa da variabili d'ambiente: tutto da statement o dal registro opzioni. | Grep di `getenv` sul codice nuovo: zero. |
 | `C-CAPTURE` | **Il fotogramma si cattura dal target 3D** (`gmb_3d_target_capture_argb` / `capture_png`), **mai** dalla finestra: `gmb_gfx_present_capture` richiede video reale e main thread e in headless restituisce `-1`. La cattura è una copia senza scalature: dimensioni diverse sono un errore esplicito. | Golden per RID con `gmb_3d_oracle --check` (0 differenze in software) e `--perturb 1` che **deve** dare `DIFF`. |
@@ -165,6 +165,25 @@ Verifica: 6 golden (`lamp_point`, `lamp_spot`, `fog`, `sky`, `thing`, `order`) e
 con gli **stessi valori** su C99Native, IL, PCode e VM/C; `P1-SELFTEST ok=139 fail=0`, `P1-ORACLE
 ok=18 diff=0`.
 
+#### `SCENE.PICK` — buffer di id per pixel (P5, 2026-11-26)
+
+| ID | Superficie BASIC | Comportamento implementato |
+|---|---|---|
+| `M-PICK` | `SCENE PICK on\|off` + `SCENE.PICK(x, y)` | buffer di id per pixel **additivo** e **spento di default**: spento non si alloca e non si scrive nulla, quindi colore, profondità, `PIXEL`, `HASH`, `SAVE` e `PRESENT` restano byte per byte quelli di una scena senza pick. Acceso alloca un terzo array `w×h` di `uint32` accanto a colore e depth; lo stato sopravvive a `RESET`, come gli altri flag |
+| `M-PICK-ID` | valore di `SCENE.PICK(x, y)` | l'id è l'**ordine di dichiarazione** degli `SCENE OBJECT`: `1…256` (il tetto di `M-MODEL`), stabile per tutta la vita della scena e rinumerato solo da `RESET` |
+| `M-PICK-BG` | valore di `SCENE.PICK(x, y)` | `0` = **fondo**: nessuna geometria ha vinto il pixel. Fondo del target, cielo e **thing** valgono `0` (i thing sono billboard, non hanno id d'oggetto) |
+| `M-PICK-DEPTH` | valore di `SCENE.PICK(x, y)` | l'id si scrive **dopo** il depth test, quindi l'occlusione vale: dove due oggetti si sovrappongono vince il **più vicino**, anche se dichiarato per primo. Con `SCENE AA on` l'id è quello del campione a **profondità minima** del pixel (i colori si mediano, l'id no) |
+| `M-PICK-SENT` | sentinelle | `−1` = **assente o fuori**: `SCENE VIEW` mai chiamato (nessun target) oppure `x`/`y` fuori da `0…w−1` / `0…h−1`; è la stessa sentinella di `SCENE.PIXEL`. `−2` = **buffer spento**: il target esiste ma `SCENE PICK on` non è stato chiamato (o è stato spento). `−2` non ha altri significati |
+
+**Perché `−1` e non `−2` senza target.** Due errori di scrittura diversi devono dare due numeri
+diversi: `−2` dice "hai dimenticato `SCENE PICK on`", `−1` dice "hai dimenticato `SCENE VIEW`"
+o sei fuori dallo schermo. Con `−2` anche senza target i due casi sarebbero indistinguibili, e
+`−1` = "assente" è già la regola del dominio (`C-SENTINEL`, `SCENE.PIXEL`).
+
+Verifica: `shared/minitests/3d/scene_pick.bas` (nessun target `−1`, pick spento `−2`,
+occlusione `1` invece del lontano `2`, fondo `0`, fuori target `−1`, colore invariato) con gli
+**stessi valori** su C99Native, IL, PCode e VM/C.
+
 ### 3.3 Collisione, raggi, zone
 
 | ID | Comportamento |
@@ -215,6 +234,7 @@ ok=18 diff=0`.
 | `W-MOVE`, `W-SHOOT`, `W-USE`, `W-SEES`, `W-FLAGS` | MiniTest headless: 10–20 casi con `HIT`, `SHOTKIND`, `SEES` | `world_move.bas`, `world_rays.bas` |
 | `W-INV-*` | 6 mappe rotte apposta: **il `LOAD` fallisce** e `ON ERROR` controlla l'elemento nominato (`F-ERRORS`); mappe buone: anche il tool `tools/sh/check_3d_world.sh` in CI (§12.2) | `world_invariants.bas` + fixture JSON |
 | `M-CULL`, `M-ORDER`, `M-LIGHT`, `M-FOG`, `M-SKY`, `M-THINGS`, `M-PALALPHA` | Golden image (6 scene P4: `lamp_point`, `lamp_spot`, `fog`, `sky`, `thing`, `order`, più le 5 mesh) + MiniTest numerici su colore atteso | `scene_golden1..11`; `shared/minitests/3d/scene_lamp_point_spot.bas`, `scene_fog.bas`, `scene_far.bas`, `scene_sky.bas`, `scene_colormap.bas`, `scene_thing.bas` |
+| `M-PICK`, `M-PICK-ID`, `M-PICK-BG`, `M-PICK-DEPTH`, `M-PICK-SENT` | MiniTest headless: nessun target `−1`, pick spento `−2`, id `1..256`, fondo `0`, occlusione, fuori target `−1`; le golden esistenti restano identiche (additività) | `scene_pick.bas`; `check_3d_oracle.sh` (pick spento `diff=0`) |
 | `M-BUILD`, `M-FLAGS`, `M-ZONE`, `M-FLOOR` | MiniTest: conteggi, maschera `faces`, zona "prima creata vince", `FLOORAT` su piani sovrapposti | `scene_model.bas` |
 | `T-*` | MiniTest di replay: stesso input + stesso seed → stessa sequenza di posizioni e di frame | `time_replay.bas` |
 | `F-*` | Round-trip `LOAD → SAVE → LOAD` identico + rifiuto di versioni future | `format_roundtrip.bas` |
@@ -258,6 +278,7 @@ ok=18 diff=0`.
 | `gmb_3d_cmd.c` | **esiste dal 2026-11-24 (P3), esteso in P4**: facciata `gmb_scene_*` (accumulo geometria, camera, materiale, 8 lampade, fog/FAR, sky, colormap, thing, `OBJECT` con flag e luce), render ordinato cielo→opachi→thing→traslucidi; nessuna formula duplicata (la luce è `gmb_3d_light_eval` in `gmb_3d_frame.c`) | `M-*`, `C-SAME-COLORMAP` |
 | `gmb_3d_frame.c` | vedere/clip, target (pagina o canvas), null mode, present; **esiste dal 2026-11-19 (P1)**: `gmb_3d_target_*`, cattura headless, guardie di render, `alloc_count` — nessun header SDL, nessuna dipendenza `gm_*` | `C-CAPTURE`, `C-LAYER`, `T-NULL`, `R3`, `R5` |
 | `gmb_3d_scene.c` | oggetti, thing, lampade, zone, query `SCENE.*` | `M-*` |
+| `gmb_3d_pick.c` | **esiste dal 2026-11-26 (P5)**: flag `SCENE PICK`, aggancio del buffer di id a VIEW/RENDER, lettura `SCENE.PICK(x, y)` con le sentinelle `−1` (assente/fuori) e `−2` (buffer spento); nessuna formula duplicata (l'id lo scrive il raster in `gmb_3d_frame.c`) | `M-PICK*` |
 | `gmb_3d_move.c` | corpo, movimento con scivolamento/gradini/portali, `HIT` | `W-MOVE`, `M-COLLIDE` |
 | `gmb_3d_ray.c` | `SHOOT`/`USE`/`SEES` sui due modelli, con flag 2/4/8 | `W-SHOOT`, `M-RAYS` |
 | `gmb_3d_time.c` | passo fisso, `TICK`, mover, animazioni, scroll, lightfx | `T-*` |

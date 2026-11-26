@@ -111,13 +111,40 @@ int gmb_3d_target_alloc(gmb_3d_target_t* t, int w, int h)
     return GMB_3D_OK;
 }
 
+int gmb_3d_target_ids(gmb_3d_target_t* t, int on)
+{
+    if (t == NULL || t->argb == NULL || t->depth == NULL || t->w <= 0 || t->h <= 0)
+    {
+        set_err("target: non allocato");
+        return GMB_3D_E_ARG;
+    }
+    if (!on)
+    {
+        free(t->id);
+        t->id = NULL;
+        return GMB_3D_OK;
+    }
+    size_t n = (size_t)t->w * (size_t)t->h;
+    uint32_t* ids = (uint32_t*)realloc(t->id, n * sizeof(uint32_t));
+    if (ids == NULL)
+    {
+        set_err("target: memoria esaurita per il buffer di id");
+        return GMB_3D_E_NOMEM;
+    }
+    t->id = ids;
+    for (size_t i = 0; i < n; i++) ids[i] = 0;
+    return GMB_3D_OK;
+}
+
 void gmb_3d_target_free(gmb_3d_target_t* t)
 {
     if (t == NULL) return;
     free(t->argb);
     free(t->depth);
+    free(t->id);
     t->argb = NULL;
     t->depth = NULL;
+    t->id = NULL;
     t->w = 0;
     t->h = 0;
 }
@@ -131,6 +158,7 @@ int gmb_3d_target_clear(gmb_3d_target_t* t, uint32_t argb, float depth)
     {
         t->argb[i] = c;
         t->depth[i] = depth;
+        if (t->id != NULL) t->id[i] = 0;   /* fondo: nessun oggetto (SCENE PICK) */
     }
     return GMB_3D_OK;
 }
@@ -288,8 +316,10 @@ const char* gmb_3d_last_error(void)
  */
 
 /* wx,wy,wz = posizione MONDO del vertice: si interpolano come u,v e servono alla
- * luce per pixel (lampade e fog dipendono dal punto, non dal triangolo). */
-typedef struct gmb_3d_vclip { float x, y, z, w, u, v, wx, wy, wz; } gmb_3d_vclip;
+ * luce per pixel (lampade e fog dipendono dal punto, non dal triangolo).
+ * nx,ny,nz = normale MONDO del vertice, opzionale (M-LIGHT-N): resta 0 quando la
+ * mesh non ne dichiara; in quel caso non entra in nessun calcolo. */
+typedef struct gmb_3d_vclip { float x, y, z, w, u, v, wx, wy, wz, nx, ny, nz; } gmb_3d_vclip;
 
 #define GMB3D_CLIP_MAX 12
 
@@ -333,6 +363,9 @@ static int gmb3d_clip_plane(const gmb_3d_vclip* in, int n, int plane, gmb_3d_vcl
             m.wx = a->wx + k * (b->wx - a->wx);
             m.wy = a->wy + k * (b->wy - a->wy);
             m.wz = a->wz + k * (b->wz - a->wz);
+            m.nx = a->nx + k * (b->nx - a->nx);
+            m.ny = a->ny + k * (b->ny - a->ny);
+            m.nz = a->nz + k * (b->nz - a->nz);
             out[on++] = m;
         }
     }
@@ -357,7 +390,8 @@ static unsigned gmb3d_clamp255(int v)
 static void gmb3d_tri(gmb_3d_target_t* t, const gmb_3d_material_t* mat,
                       const gmb_3d_env_t* env,
                       const float s[3][2], const float iw[3], const float uv[3][2],
-                      const float wp[3][3], gmb_3d_draw_stats_t* st)
+                      const float wp[3][3], const float nm[3][3], int has_nm,
+                      gmb_3d_draw_stats_t* st)
 {
     float area = gmb3d_edge(s[0][0], s[0][1], s[1][0], s[1][1], s[2][0], s[2][1]);
     if (area == 0.0f) return;
@@ -427,7 +461,16 @@ static void gmb3d_tri(gmb_3d_target_t* t, const gmb_3d_material_t* mat,
                 float wx = (b0 * wp[0][0] * iw[0] + b1 * wp[1][0] * iw[1] + b2 * wp[2][0] * iw[2]) / iws;
                 float wy = (b0 * wp[0][1] * iw[0] + b1 * wp[1][1] * iw[1] + b2 * wp[2][1] * iw[2]) / iws;
                 float wz = (b0 * wp[0][2] * iw[0] + b1 * wp[1][2] * iw[1] + b2 * wp[2][2] * iw[2]) / iws;
-                lv = (int)gmb_3d_light_eval(env, wx, wy, wz, mat->light, d);
+                if (has_nm)   /* M-LIGHT-N: normale interpolata, poi normalizzata nel nucleo */
+                {
+                    float n[3];
+                    n[0] = (b0 * nm[0][0] * iw[0] + b1 * nm[1][0] * iw[1] + b2 * nm[2][0] * iw[2]) / iws;
+                    n[1] = (b0 * nm[0][1] * iw[0] + b1 * nm[1][1] * iw[1] + b2 * nm[2][1] * iw[2]) / iws;
+                    n[2] = (b0 * nm[0][2] * iw[0] + b1 * nm[1][2] * iw[1] + b2 * nm[2][2] * iw[2]) / iws;
+                    lv = (int)gmb_3d_light_eval_n(env, wx, wy, wz, n, mat->light, d);
+                }
+                else
+                    lv = (int)gmb_3d_light_eval(env, wx, wy, wz, mat->light, d);
             }
             if (lv != 255)
             {
@@ -449,9 +492,50 @@ static void gmb3d_tri(gmb_3d_target_t* t, const gmb_3d_material_t* mat,
             }
             t->argb[idx] = ((uint32_t)cr << 16) | ((uint32_t)cg << 8) | (uint32_t)cb;
             t->depth[idx] = d;
+            /* SCENE PICK: il pixel che vince il depth test porta l'id dell'oggetto.
+             * Buffer NULL (spento) = nessuna scrittura: byte di sempre. */
+            if (t->id != NULL) t->id[idx] = mat->id;
             st->pixels++;
         }
     }
+}
+
+/* --- SSAA 2x (materiale.aa) ----------------------------------------------
+ * Il DISEGNO di una mesh va in un target interno doppio, poi si risolve con la
+ * media 2x2: la fusione avviene UNA volta per draw, quindi i triangoli che
+ * condividono un bordo non si fondono due volte (il difetto del SSAA per
+ * triangolo). Il target e' riusato (nessuna allocazione per frame quando la
+ * dimensione non cambia) e la mappatura schermo dei campioni e' 2*(W-1), cosi'
+ * i quattro campioni cadono a 1/4 e 3/4 del pixel logico. */
+static gmb_3d_target_t g_ss_target;
+
+static void gmb3d_ss_resolve(gmb_3d_target_t* dst, const gmb_3d_target_t* src)
+{
+    for (int y = 0; y < dst->h; y++)
+        for (int x = 0; x < dst->w; x++)
+        {
+            size_t di = (size_t)y * (size_t)dst->w + (size_t)x;
+            unsigned r = 0, g = 0, b = 0;
+            float dmin = 0.0f;
+            uint32_t pick = 0;
+            for (int k = 0; k < 4; k++)
+            {
+                size_t si = (size_t)(y * 2 + (k >> 1)) * (size_t)src->w + (size_t)(x * 2 + (k & 1));
+                uint32_t p = src->argb[si];
+                r += (p >> 16) & 0xFFu; g += (p >> 8) & 0xFFu; b += p & 0xFFu;
+                float sd = src->depth[si];
+                if (sd != 0.0f && (dmin == 0.0f || sd < dmin))
+                {
+                    dmin = sd;
+                    if (src->id != NULL) pick = src->id[si];
+                }
+            }
+            dst->argb[di] = (((r + 2u) / 4u) << 16) | (((g + 2u) / 4u) << 8) | ((b + 2u) / 4u);
+            dst->depth[di] = dmin;
+            /* L'id e' quello del campione PIU' VICINO (occlusione corretta); con
+             * il buffer spento dst->id e' NULL e non si scrive nulla. */
+            if (dst->id != NULL) dst->id[di] = pick;
+        }
 }
 
 int gmb_3d_mesh_draw(gmb_3d_target_t* t, const float* mvp,
@@ -503,6 +587,38 @@ int gmb_3d_mesh_draw_env(gmb_3d_target_t* t, const float* mvp,
     }
 
     const int has_uv = (m->uv != NULL);
+    const int has_nm = (m->nrm != NULL);   /* M-LIGHT-N: assente = percorso P4 identico */
+
+    /* SSAA 2x: si disegna nel target doppio, inizializzato col colore e con la
+     * profondita' gia' presenti (il pass di settori resta rispettato). */
+    gmb_3d_target_t* dt = t;
+    const int ss = (mat->aa != 0);
+    if (ss)
+    {
+        if (gmb_3d_target_alloc(&g_ss_target, t->w * 2, t->h * 2) != GMB_3D_OK)
+        {
+            set_err("mesh: target SSAA non allocabile");
+            return GMB_3D_E_NOMEM;
+        }
+        /* Il pick segue il disegno: stessi campioni del colore, poi il resolve
+         * prende l'id del campione piu' vicino. Con il buffer spento non si
+         * alloca e non si scrive niente. */
+        if (t->id != NULL && gmb_3d_target_ids(&g_ss_target, 1) != GMB_3D_OK)
+        {
+            set_err("mesh: buffer di id SSAA non allocabile");
+            return GMB_3D_E_NOMEM;
+        }
+        for (int y = 0; y < g_ss_target.h; y++)
+            for (int x = 0; x < g_ss_target.w; x++)
+            {
+                size_t si = (size_t)y * (size_t)g_ss_target.w + (size_t)x;
+                size_t di = (size_t)(y >> 1) * (size_t)t->w + (size_t)(x >> 1);
+                g_ss_target.argb[si] = t->argb[di];
+                g_ss_target.depth[si] = t->depth[di];
+                if (t->id != NULL) g_ss_target.id[si] = t->id[di];
+            }
+        dt = &g_ss_target;
+    }
 
     for (int i = 0; i < m->nt; i++)
     {
@@ -528,6 +644,9 @@ int gmb_3d_mesh_draw_env(gmb_3d_target_t* t, const float* mvp,
             o->u = has_uv ? m->uv[(size_t)ii[k] * 2 + 0] : 0.0f;
             o->v = has_uv ? m->uv[(size_t)ii[k] * 2 + 1] : 0.0f;
             o->wx = p[0]; o->wy = p[1]; o->wz = p[2];
+            o->nx = has_nm ? m->nrm[(size_t)ii[k] * 3 + 0] : 0.0f;
+            o->ny = has_nm ? m->nrm[(size_t)ii[k] * 3 + 1] : 0.0f;
+            o->nz = has_nm ? m->nrm[(size_t)ii[k] * 3 + 2] : 0.0f;
         }
 
         int n = 3;
@@ -550,17 +669,24 @@ int gmb_3d_mesh_draw_env(gmb_3d_target_t* t, const float* mvp,
 
         float sx[GMB3D_CLIP_MAX], sy[GMB3D_CLIP_MAX];
         float iw[GMB3D_CLIP_MAX], uv[GMB3D_CLIP_MAX][2], wp[GMB3D_CLIP_MAX][3];
+        float nm[GMB3D_CLIP_MAX][3];
         for (int k = 0; k < n; k++)
         {
             float invw = 1.0f / poly[k].w;
-            sx[k] = (poly[k].x * invw * 0.5f + 0.5f) * (float)(t->w - 1);
-            sy[k] = (0.5f - poly[k].y * invw * 0.5f) * (float)(t->h - 1);
+            /* SSAA: 2*(W-1) mette i quattro campioni a 1/4 e 3/4 del pixel logico. */
+            float sw = ss ? (float)(2 * (t->w - 1)) : (float)(dt->w - 1);
+            float sh = ss ? (float)(2 * (t->h - 1)) : (float)(dt->h - 1);
+            sx[k] = (poly[k].x * invw * 0.5f + 0.5f) * sw;
+            sy[k] = (0.5f - poly[k].y * invw * 0.5f) * sh;
             iw[k] = invw;
             uv[k][0] = poly[k].u;
             uv[k][1] = poly[k].v;
             wp[k][0] = poly[k].wx;
             wp[k][1] = poly[k].wy;
             wp[k][2] = poly[k].wz;
+            nm[k][0] = poly[k].nx;
+            nm[k][1] = poly[k].ny;
+            nm[k][2] = poly[k].nz;
         }
 
         for (int k = 1; k + 1 < n; k++)
@@ -571,13 +697,18 @@ int gmb_3d_mesh_draw_env(gmb_3d_target_t* t, const float* mvp,
             float twp[3][3] = { { wp[0][0], wp[0][1], wp[0][2] },
                                 { wp[k][0], wp[k][1], wp[k][2] },
                                 { wp[k + 1][0], wp[k + 1][1], wp[k + 1][2] } };
+            float tnm[3][3] = { { nm[0][0], nm[0][1], nm[0][2] },
+                                { nm[k][0], nm[k][1], nm[k][2] },
+                                { nm[k + 1][0], nm[k + 1][1], nm[k + 1][2] } };
             float a2 = gmb3d_edge(s[0][0], s[0][1], s[1][0], s[1][1], s[2][0], s[2][1]);
             if (a2 == 0.0f) continue;
             if (!mat->two_sided && a2 < 0.0f) { stats->tris_culled++; continue; }  /* back-face */
-            gmb3d_tri(t, mat, env, s, tiw, tuv, twp, stats);
+            gmb3d_tri(dt, mat, env, s, tiw, tuv, twp, tnm, has_nm, stats);
             stats->tris_drawn++;
         }
     }
+
+    if (ss) gmb3d_ss_resolve(t, dt);   /* un solo resolve per DRAW: niente doppie fusioni */
 
     set_err("");
     return GMB_3D_OK;
@@ -596,11 +727,28 @@ void gmb_3d_env_clear(gmb_3d_env_t* env)
     if (env != NULL) memset(env, 0, sizeof(*env));
 }
 
-unsigned char gmb_3d_light_eval(const gmb_3d_env_t* env, float x, float y, float z,
-                                unsigned char base, float dist)
+/* Nucleo UNICO di M-LIGHT/M-LIGHT-N. `n` NULL = nessun orientamento: e' il
+ * percorso di P4, con le stesse operazioni di prima (niente normalizzazione,
+ * niente prodotto scalare), quindi gli stessi byte. Con `n`, ogni lampada conta
+ * solo su una superficie che la guarda: f *= max(0, N.L), L verso la lampada. */
+static unsigned char gmb3d_light_core(const gmb_3d_env_t* env, float x, float y, float z,
+                                      const float n[3], unsigned char base, float dist)
 {
     int lv = (int)base;
     if (env == NULL) return (unsigned char)lv;
+
+    float nx = 0.0f, ny = 0.0f, nz = 0.0f;
+    int have_n = 0;
+    if (n != NULL)
+    {
+        float nl2 = n[0] * n[0] + n[1] * n[1] + n[2] * n[2];
+        if (nl2 > 1e-12f)
+        {
+            float inv = 1.0f / sqrtf(nl2);
+            nx = n[0] * inv; ny = n[1] * inv; nz = n[2] * inv;
+            have_n = 1;
+        }
+    }
 
     int nl = env->nlamps;
     if (nl > GMB_3D_MAX_LAMPS) nl = GMB_3D_MAX_LAMPS;
@@ -614,6 +762,13 @@ unsigned char gmb_3d_light_eval(const gmb_3d_env_t* env, float x, float y, float
         float d = sqrtf(d2);
         float f = 1.0f - d / L->radius;                /* falloff lineare */
         if (f < 0.0f) f = 0.0f;
+        if (have_n)
+        {
+            /* L (verso la lampada) = -(dx,dy,dz)/d: N.L > 0 solo se la faccia la vede. */
+            float ndl = -(dx * nx + dy * ny + dz * nz) / d;
+            if (ndl <= 0.0f) continue;
+            f *= ndl;
+        }
 
         float dl = sqrtf(L->dir[0] * L->dir[0] + L->dir[1] * L->dir[1] + L->dir[2] * L->dir[2]);
         if (dl > 1e-6f && L->half_angle > 0.0f)         /* cono spot */
@@ -645,6 +800,18 @@ unsigned char gmb_3d_light_eval(const gmb_3d_env_t* env, float x, float y, float
         lv = q * 255 / 31;
     }
     return (unsigned char)lv;
+}
+
+unsigned char gmb_3d_light_eval(const gmb_3d_env_t* env, float x, float y, float z,
+                                unsigned char base, float dist)
+{
+    return gmb3d_light_core(env, x, y, z, NULL, base, dist);
+}
+
+unsigned char gmb_3d_light_eval_n(const gmb_3d_env_t* env, float x, float y, float z,
+                                  const float n[3], unsigned char base, float dist)
+{
+    return gmb3d_light_core(env, x, y, z, n, base, dist);
 }
 
 /* Cielo per angolo: ogni pixel non coperto (depth 0) prende il texel della
@@ -768,7 +935,7 @@ int gmb_3d_thing_draw(gmb_3d_target_t* t, const float* view, const float* proj,
     const int idx[6] = { 0, 1, 2, 0, 2, 3 };
 
     gmb_3d_mesh_t m;
-    m.pos = pos; m.uv = uv; m.nv = 4; m.idx = idx; m.nt = 2;
+    m.pos = pos; m.uv = uv; m.nv = 4; m.idx = idx; m.nt = 2; m.nrm = NULL;
 
     gmb_3d_material_t mat;
     memset(&mat, 0, sizeof(mat));

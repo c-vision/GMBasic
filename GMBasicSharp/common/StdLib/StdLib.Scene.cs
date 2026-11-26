@@ -4,11 +4,11 @@
 
 /* ==== GMB-STDLIB-AUDIT-BEGIN ====
  * FILE: Scene — namespace 'SCENE' (motore 3D, renderer mesh)
- * 7 funzioni | 1 comando | 0 tipi | 0 costanti
+ * 8 funzioni | 1 comando | 0 tipi | 0 costanti
  *
- * FUNZIONI (7): VERTS, TRIS, DRAWN, CULLED, PIXELS, HASH, PIXEL
+ * FUNZIONI (8): VERTS, TRIS, DRAWN, CULLED, PIXELS, HASH, PIXEL, PICK
  * COMANDO (1): SCENE (RESET | VIEW | TEXTURE | OBJECT | VERTEX | QUAD | BOX | OBJPOS | CAMERA |
- *                    LIGHT | SMOOTH | ALPHA | TWOSIDED | RENDER | PRESENT | SAVE)
+ *                    LIGHT | SMOOTH | ALPHA | TWOSIDED | PICK | RENDER | PRESENT | SAVE)
  * ==== GMB-STDLIB-AUDIT-END ==== */
 
 namespace Basic;
@@ -69,7 +69,16 @@ public sealed partial class StdLib
                     new Parameter(-1, T(TokenKind.Identifier, "x"), new LongType(), noFlags, null, false),
                     new Parameter(-1, T(TokenKind.Identifier, "y"), new LongType(), noFlags, null, false)
                 ],
-                new DoubleType(), TokenKind.ScenePixel)
+                new DoubleType(), TokenKind.ScenePixel),
+
+            // PICK(x, y): id dell'oggetto nel pixel dal buffer di SCENE PICK
+            // (0 fondo, 1..256 oggetto, −1 senza target o fuori target, −2 buffer spento).
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.ScenePick, "PICK"),
+                [
+                    new Parameter(-1, T(TokenKind.Identifier, "x"), new LongType(), noFlags, null, false),
+                    new Parameter(-1, T(TokenKind.Identifier, "y"), new LongType(), noFlags, null, false)
+                ],
+                new DoubleType(), TokenKind.ScenePick)
         };
 
         var types = new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase);

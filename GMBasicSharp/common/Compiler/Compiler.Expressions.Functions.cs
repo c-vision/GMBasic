@@ -940,6 +940,7 @@ public sealed partial class Compiler
         { TokenKind.SceneDrawn, BuiltInFunction.SCENE_DRAWN }, { TokenKind.SceneCulled, BuiltInFunction.SCENE_CULLED },
         { TokenKind.ScenePixels, BuiltInFunction.SCENE_PIXELS }, { TokenKind.SceneHash, BuiltInFunction.SCENE_HASH },
         { TokenKind.ScenePixel, BuiltInFunction.SCENE_PIXEL },
+        { TokenKind.ScenePick, BuiltInFunction.SCENE_PICK },
         { TokenKind.ClockFps, BuiltInFunction.CLOCK_FPS }, { TokenKind.ClockScale, BuiltInFunction.CLOCK_SCALE },
         // FINANCE varianti (2026-08-06). YIELD riusa TokenKind.Yield (comando task YIELD e'
         // statement-only via ParseYieldStatement, nessun conflitto con la funzione qualificata).

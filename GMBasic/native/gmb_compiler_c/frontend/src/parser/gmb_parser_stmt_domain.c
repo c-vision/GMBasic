@@ -224,6 +224,9 @@ static int gmb_p_scene_verb_tk(const char* v)
         { "LAMP", GMB_TOK_SceneLamp }, { "FOG", GMB_TOK_SceneFog },
         { "FAR", GMB_TOK_SceneFar }, { "SKY", GMB_TOK_SceneSky },
         { "COLORMAP", GMB_TOK_SceneColormap }, { "THING", GMB_TOK_SceneThing },
+        { "AA", GMB_TOK_SceneAa },
+        /* SCENE PICK on|off: buffer di id additivo (lettura SCENE.PICK). */
+        { "PICK", GMB_TOK_ScenePick },
     };
     for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
         if (strcasecmp(v, map[i].word) == 0) return (int)map[i].tk;
@@ -365,7 +368,8 @@ gmb_stmt_t* gmb_p_parse_domain_stmt_ov(gmb_parser_t* p, int line, const char* ov
          * e il verbo è già l'unico dispatch (act_tk). Il namespace non si ricontrolla:
          * questi tre act_tk li assegna solo gmb_p_scene_verb_tk (verbi di SCENE). */
         if (s->act_tk == (int)GMB_TOK_SceneSmooth || s->act_tk == (int)GMB_TOK_SceneAlpha
-            || s->act_tk == (int)GMB_TOK_SceneTwoSided) {
+            || s->act_tk == (int)GMB_TOK_SceneTwoSided || s->act_tk == (int)GMB_TOK_SceneAa
+            || s->act_tk == (int)GMB_TOK_ScenePick) {
             const gmb_token_t* ft = gmb_p_cur(p);
             if (ft && (ft->kind == GMB_TOK_On || ft->kind == GMB_TOK_Off)) {
                 gmb_expr_t* fe = gmb_expr_num(ft->kind == GMB_TOK_On ? 1.0 : 0.0, line);

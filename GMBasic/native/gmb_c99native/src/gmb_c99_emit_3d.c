@@ -36,6 +36,22 @@ static void wcall(ctx_t* c, const char* fn, gmb_expr_t** a, int n)
     sb_put(&c->out, ");\n");
 }
 
+/* `gmb_scene_checked(fn(a, b, …), riga);` — le superfici SCENE riportano il
+ * fallimento (argomento fuori range, NaN/Inf, stato mancante) come errore BASIC
+ * con il messaggio canonico del runtime, non come no-op silenzioso. Una sola
+ * forma per tutte le gambe. */
+static void wscene(ctx_t* c, const char* fn, gmb_expr_t** a, int n, int line)
+{
+    ind(c);
+    sb_printf(&c->out, "gmb_scene_checked(%s(", fn);
+    for (int i = 0; i < n; i++)
+    {
+        if (i) sb_put(&c->out, ", ");
+        emit_expr(c, a[i]);
+    }
+    sb_printf(&c->out, "), %d);\n", line);
+}
+
 void emit_world_domain(ctx_t* c, gmb_stmt_t* s)
 {
     int tk = s->act_tk;
@@ -133,7 +149,11 @@ static int wns_is_world(const char* name, const char* ns)
  * Due forme di TEXTURE: `celle` (numero) è la scacchiera procedurale, `"file.png"`
  * (stringa) carica un PNG con l'unico decoder del runtime (`png_decode`, §0bis).
  *
- * Letture: SCENE.VERTS/TRIS/DRAWN/CULLED/PIXELS/HASH/PIXEL(x,y).
+ * Letture: SCENE.VERTS/TRIS/DRAWN/CULLED/PIXELS/HASH/PIXEL(x,y)/PICK(x,y).
+ *
+ * `SCENE PICK on|off` accende il buffer di id per pixel usato da SCENE.PICK:
+ * additivo e spento di default, quindi le scene che non lo chiamano restano
+ * byte per byte quelle di prima.
  *
  * Anche qui nessuna logica: ogni verbo è UNA chiamata alla facciata `gmb_scene_*` di
  * gmb_3d_cmd.c, che a sua volta chiama il kernel `gmb_3d_mesh_draw` (§0bis).
@@ -147,18 +167,18 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
     if (tk == GMB_TOK_SceneReset)
     {
         if (n > 0) { c99_fail(c, s->line, "SCENE RESET non accetta argomenti"); return; }
-        wcall(c, "gmb_scene_reset", a, 0);
+        wscene(c, "gmb_scene_reset", a, 0, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneView)
     {
-        if (n < 3) { c99_fail(c, s->line, "SCENE VIEW w, h, fov"); return; }
-        wcall(c, "gmb_scene_view", a, 3);
+        if (n != 3) { c99_fail(c, s->line, "SCENE VIEW w, h, fov"); return; }
+        wscene(c, "gmb_scene_view", a, 3, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneTexture)
     {
-        if (n < 1) { c99_fail(c, s->line, "SCENE TEXTURE celle | \"file.png\""); return; }
+        if (n != 1) { c99_fail(c, s->line, "SCENE TEXTURE celle | \"file.png\""); return; }
         /* Due forme, un verbo: numero = scacchiera procedurale, stringa = PNG su disco.
          * La scelta sta nel TIPO dell'espressione (etype), non nel lessema (§12): una
          * variabile stringa (`p$`) passa da `gmb_scene_texture_file`, un numero da
@@ -167,98 +187,106 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
         if (etype(c, a[0]) == TY_STR)
         {
             ind(c);
-            sb_put(&c->out, "(void)gmb_scene_texture_file((");
+            sb_printf(&c->out, "gmb_scene_checked(gmb_scene_texture_file((");
             emit_str_operand(c, a[0]);
-            sb_put(&c->out, ").data);\n");
+            sb_printf(&c->out, ").data), %d);\n", s->line);
             return;
         }
-        wcall(c, "gmb_scene_checker", a, 1);
+        wscene(c, "gmb_scene_checker", a, 1, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneObject)
     {
         /* 3 argomenti = tinta; 5 = tinta + flag M-FLAGS + luce base dell'oggetto.
          * Le forme intermedie non esistono nel kernel e non si accettano. */
-        if (n == 5) { wcall(c, "gmb_scene_object_flags", a, 5); return; }
+        if (n == 5) { wscene(c, "gmb_scene_object_flags", a, 5, s->line); return; }
         if (n != 3) { c99_fail(c, s->line, "SCENE OBJECT r, g, b [, flags [, luce]]"); return; }
-        wcall(c, "gmb_scene_object", a, 3);
+        wscene(c, "gmb_scene_object", a, 3, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneVertex)
     {
-        if (n < 5) { c99_fail(c, s->line, "SCENE VERTEX x, y, z, u, v"); return; }
-        wcall(c, "gmb_scene_vertex", a, 5);
+        /* 5 argomenti = vertice senza normale; 8 = con la normale MONDO (M-LIGHT-N).
+         * Le forme intermedie non esistono nel kernel. */
+        if (n == 8) { wscene(c, "gmb_scene_vertex_n", a, 8, s->line); return; }
+        if (n != 5) { c99_fail(c, s->line, "SCENE VERTEX x, y, z, u, v [, nx, ny, nz]"); return; }
+        wscene(c, "gmb_scene_vertex", a, 5, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneQuad)
     {
-        if (n < 4) { c99_fail(c, s->line, "SCENE QUAD a, b, c, d"); return; }
-        wcall(c, "gmb_scene_quad", a, 4);
+        if (n != 4) { c99_fail(c, s->line, "SCENE QUAD a, b, c, d"); return; }
+        wscene(c, "gmb_scene_quad", a, 4, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneBox)
     {
-        if (n < 6) { c99_fail(c, s->line, "SCENE BOX x0, y0, z0, x1, y1, z1"); return; }
-        wcall(c, "gmb_scene_box", a, 6);
+        if (n != 6) { c99_fail(c, s->line, "SCENE BOX x0, y0, z0, x1, y1, z1"); return; }
+        wscene(c, "gmb_scene_box", a, 6, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneObjPos)
     {
-        if (n < 4) { c99_fail(c, s->line, "SCENE OBJPOS x, y, z, yaw"); return; }
-        wcall(c, "gmb_scene_objpos", a, 4);
+        if (n != 4) { c99_fail(c, s->line, "SCENE OBJPOS x, y, z, yaw"); return; }
+        wscene(c, "gmb_scene_objpos", a, 4, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneCamera)
     {
-        if (n < 5) { c99_fail(c, s->line, "SCENE CAMERA x, y, z, yaw, pitch"); return; }
-        wcall(c, "gmb_scene_camera", a, 5);
+        if (n != 5) { c99_fail(c, s->line, "SCENE CAMERA x, y, z, yaw, pitch"); return; }
+        wscene(c, "gmb_scene_camera", a, 5, s->line);
         return;
     }
-    if (tk == GMB_TOK_SceneSmooth || tk == GMB_TOK_SceneAlpha || tk == GMB_TOK_SceneTwoSided)
+    if (tk == GMB_TOK_SceneSmooth || tk == GMB_TOK_SceneAlpha || tk == GMB_TOK_SceneTwoSided
+        || tk == GMB_TOK_SceneAa || tk == GMB_TOK_ScenePick)
     {
-        /* Flag di materiale (idea #5): un argomento numerico 0/1, che il parser ha già
+        /* Flag di scena/materiale: un argomento numerico 0/1, che il parser ha già
          * ricavato dalla parola ON/OFF. Stessa facciata C per tutte e quattro le gambe. */
         const char* fn = tk == GMB_TOK_SceneSmooth ? "gmb_scene_smooth"
-                       : tk == GMB_TOK_SceneAlpha ? "gmb_scene_alpha" : "gmb_scene_twosided";
-        if (n < 1) { c99_fail(c, s->line, "SCENE SMOOTH|ALPHA|TWOSIDED on|off"); return; }
-        wcall(c, fn, a, 1);
+                       : tk == GMB_TOK_SceneAlpha ? "gmb_scene_alpha"
+                       : tk == GMB_TOK_SceneTwoSided ? "gmb_scene_twosided"
+                       : tk == GMB_TOK_SceneAa ? "gmb_scene_aa" : "gmb_scene_pick_enable";
+        const char* usage = tk == GMB_TOK_ScenePick ? "SCENE PICK on|off"
+                                                    : "SCENE SMOOTH|ALPHA|TWOSIDED|AA on|off";
+        if (n != 1) { c99_fail(c, s->line, usage); return; }
+        wscene(c, fn, a, 1, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneLight)
     {
-        if (n < 4) { c99_fail(c, s->line, "SCENE LIGHT dx, dy, dz, livello"); return; }
-        wcall(c, "gmb_scene_light", a, 4);
+        if (n != 4) { c99_fail(c, s->line, "SCENE LIGHT dx, dy, dz, livello"); return; }
+        wscene(c, "gmb_scene_light", a, 4, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneLamp)
     {
         /* 6 argomenti = lampada puntiforme; 10 = cono spot (direzione + semiangolo in
          * gradi). La scelta sta nel NUMERO di argomenti, non nel lessema (§12). */
-        if (n == 10) { wcall(c, "gmb_scene_lamp_spot", a, 10); return; }
+        if (n == 10) { wscene(c, "gmb_scene_lamp_spot", a, 10, s->line); return; }
         if (n != 6)
         {
             c99_fail(c, s->line, "SCENE LAMP n, x, y, z, raggio, quantità [, dx, dy, dz, angolo]");
             return;
         }
-        wcall(c, "gmb_scene_lamp", a, 6);
+        wscene(c, "gmb_scene_lamp", a, 6, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneFog)
     {
-        if (n < 1) { c99_fail(c, s->line, "SCENE FOG distanza"); return; }
-        wcall(c, "gmb_scene_fog", a, 1);
+        if (n != 1) { c99_fail(c, s->line, "SCENE FOG distanza"); return; }
+        wscene(c, "gmb_scene_fog", a, 1, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneFar)
     {
-        if (n < 1) { c99_fail(c, s->line, "SCENE FAR distanza"); return; }
-        wcall(c, "gmb_scene_far", a, 1);
+        if (n != 1) { c99_fail(c, s->line, "SCENE FAR distanza"); return; }
+        wscene(c, "gmb_scene_far", a, 1, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneColormap)
     {
         if (n > 0) { c99_fail(c, s->line, "SCENE COLORMAP non accetta argomenti"); return; }
-        wcall(c, "gmb_scene_colormap", a, 0);
+        wscene(c, "gmb_scene_colormap", a, 0, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneSky)
@@ -266,14 +294,14 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
         /* Cielo per angolo con la texture corrente: repeat (giri della picture sui 360)
          * e shift (sfasamento in giri). Due argomenti, nessun indice di texture: SCENE ha
          * UNA texture alla volta (forma dichiarata in guida). */
-        if (n < 2) { c99_fail(c, s->line, "SCENE SKY repeat, shift"); return; }
-        wcall(c, "gmb_scene_sky", a, 2);
+        if (n != 2) { c99_fail(c, s->line, "SCENE SKY repeat, shift"); return; }
+        wscene(c, "gmb_scene_sky", a, 2, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneThing)
     {
-        if (n < 6) { c99_fail(c, s->line, "SCENE THING n, x, y, z, w, h"); return; }
-        wcall(c, "gmb_scene_thing", a, 6);
+        if (n != 6) { c99_fail(c, s->line, "SCENE THING n, x, y, z, w, h"); return; }
+        wscene(c, "gmb_scene_thing", a, 6, s->line);
         return;
     }
     if (tk == GMB_TOK_ScenePresent)
@@ -281,22 +309,22 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
         /* Ponte target 3D → pagina 2D: nessuna scalatura, nessun argomento. La guardia
          * GPM e il ritaglio stanno nella facciata C, unica sede per le quattro gambe. */
         if (n > 0) { c99_fail(c, s->line, "SCENE PRESENT non accetta argomenti"); return; }
-        wcall(c, "gmb_scene_present", a, 0);
+        wscene(c, "gmb_scene_present", a, 0, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneRender)
     {
         if (n > 0) { c99_fail(c, s->line, "SCENE RENDER non accetta argomenti"); return; }
-        wcall(c, "gmb_scene_render", a, 0);
+        wscene(c, "gmb_scene_render", a, 0, s->line);
         return;
     }
     if (tk == GMB_TOK_SceneSave)
     {
-        if (n < 1) { c99_fail(c, s->line, "SCENE SAVE: manca il percorso del PNG"); return; }
+        if (n != 1) { c99_fail(c, s->line, "SCENE SAVE: manca il percorso del PNG"); return; }
         ind(c);
-        sb_put(&c->out, "(void)gmb_scene_save((");
+        sb_put(&c->out, "gmb_scene_checked(gmb_scene_save((");
         emit_str_operand(c, a[0]);
-        sb_put(&c->out, ").data);\n");
+        sb_printf(&c->out, ").data), %d);\n", s->line);
         return;
     }
     c99_fail(c, s->line, "SCENE: verbo non supportato dall'emitter nativo");
@@ -329,6 +357,17 @@ int emit_bf_scene(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
         case GMB_TOK_SceneCulled: sb_put(&c->out, "gmb_scene_culled()"); return 1;
         case GMB_TOK_ScenePixels: sb_put(&c->out, "gmb_scene_pixels()"); return 1;
         case GMB_TOK_SceneHash:   sb_put(&c->out, "gmb_scene_hash()");   return 1;
+        /* PICK(x, y): id dell'oggetto nel pixel (0 fondo, 1..256 oggetto,
+         * -1 senza target/fuori target, -2 buffer spento). Stessa facciata C
+         * delle altre gambe. */
+        case GMB_TOK_ScenePick:
+            if (nargs < 2) return 0;
+            sb_put(&c->out, "gmb_scene_pick(");
+            emit_expr(c, args[0]);
+            sb_put(&c->out, ", ");
+            emit_expr(c, args[1]);
+            sb_put(&c->out, ")");
+            return 1;
         case GMB_TOK_ScenePixel:
             if (nargs < 2) return 0;
             sb_put(&c->out, "gmb_scene_pixel(");

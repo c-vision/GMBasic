@@ -45,4 +45,11 @@ struct gmb_3d_world {
 /* Imposta gmb_3d_last_error(). Vuoto = errore azzerato. */
 void gmb_3d_set_error(const char* msg);
 
+/* SCENE PICK (gmb_3d_pick.c). Lo stato della scena resta UNO, in gmb_3d_cmd.c:
+ * qui si espone solo il riferimento al suo target e il flag additivo del buffer
+ * di id, cosi' VIEW/RENDER possono agganciarlo senza duplicare la scena. */
+gmb_3d_target_t* gmb_scene_target_ref(void);
+int gmb_scene_pick_active(void);
+int gmb_scene_pick_attach(gmb_3d_target_t* t);
+
 #endif /* GMB_3D_INTERNAL_H */

@@ -22,6 +22,7 @@ Forme (facciata `gmb_scene_*`, piano §4.2 ridotto a ciò che il kernel P3 espon
    SCENE SMOOTH on|off                         ' bilineare (default on) / nearest
    SCENE ALPHA on|off                          ' alpha-test: alpha 0 scartato (default on)
    SCENE TWOSIDED on|off                       ' niente back-face cull (default off)
+   SCENE PICK on|off                           ' buffer di id per pixel, additivo (default off)
    SCENE PRESENT                               ' copia il target 3D nella pagina 2D corrente (GPM)
    SCENE RENDER                                ' rasterizza nel target
    SCENE SAVE path$                            ' PNG del frame corrente
@@ -59,12 +60,13 @@ public sealed partial class Parser
 
         return kind switch
         {
-            TokenKind.SceneReset => SceneCmd(command, []),
+            TokenKind.SceneReset => SceneCmd(command, SceneNoArgs(parser, "SCENE RESET non accetta argomenti")),
             TokenKind.SceneView => SceneCmd(command, SceneArgs(parser, 3, 3, "SCENE VIEW w, h, fov")),
             TokenKind.SceneTexture => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE TEXTURE celle | \"file.png\"")),
             TokenKind.SceneObject => SceneCmd(command, SceneArgsOneOf(parser,
                 "SCENE OBJECT r, g, b [, flags [, luce]]", 3, 5)),
-            TokenKind.SceneVertex => SceneCmd(command, SceneArgs(parser, 5, 5, "SCENE VERTEX x, y, z, u, v")),
+            TokenKind.SceneVertex => SceneCmd(command, SceneArgsOneOf(parser,
+                "SCENE VERTEX x, y, z, u, v [, nx, ny, nz]", 5, 8)),
             TokenKind.SceneQuad => SceneCmd(command, SceneArgs(parser, 4, 4, "SCENE QUAD a, b, c, d")),
             TokenKind.SceneBox => SceneCmd(command, SceneArgs(parser, 6, 6, "SCENE BOX x0, y0, z0, x1, y1, z1")),
             TokenKind.SceneObjPos => SceneCmd(command, SceneArgs(parser, 4, 4, "SCENE OBJPOS x, y, z, yaw")),
@@ -72,7 +74,10 @@ public sealed partial class Parser
             TokenKind.SceneLight => SceneCmd(command, SceneArgs(parser, 4, 4, "SCENE LIGHT dx, dy, dz, livello")),
             // I tre flag di materiale hanno la stessa forma (un ON/OFF): una sola riga.
             TokenKind.SceneSmooth or TokenKind.SceneAlpha or TokenKind.SceneTwoSided
-                => SceneCmd(command, SceneFlagArg(parser, "SCENE SMOOTH|ALPHA|TWOSIDED on|off")),
+                or TokenKind.SceneAa
+                => SceneCmd(command, SceneFlagArg(parser, "SCENE SMOOTH|ALPHA|TWOSIDED|AA on|off")),
+            // Buffer di id per pixel: un flag ON/OFF, additivo e spento di default.
+            TokenKind.ScenePick => SceneCmd(command, SceneFlagArg(parser, "SCENE PICK on|off")),
             // P4: lampada puntiforme (6 argomenti) o spot (10), fog, FAR, cielo,
             // colormap a 32 livelli e thing.
             TokenKind.SceneLamp => SceneCmd(command, SceneArgsOneOf(parser,
@@ -80,11 +85,11 @@ public sealed partial class Parser
             TokenKind.SceneFog => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE FOG distanza")),
             TokenKind.SceneFar => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE FAR distanza")),
             TokenKind.SceneSky => SceneCmd(command, SceneArgs(parser, 2, 2, "SCENE SKY repeat, shift")),
-            TokenKind.SceneColormap => SceneCmd(command, []),
+            TokenKind.SceneColormap => SceneCmd(command, SceneNoArgs(parser, "SCENE COLORMAP non accetta argomenti")),
             TokenKind.SceneThing => SceneCmd(command, SceneArgs(parser, 6, 6, "SCENE THING n, x, y, z, w, h")),
-            TokenKind.ScenePresent => SceneCmd(command, []),
-            TokenKind.SceneRender => SceneCmd(command, []),
-            TokenKind.SceneSave => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE SAVE path$")),
+            TokenKind.ScenePresent => SceneCmd(command, SceneNoArgs(parser, "SCENE PRESENT non accetta argomenti")),
+            TokenKind.SceneRender => SceneCmd(command, SceneNoArgs(parser, "SCENE RENDER non accetta argomenti")),
+            TokenKind.SceneSave => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE SAVE: manca il percorso del PNG")),
             _ => throw CreateError(verb, $"Sottocomando 'SCENE {verb.Lexeme}' non riconosciuto.")
         };
     }
@@ -115,6 +120,8 @@ public sealed partial class Parser
         "SKY" => TokenKind.SceneSky,
         "COLORMAP" => TokenKind.SceneColormap,
         "THING" => TokenKind.SceneThing,
+        "AA" => TokenKind.SceneAa,
+        "PICK" => TokenKind.ScenePick,
         "RENDER" => TokenKind.SceneRender,
         "SAVE" => TokenKind.SceneSave,
         _ => TokenKind.Unknown
@@ -132,12 +139,19 @@ public sealed partial class Parser
         var args = ImmutableArray.CreateBuilder<Expr>();
         do
         {
+            /* Fine riga (o ':'): NON è un argomento. Prima ParseExpression a fine
+             * statement produceva un letterale 0, quindi `SCENE TEXTURE` senza celle
+             * eseguiva con 0 invece di essere rifiutato, e la gamba C# divergeva da
+             * C99 (errore di emissione). Stesso difetto della revisione SCENE. */
+            if (parser.IsAtEndOfStatement()) break;
             args.Add(parser.ParseExpression());
             if (args.Count >= max || parser.Peek().Kind != TokenKind.Comma) break;
             parser.Consume(TokenKind.Comma, "Expected ','.");
         } while (true);
 
-        if (args.Count < min)
+        /* Arità ESATTA: meno del minimo o argomenti in più sono lo stesso errore,
+         * con il testo canonico della forma (lo stesso che stampa l'emitter C99). */
+        if (args.Count < min || !parser.IsAtEndOfStatement())
             throw CreateError(parser.Peek(), usage);
 
         return args.ToImmutable();
@@ -162,12 +176,29 @@ public sealed partial class Parser
     /// resta un normale argomento numerico, identico sulle quattro gambe. Accetta anche un
     /// numero esplicito: <c>SCENE SMOOTH 1</c>.
     /// </summary>
+    /// <summary>
+    /// Verbi SCENE senza argomenti (RESET, COLORMAP, PRESENT, RENDER): un argomento in più
+    /// è un errore esplicito, con lo STESSO testo dell'emitter C99 — prima il parser C#
+    /// lasciava il token e produceva "Token inatteso", divergendo dalla gamba nativa.
+    /// </summary>
+    private static ImmutableArray<Expr> SceneNoArgs(Parser parser, string usage)
+    {
+        if (!parser.IsAtEndOfStatement())
+            throw CreateError(parser.Peek(), usage);
+        return ImmutableArray<Expr>.Empty;
+    }
+
     private static ImmutableArray<Expr> SceneFlagArg(Parser parser, string usage)
     {
         var t = parser.Peek();
         if (t.Kind is TokenKind.On or TokenKind.Off)
         {
             parser.Advance();
+            /* Arità ESATTA anche per la forma ON/OFF: `SCENE PICK on, off` non deve
+             * arrivare al lettore generico con "Token ',' inatteso" (messaggio diverso
+             * dalla gamba C99): stesso testo canonico del flag. */
+            if (!parser.IsAtEndOfStatement())
+                throw CreateError(parser.Peek(), usage);
             return ImmutableArray.Create<Expr>(new NumberExpr(t.Kind == TokenKind.On ? 1.0 : 0.0, t));
         }
         return SceneArgs(parser, 1, 1, usage);

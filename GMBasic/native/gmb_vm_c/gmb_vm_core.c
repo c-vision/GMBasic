@@ -5965,6 +5965,16 @@ static void vm_sys_scene_vertex(gmb_vm_t* vm, gmb_task_t* task, int code, int ar
         (void)gmb_scene_vertex(vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]),
                                vm_world_num(&a[3]), vm_world_num(&a[4]));
 }
+static void vm_sys_scene_vertex_n(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[8];
+    int n = argc > 8 ? 8 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 8)
+        (void)gmb_scene_vertex_n(vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]),
+                                 vm_world_num(&a[3]), vm_world_num(&a[4]),
+                                 vm_world_num(&a[5]), vm_world_num(&a[6]), vm_world_num(&a[7]));
+}
 static void vm_sys_scene_quad(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm; (void)code;
     gmb_stack_entry_t a[4];
@@ -6027,7 +6037,9 @@ static void vm_sys_scene_flag(gmb_vm_t* vm, gmb_task_t* task, int code, int argc
     int64_t on = (int64_t)vm_world_num(&a[0]);
     if (which == 0) (void)gmb_scene_smooth(on);
     else if (which == 1) (void)gmb_scene_alpha(on);
-    else (void)gmb_scene_twosided(on);
+    else if (which == 2) (void)gmb_scene_twosided(on);
+    else if (which == 3) (void)gmb_scene_aa(on);
+    else (void)gmb_scene_pick_enable(on);   /* buffer di id additivo (SCENE PICK) */
 }
 static void vm_sys_scene_smooth(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
 { vm_sys_scene_flag(vm, task, code, argc, 0); }
@@ -6035,6 +6047,10 @@ static void vm_sys_scene_alpha(gmb_vm_t* vm, gmb_task_t* task, int code, int arg
 { vm_sys_scene_flag(vm, task, code, argc, 1); }
 static void vm_sys_scene_twosided(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
 { vm_sys_scene_flag(vm, task, code, argc, 2); }
+static void vm_sys_scene_aa(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{ vm_sys_scene_flag(vm, task, code, argc, 3); }
+static void vm_sys_scene_pick(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
+{ vm_sys_scene_flag(vm, task, code, argc, 4); }
 
 /* P4: lampade point/spot, fog, FAR, cielo, colormap, thing, flag di oggetto.
  * Nessuna formula qui: solo prelievo argomenti e inoltro alla facciata gmb_scene_* (§0bis). */
@@ -7289,6 +7305,7 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_SCENE_TEXTURE, vm_sys_scene_texture },
     { GMB_SC_SCENE_OBJECT, vm_sys_scene_object },
     { GMB_SC_SCENE_VERTEX, vm_sys_scene_vertex },
+    { GMB_SC_SCENE_VERTEX_N, vm_sys_scene_vertex_n },
     { GMB_SC_SCENE_QUAD, vm_sys_scene_quad },
     { GMB_SC_SCENE_BOX, vm_sys_scene_box },
     { GMB_SC_SCENE_OBJPOS, vm_sys_scene_objpos },
@@ -7299,6 +7316,8 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_SCENE_SMOOTH, vm_sys_scene_smooth },
     { GMB_SC_SCENE_ALPHA, vm_sys_scene_alpha },
     { GMB_SC_SCENE_TWOSIDED, vm_sys_scene_twosided },
+    { GMB_SC_SCENE_AA, vm_sys_scene_aa },
+    { GMB_SC_SCENE_PICK, vm_sys_scene_pick },
     { GMB_SC_SCENE_PRESENT, vm_sys_scene_present },
     { GMB_SC_SCENE_LAMP, vm_sys_scene_lamp },
     { GMB_SC_SCENE_LAMP_SPOT, vm_sys_scene_lamp },
@@ -7672,7 +7691,18 @@ void gmb_vm_exec_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
         if (VM_SYS_TBL[_t].code == code)
         {
             gmb_state_hook_clear_error();
+            /* SCENE: il messaggio canonico della facciata (argomento fuori range,
+             * NaN/Inf, stato mancante) diventa un errore BASIC, non un no-op.
+             * Si azzera prima, così un esito positivo non lascia errori stantii. */
+            const int scene_call = (code >= GMB_SC_SCENE_RESET && code <= GMB_SC_SCENE_PICK);
+            if (scene_call) gmb_scene_clear_error();
             VM_SYS_TBL[_t].fn(vm, task, code, argc);
+            if (scene_call && task->pending_exception == NULL)
+            {
+                const char* scene_err = gmb_3d_last_error();
+                if (scene_err != NULL && *scene_err != '\0')
+                    gmb_raise_basic_error(task, 5, scene_err);
+            }
             /* Errore riportato dall'hook di stato (VM/C ospitata): stesso schema ON ERROR/TRY
              * della gamba managed — mai un fallimento silenzioso. */
             if (task->pending_exception == NULL)
@@ -11592,6 +11622,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 const char* keyStr = "";
                 char keybuf[64];
                 int isKeyStr = 0;
+                int keyIsDate = 0;
                 for (int i = numIndices - 1; i >= 0 && i < 8; i--)
                 {
                     if (task->sp > 0)
@@ -11605,6 +11636,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         else if (k.type == 1)
                         {
                             indices[i] = k.num;
+                            keyIsDate = (k.basic_type == GMB_BT_DATE);
                         }
                         /* keyStr punta ai dati di k.ref: va tenuto vivo fino a fine istruzione (prima veniva
                          * rilasciato qui; funzionava solo perche' ogni costante stringa perdeva un rc). */
@@ -11702,7 +11734,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         gmb_obj_release(arrE.ref);
                         break;
                     }
-                    if (!isKeyStr) { snprintf(keybuf, sizeof(keybuf), "%.15g", indices[0]); keyStr = keybuf; }
+                    if (!isKeyStr) { gmb_vm_key_from_num(keybuf, sizeof(keybuf), indices[0], keyIsDate); keyStr = keybuf; }
                     gmb_val_t v = gmb_dict_get(*dod->dict, keyStr);
                     /* Un valore DICT/LISTA dentro un dict è un RIFERIMENTO (IL/PCode/C:
                      * `t = g["k"]` e una scrittura su `t` si vede nel padre). Prima
@@ -11813,6 +11845,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 const char* keyStr = "";
                 char keybuf[64];
                 int isKeyStr = 0;
+                int keyIsDate = 0;
                 for (int i = numIndices - 1; i >= 0 && i < 8; i--)
                 {
                     if (task->sp > 0)
@@ -11826,6 +11859,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         else if (k.type == 1)
                         {
                             indices[i] = k.num;
+                            keyIsDate = (k.basic_type == GMB_BT_DATE);
                         }
                         /* keyStr punta ai dati di k.ref: va tenuto vivo fino a fine istruzione (prima veniva
                          * rilasciato qui; funzionava solo perche' ogni costante stringa perdeva un rc). */
@@ -11901,7 +11935,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                      * l'indice numerico va CANONICALIZZATO a stringa, altrimenti ogni
                      * d(n)=v salvava/leggeva sotto la chiave vuota "" (count=1). Stessa
                      * formattazione di LOAD_ELEMENT, così d(1) e d("1") coincidono. */
-                    if (!isKeyStr) { snprintf(keybuf, sizeof(keybuf), "%.15g", indices[0]); keyStr = keybuf; }
+                    if (!isKeyStr) { gmb_vm_key_from_num(keybuf, sizeof(keybuf), indices[0], keyIsDate); keyStr = keybuf; }
                     gmb_dict_set(((gmb_obj_shared_val_t*)arrO)->dict, keyStr, v);
                 }
                 else if (arrO && arrO->kind == GMB_OBJ_COLLECTION && numIndices >= 1)
@@ -12023,7 +12057,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     char keybuf[128];
                     const char* kstr = "";
                     if (key.type == 2 && key.ref) kstr = ((gmb_obj_string_t*)key.ref)->data;
-                    else if (key.type == 1) { snprintf(keybuf, sizeof(keybuf), "%.15g", key.num); kstr = keybuf; }
+                    else if (key.type == 1) { gmb_vm_key_from_num(keybuf, sizeof(keybuf), key.num, key.basic_type == GMB_BT_DATE); kstr = keybuf; }
                     gmb_val_t v = gmb_adapter_stack_to_val_borrowed(val);   /* il dict trattiene da se'; val e' rilasciato sotto */
                     gmb_dict_set(d->dict, kstr, v);
                     gmb_obj_release(key.ref);

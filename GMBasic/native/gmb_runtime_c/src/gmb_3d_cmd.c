@@ -20,6 +20,9 @@
 /* Guardia GPM di SCENE PRESENT: gmb_c99gpm_active()/gmb_cur() — gli stessi simboli
  * (riferimenti FORTI) con cui gmb_3d_frame.c protegge il claim del renderer. */
 #include "gmb_c99gpm.h"
+/* gmb_raise_error: l'errore controllato delle superfici SCENE diventa un errore
+ * BASIC catturabile (ON ERROR/TRY) sulla gamba C99Native. */
+#include "gmb_runtime.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -184,6 +187,7 @@ typedef struct gmb_scene_obj {
     unsigned char r, g, b;
     unsigned char flags;   /* M-FLAGS: 1 masked, 2 traslucido, 16 due lati */
     unsigned char light;   /* luce base dell'oggetto 0..255 */
+    unsigned char has_nrm; /* 1 = i vertici dichiarano la normale (M-LIGHT-N) */
 } gmb_scene_obj_t;
 
 #define GMB_SCENE_MAX_THINGS 256
@@ -200,6 +204,8 @@ static float   g_scene_eye[3] = { 0.0f, 1.5f, 6.0f };
 static float   g_scene_yaw = 0.0f, g_scene_pitch = 0.0f;
 static float   g_scene_pos[GMB_SCENE_MAX_VERTS * 3];
 static float   g_scene_uv[GMB_SCENE_MAX_VERTS * 2];
+static float   g_scene_nrm[GMB_SCENE_MAX_VERTS * 3];   /* normali dichiarate (M-LIGHT-N) */
+static float   g_scene_nrm_w[GMB_SCENE_MAX_VERTS * 3]; /* le stesse, ruotate da OBJPOS */
 static int     g_scene_idx[GMB_SCENE_MAX_TRIS * 3];
 static unsigned char g_scene_light[GMB_SCENE_MAX_TRIS];
 
@@ -229,6 +235,7 @@ static unsigned char g_scene_lit_tri[GMB_SCENE_MAX_TRIS];
 static int g_scene_smooth = 1;        /* 1 = bilineare, 0 = nearest */
 static int g_scene_alpha = 1;         /* 1 = alpha 0 scartato (alpha-test) */
 static int g_scene_two_sided = 0;     /* 1 = niente back-face cull */
+static int g_scene_aa = 0;            /* 1 = SSAA 2x per draw (spento: come P4) */
 static gmb_scene_obj_t g_scene_obj[GMB_SCENE_MAX_OBJS];
 static int     g_scene_nv = 0, g_scene_nt = 0, g_scene_nobj = 0, g_scene_cur = -1;
 static unsigned char* g_scene_tex = NULL;
@@ -305,26 +312,74 @@ static void g_scene_m4_model(float* m, float x, float y, float z, float yaw_deg)
 
 /* --- accumulo della geometria -------------------------------------------- */
 
-static int g_scene_push_vert(float x, float y, float z, float u, float v)
+/* `n` NULL = vertice senza normale. Le normali sono per OGGETTO, non per vertice:
+ * il primo vertice decide, e uno che non concorda e' un errore esplicito (non si
+ * mescolano vertici con e senza, altrimenti la normale sarebbe 0 per alcuni). */
+/* Messaggio canonico + E_ARG: UNA sede per le superfici SCENE. Il testo arriva
+ * alle quattro gambe tramite gmb_3d_last_error() e diventa un errore BASIC di
+ * runtime, quindi deve essere stabile e identico ovunque (suite negativa
+ * tools/sh/check_scene_negatives.sh). */
+static int g_scene_err(const char* msg)
 {
-    if (g_scene_cur < 0 || g_scene_nv >= GMB_SCENE_MAX_VERTS) return GMB_3D_E_ARG;
+    gmb_3d_set_error(msg);
+    return GMB_3D_E_ARG;
+}
+
+/* NaN e Inf non hanno senso in una scena: entrano nel kernel come coordinate e
+ * producono pixel casuali in silenzio. Qui si rifiutano. */
+static int g_scene_finite(const char* msg, double v)
+{
+    return isfinite(v) ? GMB_3D_OK : g_scene_err(msg);
+}
+
+static int g_scene_push_vert_ex(float x, float y, float z, float u, float v, const float* n)
+{
+    if (g_scene_cur < 0)
+        return g_scene_err("SCENE VERTEX: nessun oggetto corrente (SCENE OBJECT prima)");
+    if (g_scene_nv >= GMB_SCENE_MAX_VERTS)
+        return g_scene_err("SCENE VERTEX: massimo 32768 vertici per scena");
+    gmb_scene_obj_t* o = &g_scene_obj[g_scene_cur];
+    int has = (n != NULL);
+    if (o->nvert == 0) o->has_nrm = (unsigned char)has;
+    else if (o->has_nrm != has)
+        return g_scene_err("SCENE VERTEX: normali miste con e senza nello stesso oggetto");
+    int fc = g_scene_finite("SCENE VERTEX: coordinate non finite", x);
+    if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE VERTEX: coordinate non finite", y);
+    if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE VERTEX: coordinate non finite", z);
+    if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE VERTEX: UV non finite", u);
+    if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE VERTEX: UV non finite", v);
+    if (fc != GMB_3D_OK) return fc;
     g_scene_pos[g_scene_nv * 3 + 0] = x;
     g_scene_pos[g_scene_nv * 3 + 1] = y;
     g_scene_pos[g_scene_nv * 3 + 2] = z;
     g_scene_uv[g_scene_nv * 2 + 0] = u;
     g_scene_uv[g_scene_nv * 2 + 1] = v;
+    if (has)
+    {
+        g_scene_nrm[g_scene_nv * 3 + 0] = n[0];
+        g_scene_nrm[g_scene_nv * 3 + 1] = n[1];
+        g_scene_nrm[g_scene_nv * 3 + 2] = n[2];
+    }
     g_scene_nv++;
-    g_scene_obj[g_scene_cur].nvert++;
+    o->nvert++;
     return GMB_3D_OK;
+}
+
+static int g_scene_push_vert(float x, float y, float z, float u, float v)
+{
+    return g_scene_push_vert_ex(x, y, z, u, v, NULL);
 }
 
 static int g_scene_push_tri(int a, int b, int c, unsigned char light)
 {
-    if (g_scene_cur < 0 || g_scene_nt >= GMB_SCENE_MAX_TRIS) return GMB_3D_E_ARG;
-    if (a < 0 || b < 0 || c < 0) return GMB_3D_E_ARG;
-    if (a >= g_scene_obj[g_scene_cur].nvert || b >= g_scene_obj[g_scene_cur].nvert
+    if (g_scene_cur < 0)
+        return g_scene_err("SCENE QUAD: nessun oggetto corrente (SCENE OBJECT prima)");
+    if (g_scene_nt >= GMB_SCENE_MAX_TRIS)
+        return g_scene_err("SCENE QUAD: massimo 16384 triangoli per scena");
+    if (a < 0 || b < 0 || c < 0
+        || a >= g_scene_obj[g_scene_cur].nvert || b >= g_scene_obj[g_scene_cur].nvert
         || c >= g_scene_obj[g_scene_cur].nvert)
-        return GMB_3D_E_ARG;
+        return g_scene_err("SCENE QUAD: indice di vertice fuori range");
     g_scene_idx[g_scene_nt * 3 + 0] = a;
     g_scene_idx[g_scene_nt * 3 + 1] = b;
     g_scene_idx[g_scene_nt * 3 + 2] = c;
@@ -365,17 +420,24 @@ int64_t gmb_scene_reset(void)
 
 int64_t gmb_scene_view(int64_t w, int64_t h, double fov_deg)
 {
-    if (w <= 0 || h <= 0 || w > 8192 || h > 8192) return GMB_3D_E_ARG;
-    if (fov_deg <= 1.0 || fov_deg >= 179.0) return GMB_3D_E_ARG;
+    if (w <= 0 || h <= 0 || w > 8192 || h > 8192)
+        return g_scene_err("SCENE VIEW: w e h devono essere tra 1 e 8192");
+    if (!isfinite(fov_deg))
+        return g_scene_err("SCENE VIEW: fov deve essere un numero finito");
+    if (fov_deg <= 1.0 || fov_deg >= 179.0)
+        return g_scene_err("SCENE VIEW: fov deve essere tra 1 e 179 gradi");
     int rc = gmb_3d_target_alloc(&g_scene_target, (int)w, (int)h);
     if (rc != GMB_3D_OK) return rc;
     g_scene_fov = fov_deg;
-    return gmb_3d_target_clear(&g_scene_target, GMB_SCENE_BG, 0.0f);
+    rc = gmb_3d_target_clear(&g_scene_target, GMB_SCENE_BG, 0.0f);
+    if (rc != GMB_3D_OK) return rc;
+    return gmb_scene_pick_attach(&g_scene_target);   /* SCENE PICK acceso: id della nuova dimensione */
 }
 
 int64_t gmb_scene_checker(int64_t cells)
 {
-    if (cells < 1 || cells > 64) return GMB_3D_E_ARG;
+    if (cells < 1 || cells > 64)
+        return g_scene_err("SCENE TEXTURE: celle deve essere tra 1 e 64");
     const int cell = 8;
     int size = (int)cells * cell;
     unsigned char* buf = (unsigned char*)malloc((size_t)size * (size_t)size * 4u);
@@ -403,10 +465,7 @@ int64_t gmb_scene_checker(int64_t cells)
 int64_t gmb_scene_texture_file(const char* path)
 {
     if (path == NULL || *path == '\0')
-    {
-        gmb_3d_set_error("SCENE TEXTURE: manca il percorso del PNG");
-        return GMB_3D_E_ARG;
-    }
+        return g_scene_err("SCENE TEXTURE: manca il percorso del PNG");
 
     size_t len = 0;
     unsigned char* data = read_whole_file(path, &len);
@@ -464,8 +523,12 @@ int64_t gmb_scene_texture_file(const char* path)
  * un "luce da nessuna parte" che spegnerebbe la scena in silenzio). */
 int64_t gmb_scene_light(double dx, double dy, double dz, int64_t level)
 {
+    int frc = g_scene_finite("SCENE LIGHT: direzione non finita", dx);
+    if (frc == GMB_3D_OK) frc = g_scene_finite("SCENE LIGHT: direzione non finita", dy);
+    if (frc == GMB_3D_OK) frc = g_scene_finite("SCENE LIGHT: direzione non finita", dz);
+    if (frc != GMB_3D_OK) return frc;
     double len = sqrt(dx * dx + dy * dy + dz * dz);
-    if (!(len > 1e-9)) return GMB_3D_E_ARG;
+    if (!(len > 1e-9)) return g_scene_err("SCENE LIGHT: direzione nulla");
     g_scene_light_dir[0] = dx / len;
     g_scene_light_dir[1] = dy / len;
     g_scene_light_dir[2] = dz / len;
@@ -494,6 +557,15 @@ int64_t gmb_scene_twosided(int64_t on)
     return GMB_3D_OK;
 }
 
+/* SCENE AA on|off: il flag e' l'unica cosa che si tocca qui. Il render sceglie il
+ * target doppio e lo risolve; la superficie (PIXEL/SAVE/PRESENT) resta sul target
+ * logico. Spento di default: nessun byte cambia nelle scene esistenti. */
+int64_t gmb_scene_aa(int64_t on)
+{
+    g_scene_aa = (on != 0);
+    return GMB_3D_OK;
+}
+
 /* --- P4: lampade, fog, FAR, colormap, cielo, thing (specifica M-*) -------- */
 
 /* SCENE LAMP n, x, y, z, raggio, quantità: lampada puntiforme 0..7 (M-LIGHT).
@@ -501,8 +573,14 @@ int64_t gmb_scene_twosided(int64_t on)
  * l'eventuale cono si applicano nel kernel (`gmb_3d_light_eval`), non qui. */
 int64_t gmb_scene_lamp(int64_t n, double x, double y, double z, double radius, double amount)
 {
-    if (n < 0 || n >= GMB_3D_MAX_LAMPS) return GMB_3D_E_ARG;
-    if (!(radius >= 0.0)) return GMB_3D_E_ARG;
+    if (n < 0 || n >= GMB_3D_MAX_LAMPS)
+        return g_scene_err("SCENE LAMP: lo slot deve essere tra 0 e 7");
+    if (!isfinite(x) || !isfinite(y) || !isfinite(z))
+        return g_scene_err("SCENE LAMP: posizione non finita");
+    if (!isfinite(radius) || !(radius >= 0.0))
+        return g_scene_err("SCENE LAMP: raggio non negativo e finito");
+    if (!isfinite(amount))
+        return g_scene_err("SCENE LAMP: quantita' non finita");
     gmb_3d_lamp_t* L = &g_scene_env.lamps[n];
     memset(L, 0, sizeof(*L));
     L->x = (float)x;
@@ -521,9 +599,15 @@ int64_t gmb_scene_lamp(int64_t n, double x, double y, double z, double radius, d
 int64_t gmb_scene_lamp_spot(int64_t n, double x, double y, double z, double radius,
                             double amount, double dx, double dy, double dz, double angle_deg)
 {
+    int frc = g_scene_finite("SCENE LAMP SPOT: direzione non finita", dx);
+    if (frc == GMB_3D_OK) frc = g_scene_finite("SCENE LAMP SPOT: direzione non finita", dy);
+    if (frc == GMB_3D_OK) frc = g_scene_finite("SCENE LAMP SPOT: direzione non finita", dz);
+    if (frc == GMB_3D_OK) frc = g_scene_finite("SCENE LAMP SPOT: angolo non finito", angle_deg);
+    if (frc != GMB_3D_OK) return frc;
     double len = sqrt(dx * dx + dy * dy + dz * dz);
-    if (!(len > 1e-9)) return GMB_3D_E_ARG;
-    if (!(angle_deg > 0.0) || !(angle_deg < 90.0)) return GMB_3D_E_ARG;
+    if (!(len > 1e-9)) return g_scene_err("SCENE LAMP SPOT: direzione nulla");
+    if (!(angle_deg > 0.0) || !(angle_deg < 90.0))
+        return g_scene_err("SCENE LAMP SPOT: angolo tra 0 e 90 gradi");
     int64_t rc = gmb_scene_lamp(n, x, y, z, radius, amount);
     if (rc != GMB_3D_OK) return rc;
     gmb_3d_lamp_t* L = &g_scene_env.lamps[n];
@@ -538,14 +622,16 @@ int64_t gmb_scene_lamp_spot(int64_t n, double x, double y, double z, double radi
  * triangolo si salta (0 = spento). Distanze negative = errore esplicito. */
 int64_t gmb_scene_fog(double d)
 {
-    if (!(d >= 0.0)) return GMB_3D_E_ARG;
+    if (!isfinite(d) || !(d >= 0.0))
+        return g_scene_err("SCENE FOG: distanza non negativa e finita");
     g_scene_env.fog = (float)d;
     return GMB_3D_OK;
 }
 
 int64_t gmb_scene_far(double d)
 {
-    if (!(d >= 0.0)) return GMB_3D_E_ARG;
+    if (!isfinite(d) || !(d >= 0.0))
+        return g_scene_err("SCENE FAR: distanza non negativa e finita");
     g_scene_env.far = (float)d;
     return GMB_3D_OK;
 }
@@ -564,11 +650,10 @@ int64_t gmb_scene_colormap(void)
  * errore esplicito: un cielo nero silenzioso sembrerebbe un bug di rendering. */
 int64_t gmb_scene_sky(double repeat, double shift)
 {
+    if (!isfinite(repeat) || !isfinite(shift))
+        return g_scene_err("SCENE SKY: repeat e shift devono essere finiti");
     if (g_scene_tex == NULL || g_scene_tex_w <= 0 || g_scene_tex_h <= 0)
-    {
-        gmb_3d_set_error("SCENE SKY: nessuna texture (SCENE TEXTURE prima di SKY)");
-        return GMB_3D_E_ARG;
-    }
+        return g_scene_err("SCENE SKY: nessuna texture (SCENE TEXTURE prima di SKY)");
     size_t np = (size_t)g_scene_tex_w * (size_t)g_scene_tex_h * 4u;
     unsigned char* buf = (unsigned char*)malloc(np);
     if (buf == NULL) return GMB_3D_E_NOMEM;
@@ -589,8 +674,12 @@ int64_t gmb_scene_sky(double repeat, double shift)
  * ordinamento da lontano a vicino deciso da RENDER. */
 int64_t gmb_scene_thing(int64_t n, double x, double y, double z, double w, double h)
 {
-    if (n < 0 || n >= GMB_SCENE_MAX_THINGS) return GMB_3D_E_ARG;
-    if (!(w > 0.0) || !(h > 0.0)) return GMB_3D_E_ARG;
+    if (n < 0 || n >= GMB_SCENE_MAX_THINGS)
+        return g_scene_err("SCENE THING: indice tra 0 e 255");
+    if (!isfinite(x) || !isfinite(y) || !isfinite(z))
+        return g_scene_err("SCENE THING: posizione non finita");
+    if (!isfinite(w) || !isfinite(h) || !(w > 0.0) || !(h > 0.0))
+        return g_scene_err("SCENE THING: w e h positivi e finiti");
     gmb_scene_thing_t* th = &g_scene_thing[n];
     th->used = 1;
     th->x = (float)x;
@@ -611,7 +700,8 @@ int64_t gmb_scene_thing_light(int64_t n, int64_t level)
 
 int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b)
 {
-    if (g_scene_nobj >= GMB_SCENE_MAX_OBJS) return GMB_3D_E_ARG;
+    if (g_scene_nobj >= GMB_SCENE_MAX_OBJS)
+        return g_scene_err("SCENE OBJECT: massimo 256 oggetti per scena");
     gmb_scene_obj_t* o = &g_scene_obj[g_scene_nobj];
     o->first_vert = g_scene_nv;
     o->nvert = 0;
@@ -624,6 +714,7 @@ int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b)
     o->b = (unsigned char)g_scene_clampi(b);
     o->flags = 0;
     o->light = 255u;
+    o->has_nrm = 0;
     g_scene_cur = g_scene_nobj++;
     return GMB_3D_OK;
 }
@@ -645,6 +736,13 @@ int64_t gmb_scene_vertex(double x, double y, double z, double u, double v)
     return g_scene_push_vert((float)x, (float)y, (float)z, (float)u, (float)v);
 }
 
+int64_t gmb_scene_vertex_n(double x, double y, double z, double u, double v,
+                           double nx, double ny, double nz)
+{
+    float n[3] = { (float)nx, (float)ny, (float)nz };
+    return g_scene_push_vert_ex((float)x, (float)y, (float)z, (float)u, (float)v, n);
+}
+
 int64_t gmb_scene_tri(int64_t a, int64_t b, int64_t c)
 {
     return g_scene_push_tri((int)a, (int)b, (int)c, 255u);
@@ -660,9 +758,17 @@ int64_t gmb_scene_quad(int64_t a, int64_t b, int64_t c, int64_t d)
 int64_t gmb_scene_box(double x0, double y0, double z0,
                       double x1, double y1, double z1)
 {
-    if (g_scene_cur < 0) return GMB_3D_E_ARG;
+    if (g_scene_cur < 0)
+        return g_scene_err("SCENE BOX: serve un oggetto corrente (SCENE OBJECT prima)");
     if (g_scene_nv + 24 > GMB_SCENE_MAX_VERTS || g_scene_nt + 12 > GMB_SCENE_MAX_TRIS)
-        return GMB_3D_E_ARG;
+        return g_scene_err("SCENE BOX: limite di geometria della scena");
+    int fc = g_scene_finite("SCENE BOX: coordinate non finite", x0);
+    if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE BOX: coordinate non finite", y0);
+    if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE BOX: coordinate non finite", z0);
+    if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE BOX: coordinate non finite", x1);
+    if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE BOX: coordinate non finite", y1);
+    if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE BOX: coordinate non finite", z1);
+    if (fc != GMB_3D_OK) return fc;
     float cx = (float)((x0 + x1) * 0.5), hx = (float)((x1 - x0) * 0.5);
     float cy = (float)((y0 + y1) * 0.5), hy = (float)((y1 - y0) * 0.5);
     float cz = (float)((z0 + z1) * 0.5), hz = (float)((z1 - z0) * 0.5);
@@ -689,7 +795,10 @@ int64_t gmb_scene_box(double x0, double y0, double z0,
 
 int64_t gmb_scene_objpos(double x, double y, double z, double yaw_deg)
 {
-    if (g_scene_cur < 0) return GMB_3D_E_ARG;
+    if (g_scene_cur < 0)
+        return g_scene_err("SCENE OBJPOS: serve un oggetto corrente (SCENE OBJECT prima)");
+    if (!isfinite(x) || !isfinite(y) || !isfinite(z) || !isfinite(yaw_deg))
+        return g_scene_err("SCENE OBJPOS: coordinate non finite");
     g_scene_obj[g_scene_cur].x = (float)x;
     g_scene_obj[g_scene_cur].y = (float)y;
     g_scene_obj[g_scene_cur].z = (float)z;
@@ -699,7 +808,10 @@ int64_t gmb_scene_objpos(double x, double y, double z, double yaw_deg)
 
 int64_t gmb_scene_camera(double x, double y, double z, double yaw_deg, double pitch_deg)
 {
-    if (pitch_deg <= -89.0 || pitch_deg >= 89.0) return GMB_3D_E_ARG;
+    if (!isfinite(x) || !isfinite(y) || !isfinite(z) || !isfinite(yaw_deg) || !isfinite(pitch_deg))
+        return g_scene_err("SCENE CAMERA: coordinate non finite");
+    if (pitch_deg <= -89.0 || pitch_deg >= 89.0)
+        return g_scene_err("SCENE CAMERA: pitch tra -89 e 89 gradi");
     g_scene_eye[0] = (float)x;
     g_scene_eye[1] = (float)y;
     g_scene_eye[2] = (float)z;
@@ -768,6 +880,24 @@ static int scene_draw_object(int oi, const float* vp, const gmb_3d_env_t* env)
     m.pos = g_scene_pos + (size_t)o->first_vert * 3;
     m.uv = g_scene_uv + (size_t)o->first_vert * 2;
     m.nv = o->nvert;
+    /* Normali: dichiarate nello spazio dell'oggetto, quindi girano con lui. Il
+     * modello e' traslazione + rotazione su y, quindi basta la sua 3x3 (niente
+     * traslazione, niente scala); la normalizzazione la fa il nucleo della luce. */
+    if (o->has_nrm)
+    {
+        const float* src = g_scene_nrm + (size_t)o->first_vert * 3;
+        float* dst = g_scene_nrm_w + (size_t)o->first_vert * 3;
+        for (int i = 0; i < o->nvert; i++)
+        {
+            float x = src[i * 3 + 0], y = src[i * 3 + 1], z = src[i * 3 + 2];
+            dst[i * 3 + 0] = model[0] * x + model[4] * y + model[8]  * z;
+            dst[i * 3 + 1] = model[1] * x + model[5] * y + model[9]  * z;
+            dst[i * 3 + 2] = model[2] * x + model[6] * y + model[10] * z;
+        }
+        m.nrm = dst;
+    }
+    else
+        m.nrm = NULL;
 
     gmb_3d_material_t mat;
     memset(&mat, 0, sizeof(mat));
@@ -782,6 +912,8 @@ static int scene_draw_object(int oi, const float* vp, const gmb_3d_env_t* env)
     mat.masked = g_scene_alpha || ((o->flags & 1) != 0);
     mat.two_sided = g_scene_two_sided || ((o->flags & 16) != 0);
     mat.translucent = (o->flags & 2) != 0;
+    mat.aa = g_scene_aa;   /* SSAA 2x per draw: spento = nessun target doppio, byte di P4 */
+    mat.id = (unsigned)(oi + 1);   /* SCENE PICK: 1..256, ordine di dichiarazione */
     mat.light = o->light;
     mat.tint_r = o->r;
     mat.tint_g = o->g;
@@ -817,7 +949,8 @@ static int scene_draw_object(int oi, const float* vp, const gmb_3d_env_t* env)
 
 int64_t gmb_scene_render(void)
 {
-    if (g_scene_target.argb == NULL) return GMB_3D_E_ARG;
+    if (g_scene_target.argb == NULL)
+        return g_scene_err("SCENE RENDER: nessun target (SCENE VIEW prima)");
     /* Una scena può essere fatta di solo cielo o di soli thing: il render non
      * deve pretendere una mesh (M-ORDER/M-SKY/M-THINGS). */
     if (g_scene_nobj <= 0 && g_scene_nt <= 0 && g_scene_sky == NULL)
@@ -825,11 +958,16 @@ int64_t gmb_scene_render(void)
         int have_thing = 0;
         for (int i = 0; i < GMB_SCENE_MAX_THINGS; i++)
             if (g_scene_thing[i].used) { have_thing = 1; break; }
-        if (!have_thing) return GMB_3D_E_ARG;
+        if (!have_thing) return g_scene_err("SCENE RENDER: scena vuota (nessuna geometria, cielo o thing)");
     }
 
     int rc = gmb_3d_target_clear(&g_scene_target, GMB_SCENE_BG, 0.0f);
     if (rc != GMB_3D_OK) return rc;
+    if (gmb_scene_pick_active())
+    {
+        rc = gmb_scene_pick_attach(&g_scene_target);
+        if (rc != GMB_3D_OK) return rc;
+    }
 
     float yr = g_scene_yaw * (float)(GMB_SCENE_PI / 180.0);
     float pr = g_scene_pitch * (float)(GMB_SCENE_PI / 180.0);
@@ -955,7 +1093,10 @@ int64_t gmb_scene_render(void)
 
 int64_t gmb_scene_save(const char* path)
 {
-    if (g_scene_target.argb == NULL || path == NULL || *path == '\0') return GMB_3D_E_ARG;
+    if (g_scene_target.argb == NULL)
+        return g_scene_err("SCENE SAVE: nessun frame (manca VIEW o RENDER)");
+    if (path == NULL || *path == '\0')
+        return g_scene_err("SCENE SAVE: manca il percorso del PNG");
     int rc = gmb_3d_target_capture_png(&g_scene_target, path);
     return (int64_t)rc;
 }
@@ -1024,6 +1165,29 @@ int64_t gmb_scene_present(void)
     }
     return GMB_3D_OK;
 }
+
+/* Chiamata CONTROLLATA delle superfici SCENE (una per tutte le gambe): se la
+ * facciata fallisce, il messaggio canonico diventa un errore BASIC catturabile
+ * (ON ERROR / TRY) invece di un no-op silenzioso. `line` e' la riga BASIC che
+ * C99Native passa al raise; le altre gambe usano i propri raise con lo stesso
+ * testo. */
+void gmb_scene_clear_error(void)
+{
+    gmb_3d_set_error("");
+}
+
+int64_t gmb_scene_checked(int64_t rc, int64_t line)
+{
+    if (rc != GMB_3D_OK)
+    {
+        const char* msg = gmb_3d_last_error();
+        gmb_raise_error(5, (msg != NULL && *msg != '\0') ? msg : "SCENE: comando fallito",
+                        (long)line);
+    }
+    return rc;
+}
+
+gmb_3d_target_t* gmb_scene_target_ref(void) { return &g_scene_target; }
 
 int64_t gmb_scene_pixel(int64_t x, int64_t y)
 {

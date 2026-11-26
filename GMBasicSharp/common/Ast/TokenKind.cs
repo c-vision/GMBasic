@@ -2530,4 +2530,6 @@ public enum TokenKind
     SceneSky,
     SceneColormap,
     SceneThing,
+    SceneAa,      // SSAA 2x della scena (spento di default)
+    ScenePick,    // SCENE PICK on|off + SCENE.PICK(x, y): buffer di id additivo
   }

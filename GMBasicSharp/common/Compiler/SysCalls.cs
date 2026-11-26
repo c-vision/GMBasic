@@ -574,6 +574,9 @@ public enum SysCall : ushort
     SCENE_COLORMAP = 504,   // ()                                      → gmb_scene_colormap
     SCENE_THING = 505,      // (n, x, y, z, w, h)                      → gmb_scene_thing
     SCENE_OBJECT_FLAGS = 506, // (r, g, b, flags, luce)                → gmb_scene_object_flags
+    SCENE_VERTEX_N = 507,   // (x, y, z, u, v, nx, ny, nz)             → gmb_scene_vertex_n
+    SCENE_AA = 508,         // (on)                                    → gmb_scene_aa
+    SCENE_PICK = 509,       // (on)                                    → gmb_scene_pick_enable
 }
 
 /// <summary>

@@ -20,6 +20,9 @@ public static partial class IlRuntime
 
     public static void SceneVertex(double x, double y, double z, double u, double v)
         => CommonLib.Scene3DNative.Vertex(x, y, z, u, v);
+    public static void SceneVertexN(double x, double y, double z, double u, double v,
+                                    double nx, double ny, double nz)
+        => CommonLib.Scene3DNative.VertexN(x, y, z, u, v, nx, ny, nz);
 
     public static void SceneQuad(long a, long b, long c, long d) => CommonLib.Scene3DNative.Quad(a, b, c, d);
 
@@ -38,6 +41,10 @@ public static partial class IlRuntime
 
     // Flag di materiale (idea #5).
     public static void SceneSmooth(long on) => CommonLib.Scene3DNative.Smooth(on);
+    public static void SceneAa(long on) => CommonLib.Scene3DNative.Aa(on);
+
+    // SCENE PICK on|off: buffer di id per pixel, additivo e spento di default.
+    public static void ScenePickEnable(long on) => CommonLib.Scene3DNative.PickEnable(on);
     public static void SceneAlpha(long on) => CommonLib.Scene3DNative.Alpha(on);
     public static void SceneTwoSided(long on) => CommonLib.Scene3DNative.TwoSided(on);
 
@@ -70,4 +77,7 @@ public static partial class IlRuntime
     public static double ScenePixels() => CommonLib.Scene3DNative.Pixels();
     public static double SceneHash() => CommonLib.Scene3DNative.Hash();
     public static double ScenePixel(long x, long y) => CommonLib.Scene3DNative.Pixel(x, y);
+    // PICK(x, y): id dell'oggetto nel pixel (0 fondo, 1..256 oggetto,
+    // -1 senza target o fuori target, -2 buffer spento).
+    public static double ScenePick(long x, long y) => CommonLib.Scene3DNative.Pick(x, y);
 }

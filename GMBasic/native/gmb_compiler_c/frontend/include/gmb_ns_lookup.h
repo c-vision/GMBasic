@@ -871,6 +871,7 @@ static const gmb_ns_lookup_row_t gmb_ns_lookup[] = {
     { "SCENE", "CULLED", GMB_TOK_SceneCulled },
     { "SCENE", "DRAWN", GMB_TOK_SceneDrawn },
     { "SCENE", "HASH", GMB_TOK_SceneHash },
+    { "SCENE", "PICK", GMB_TOK_ScenePick },
     { "SCENE", "PIXEL", GMB_TOK_ScenePixel },
     { "SCENE", "PIXELS", GMB_TOK_ScenePixels },
     { "SCENE", "TRIS", GMB_TOK_SceneTris },

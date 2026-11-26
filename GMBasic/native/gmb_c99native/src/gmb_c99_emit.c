@@ -11001,6 +11001,15 @@ static void emit_make_val(ctx_t* c, const var_t* v, gmb_expr_t* arg) {
 }
 /* chiave dict: stringa → .data; numerica → gmb_double_to_string(...).data */
 static void emit_dict_key(ctx_t* c, gmb_expr_t* e) {
+    /* DATA come CHIAVE: canone ISO-8601 "yyyy-MM-ddTHH:mm:ss" (stessa forma usata da
+     * IL/PCode e dal JSON delle date; `gmb_dt_datetime_iso` è il formatter unico). Prima
+     * il C99 usava il seriale come stringa ("44936"). */
+    if (gmb_expr_is_datetime(c, e)) {
+        sb_put(&c->out, "gmb_dt_datetime_iso((gmb_double_t)(");
+        emit_expr(c, e);
+        sb_put(&c->out, ")).data");
+        return;
+    }
     if (etype(c, e) == TY_STR) {
         sb_put(&c->out, "(");
         emit_expr(c, e);

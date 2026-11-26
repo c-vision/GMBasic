@@ -22,6 +22,7 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.SCENE_PIXELS,
         BuiltInFunction.SCENE_HASH,
         BuiltInFunction.SCENE_PIXEL,
+        BuiltInFunction.SCENE_PICK,
     ];
 
     private object? ExecuteBuiltInScene(PCodeTask task, BuiltInFunction fn, object?[] args)
@@ -39,6 +40,10 @@ internal sealed partial class PCodeProcessor
             // PIXEL(x, y): colore 0x00RRGGBB del target, −1 fuori dai limiti.
             case BuiltInFunction.SCENE_PIXEL:
                 return (double)CommonLib.Scene3DNative.Pixel((long)ToDouble(args, 0), (long)ToDouble(args, 1));
+            // PICK(x, y): id dell'oggetto nel pixel (0 fondo, 1..256 oggetto,
+            // -1 senza target o fuori target, -2 buffer di SCENE PICK spento).
+            case BuiltInFunction.SCENE_PICK:
+                return (double)CommonLib.Scene3DNative.Pick((long)ToDouble(args, 0), (long)ToDouble(args, 1));
         }
         return null;
     }

@@ -492,6 +492,10 @@
 #define GMB_SC_SCENE_COLORMAP 504
 #define GMB_SC_SCENE_THING 505
 #define GMB_SC_SCENE_OBJECT_FLAGS 506
+#define GMB_SC_SCENE_VERTEX_N 507
+#define GMB_SC_SCENE_AA 508
+/* SCENE PICK on|off: buffer di id per pixel, additivo e spento di default. */
+#define GMB_SC_SCENE_PICK 509
 #define GMB_SC_Default 0
 #define GMB_SC_Json 1
 

@@ -15,7 +15,7 @@ public sealed partial class Compiler
         TokenKind.SceneView => SysCall.SCENE_VIEW,
         TokenKind.SceneTexture => SysCall.SCENE_TEXTURE,
         TokenKind.SceneObject => argc == 5 ? SysCall.SCENE_OBJECT_FLAGS : SysCall.SCENE_OBJECT,
-        TokenKind.SceneVertex => SysCall.SCENE_VERTEX,
+        TokenKind.SceneVertex => argc == 8 ? SysCall.SCENE_VERTEX_N : SysCall.SCENE_VERTEX,
         TokenKind.SceneQuad => SysCall.SCENE_QUAD,
         TokenKind.SceneBox => SysCall.SCENE_BOX,
         TokenKind.SceneObjPos => SysCall.SCENE_OBJPOS,
@@ -34,6 +34,8 @@ public sealed partial class Compiler
         TokenKind.SceneSky => SysCall.SCENE_SKY,
         TokenKind.SceneColormap => SysCall.SCENE_COLORMAP,
         TokenKind.SceneThing => SysCall.SCENE_THING,
+        TokenKind.SceneAa => SysCall.SCENE_AA,
+        TokenKind.ScenePick => SysCall.SCENE_PICK,
         _ => throw new NotImplementedException($"SCENE: verbo '{kind}' non supportato dalla PCodeVM.")
     };
 
