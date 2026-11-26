@@ -328,6 +328,25 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Callvirt, dictIndexer.GetGetMethod()!);
             return;
         }
+        // t(data) su una TIMELINE: valore della chiave (map). Il dispatch è il runtime
+        // condiviso CollectionInvoke("Get"), che normalizza la chiave data → seriale.
+        if (arrSymT0 is TimelineType)
+        {
+            if (expr.Indices.Length != 1)
+                throw new NotSupportedException("Backend IL: indicizzazione di una TIMELINE richiede 1 indice (chiave data).");
+            EmitLoadVariable(expr.SymbolId);
+            _il.Emit(OpCodes.Ldstr, "Get");
+            _il.Emit(OpCodes.Ldc_I4_1);
+            _il.Emit(OpCodes.Newarr, _types.Object);
+            _il.Emit(OpCodes.Dup);
+            _il.Emit(OpCodes.Ldc_I4_0);
+            EmitExpression(expr.Indices[0]);
+            var tlKeyClr = DataTypeMapper.Map(NormalizeInferredType(InferType(expr.Indices[0])), _types, _classTypes);
+            if (tlKeyClr.IsValueType) _il.Emit(OpCodes.Box, tlKeyClr);
+            _il.Emit(OpCodes.Stelem_Ref);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionInvoke), typeof(object), typeof(string), typeof(object[])));
+            return;
+        }
         // F4: valore matrice (descrittore) indicizzato m(r,c) → MatrixValueGetAt. Prima del
         // calcolo del tipo CLR "runtime array" (che per un parametro MatrixValueType cadrebbe
         // su object e rifiuterebbe i 2 indici).

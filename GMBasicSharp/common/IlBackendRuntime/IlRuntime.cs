@@ -7828,6 +7828,8 @@ public static partial class IlRuntime
             return list[Convert.ToInt32(index, System.Globalization.CultureInfo.InvariantCulture)];
         if (collection is System.Collections.IDictionary dict)
             return dict[index!];
+        if (IsTimelineInstance(collection))
+            return TimelineGet(collection!, index);
         return null;
     }
 
@@ -7872,6 +7874,11 @@ public static partial class IlRuntime
         if (collection is System.Collections.IDictionary dict)
         {
             dict[index!] = value;
+            return;
+        }
+        if (IsTimelineInstance(collection))
+        {
+            TimelineSet(collection!, index, value);
             return;
         }
         throw new InvalidOperationException("CollectionIndexSet: collezione non indicizzabile.");
@@ -14809,8 +14816,7 @@ public static double TextWidth(string s)
     }
 
     /// <summary>GetRange(lo,hi) di una Timeline: lista di {"Key":seriale,"Value":...}.</summary>
-    private static object? TimelineRange(object timeline, object? lo, object? hi)
-    {
+    private static object? TimelineRange(object timeline, object? lo, object? hi)    {
         var mi = timeline.GetType().GetMethod("GetRange");
         if (mi is null) return null;
         var ptype = mi.GetParameters()[0].ParameterType;
@@ -14839,6 +14845,87 @@ public static double TextWidth(string s)
                     ["Value"] = ReadKv(kv, "Value")
                 });
         return rows;
+    }
+
+    /* ── TIMELINE: superficie membro canonica (chiave = DATA) ──────────────────────
+     * La Timeline CommonLib è un map DateTimeOffset→T che espone Add/Remove/Contains/
+     * TryGetValue/First/Last/GetRange (NON Keys/Values/ContainsKey/Get/ToArray). Le
+     * gambe managed (IL e PCode, stesso dispatcher) costruiscono qui la superficie BASIC
+     * con le STESSE forme delle altre gambe: chiave = seriale OADate, coppie
+     * {"Key":<seriale>,"Value":…}. */
+    private static DateTimeOffset TimelineKeyOf(object? key)
+    {
+        switch (key)
+        {
+            case DateTimeOffset dto: return dto;
+            case DateTime dt: return new DateTimeOffset(dt);
+            case null: return default;
+            case string s:
+            {
+                var txt = s.Replace('T', ' ');
+                if (DateTime.TryParse(txt, System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.None, out var parsed))
+                    return new DateTimeOffset(parsed);
+                break;
+            }
+        }
+        return new DateTimeOffset(DateTime.FromOADate(SafeDouble(key)));
+    }
+
+    private static object? TimelineCallBool(object timeline, string name, object? key)
+    {
+        var mi = timeline.GetType().GetMethod(name);
+        if (mi is null) return null;
+        try { return (bool)mi.Invoke(timeline, [TimelineKeyOf(key)])! ? -1.0 : 0.0; }
+        catch (System.Reflection.TargetInvocationException) { return null; }
+    }
+
+    /// <summary>Valore della chiave, null se assente (indexer/Get di una Timeline).</summary>
+    private static object? TimelineGet(object timeline, object? key)
+    {
+        var mi = timeline.GetType().GetMethod("TryGetValue");
+        if (mi is null) return null;
+        var args = new object?[] { TimelineKeyOf(key), null };
+        try { return (bool)mi.Invoke(timeline, args)! ? args[1] : null; }
+        catch (System.Reflection.TargetInvocationException) { return null; }
+    }
+
+    /// <summary>Add(chiave,valore) con sovrascrittura: l'indexer in scrittura di una Timeline.</summary>
+    private static void TimelineSet(object timeline, object? key, object? value)
+    {
+        var mi = timeline.GetType().GetMethod("Add");
+        if (mi is null) return;
+        var ptype = mi.GetParameters()[1].ParameterType;
+        object? v = value;
+        if (value is not null && !ptype.IsInstanceOfType(value))
+        {
+            try { v = Convert.ChangeType(value, ptype, System.Globalization.CultureInfo.InvariantCulture); }
+            catch { return; }
+        }
+        try { mi.Invoke(timeline, [TimelineKeyOf(key), v]); }
+        catch (System.Reflection.TargetInvocationException) { }
+    }
+
+    /// <summary>Voci della Timeline come lista di {"Key":seriale,"Value":…}.</summary>
+    private static object?[] TimelinePairs(object timeline)
+    {
+        var rows = new System.Collections.Generic.List<object?>();
+        foreach (var kv in (System.Collections.IEnumerable)timeline)
+            rows.Add(new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["Key"] = DateSerialOf(ReadKv(kv, "Key")),
+                ["Value"] = ReadKv(kv, "Value")
+            });
+        return rows.ToArray();
+    }
+
+    /// <summary>Valori della Timeline nell'ordine delle chiavi.</summary>
+    private static object?[] TimelineValues(object timeline)
+    {
+        var vals = new System.Collections.Generic.List<object?>();
+        foreach (var kv in (System.Collections.IEnumerable)timeline)
+            vals.Add(ReadKv(kv, "Value"));
+        return vals.ToArray();
     }
 
     /// <summary>Dijkstra di un Graph&lt;T&gt; come lista di record {"node","dist"}
@@ -14978,6 +15065,25 @@ public static double TextWidth(string s)
                     tlKeys.Add(DateSerialOf(ReadKv(kvp, "Key")));
                 return tlKeys.ToArray();
             }
+            /* TIMELINE: appartenenza/lettura/scrittura/valori/coppie — semantica del map
+             * chiave-DATA; prima IL e PCode cadevano nella reflection (metodo assente sul
+             * CLR: ContainsKey/Get/Values/ToArray) o su un errore di compilazione. */
+            case "COUNT" or "LENGTH" when args.Length == 0 && IsTimelineInstance(instance):
+                return (double)Convert.ToInt32(instance.GetType().GetProperty("Count")!.GetValue(instance)!,
+                    System.Globalization.CultureInfo.InvariantCulture);
+            case "CONTAINSKEY" or "CONTAINS" when args.Length == 1 && IsTimelineInstance(instance):
+                return TimelineCallBool(instance!, "Contains", args[0]);
+            case "REMOVE" when args.Length == 1 && IsTimelineInstance(instance):
+                return TimelineCallBool(instance!, "Remove", args[0]);
+            case "GET" when args.Length == 1 && IsTimelineInstance(instance):
+                return TimelineGet(instance!, args[0]);
+            case "VALUES" when args.Length == 0 && IsTimelineInstance(instance):
+                return TimelineValues(instance!);
+            case "TOARRAY" when args.Length == 0 && IsTimelineInstance(instance):
+                return TimelinePairs(instance!);
+            case "CLEAR" when args.Length == 0 && IsTimelineInstance(instance):
+                instance.GetType().GetMethod("Clear")?.Invoke(instance, null);
+                return null;
             /* GRAPH.Dijkstra: nel CLR torna Dictionary<nodo,dist> (IL stampava una mappa
              * {"A":0,...}, PCode una lista di KeyValuePair, VM/C e C99 una lista di record).
              * Forma CANONICA unica: lista di {"node","dist"} ordinata per nome nodo. */
@@ -15536,6 +15642,26 @@ public static double TextWidth(string s)
             foreach (var fi in t.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
                 dict[fi.Name] = NormalizeForJson(fi.GetValue(value));
             return dict;
+        }
+        /* TIMELINE: un map chiave-DATA → JSON come OGGETTO con chiavi ISO-8601
+         * ("2023-01-10T00:00:00"), la stessa forma delle chiavi-data nei DICT
+         * (gmb_dt_datetime_iso) e del canone Issue "DATA come chiave". Prima enumerava
+         * IEnumerable → lista di coppie con Key DateTimeOffset serializzata come "{}". */
+        if (value is not null && IsTimelineInstance(value))
+        {
+            var tlJson = new Dictionary<string, object?>(StringComparer.Ordinal);
+            foreach (var kv in (System.Collections.IEnumerable)value)
+            {
+                var k = ReadKv(kv, "Key");
+                string ks = k switch
+                {
+                    DateTimeOffset dto => dto.DateTime.ToString("yyyy-MM-ddTHH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
+                    DateTime dt => dt.ToString("yyyy-MM-ddTHH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
+                    _ => DateTime.FromOADate(DateSerialOf(k)).ToString("yyyy-MM-ddTHH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)
+                };
+                tlJson[ks] = NormalizeForJson(ReadKv(kv, "Value"));
+            }
+            return tlJson;
         }
         if (value is System.Collections.IDictionary d)
         {
@@ -19948,6 +20074,17 @@ public static double TextWidth(string s)
                 foreach (System.Collections.DictionaryEntry e in dict)
                     result.Add(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase) { ["Key"] = e.Key, ["Value"] = e.Value });
                 break;
+            /* TIMELINE: FOR EACH a UNA variabile lega la ENTRY {Key,Value} come per i DICT,
+             * con Key = seriale OADate (stessa forma di First/ToArray/GetRange). Prima
+             * l'enumerazione grezza dava [DateTimeOffset, valore]. */
+            case object tl when IsTimelineInstance(tl):
+                foreach (var kv in (System.Collections.IEnumerable)tl)
+                    result.Add(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["Key"] = DateSerialOf(ReadKv(kv, "Key")),
+                        ["Value"] = ReadKv(kv, "Value")
+                    });
+                break;
             // Matrice (array multi-rank): l'iterazione è per RIGA — ogni valore è l'array 1D
             // della riga (FOR EACH row IN m → row = [m(i,0), m(i,1), ...]). Il foreach C# su un
             // array multidim itererebbe TUTTI gli elementi flat; lo slicing esplicito per la
@@ -20015,6 +20152,11 @@ public static double TextWidth(string s)
             case System.Collections.IDictionary dict:
                 foreach (System.Collections.DictionaryEntry e in dict)
                     result.Add(new Tuple<object?, object?>(e.Key, e.Value));
+                break;
+            /* TIMELINE (due variabili): (chiave = seriale OADate, valore) — parità DICT. */
+            case object tl2 when IsTimelineInstance(tl2):
+                foreach (var kv in (System.Collections.IEnumerable)tl2)
+                    result.Add(new Tuple<object?, object?>(DateSerialOf(ReadKv(kv, "Key")), ReadKv(kv, "Value")));
                 break;
             case Array matrix when matrix.Rank > 1:
             {

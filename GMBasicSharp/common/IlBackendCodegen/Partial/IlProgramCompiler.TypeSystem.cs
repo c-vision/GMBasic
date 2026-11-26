@@ -488,6 +488,11 @@ public sealed partial class IlProgramCompiler
                 var elementType => elementType
             },
         ArrayAccessExpr a when _program.Symbols.GetSymbol(a.SymbolId).DataType is TupleType => new DoubleType(),
+        // t(data) su una TIMELINE: valore della chiave (indexer del map) — il tipo è quello
+        // del valore dichiarato, non la collection (senza, PRINT/assegnazione trattavano
+        // il risultato come Timeline).
+        ArrayAccessExpr a when NormalizeInferredType(_program.Symbols.GetSymbol(a.SymbolId).DataType) is TimelineType tlAcc
+            && a.Indices.Length == 1 => NormalizeInferredType(tlAcc.ValueType),
         ArrayAccessExpr a => NormalizeInferredType(UnwrapArrayLevels(_program.Symbols.GetSymbol(a.SymbolId).DataType, a.Indices.Length)),
         ListLiteralExpr list => new ListType(list.Elements.IsEmpty ? new InferredType() : NormalizeInferredType(InferType(list.Elements[0]))),
         DictionaryLiteralExpr dictionary => InferDictionaryLiteralType(dictionary),

@@ -1776,6 +1776,29 @@ gmb_string_t gmb_coll_bag_to_json(int64_t h)
     return js;
 }
 
+/* Timeline.ToJson(): oggetto {ISO-8601: valore}. Le chiavi interne del timeline sono i
+ * seriali OADate (kv_norm_key): qui si rendono ISO come le chiavi-data dei DICT, così il
+ * JSON è lo stesso di IL/PCode/C99 (`{"2023-01-10T00:00:00":"A"}`). */
+gmb_string_t gmb_coll_timeline_to_json(int64_t h)
+{
+    gmb_collection_t* c = coll_get(h);
+    if (!c) return gmb_string_alloc("{}");
+    gmb_dict_t d = gmb_dict_new();
+    for (gmb_coll_item_t* it = c->head; it; it = it->next)
+    {
+        double serial = 0;
+        if (it->key.kind == GMB_TYPE_DATETIME || it->key.kind == GMB_TYPE_DOUBLE) serial = it->key.v_double;
+        else if (it->key.kind == GMB_TYPE_INT) serial = (double)it->key.v_int;
+        else continue;
+        gmb_string_t iso = gmb_dt_datetime_iso(serial);
+        gmb_dict_set(&d, iso.data ? iso.data : "", it->v);
+        gmb_string_free(&iso);
+    }
+    gmb_string_t js = gmb_val_to_json(gmb_make_val_dict(d));
+    gmb_dict_free(&d);
+    return js;
+}
+
 /* FOR EACH: materializza le CHIAVI di una collezione map-like in una gmb_list_t. */
 gmb_list_t gmb_collection_keys_to_list(gmb_val_t coll) {
     gmb_list_t l = gmb_list_new();

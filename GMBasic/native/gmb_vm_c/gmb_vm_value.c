@@ -274,6 +274,13 @@ gmb_obj_string_t* gmb_vm_json_stringify(gmb_obj_t* obj)
             gmb_string_free(&bj);
             return rb;
         }
+        /* TIMELINE: oggetto {ISO-8601: valore} (canone DATA come chiave) — prima "null". */
+        if (col->type_code == 18) {
+            gmb_string_t tj = gmb_coll_timeline_to_json(col->handle);
+            gmb_obj_string_t* rt = gmb_str_cstr(tj.data ? tj.data : "{}");
+            gmb_string_free(&tj);
+            return rt;
+        }
     }
     gmb_string_t s = gmb_val_to_json(gmb_make_val_obj(obj));
     gmb_obj_string_t* r = gmb_str_cstr(s.data ? s.data : "null");

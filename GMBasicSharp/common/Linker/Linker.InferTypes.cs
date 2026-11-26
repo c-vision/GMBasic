@@ -1238,7 +1238,7 @@ public static partial class Linker
             case TimelineType tlt:
                 return upperMethodName switch
                 {
-                    "REMOVE" or "CONTAINS" => new BitType(),
+                    "REMOVE" or "CONTAINS" or "CONTAINSKEY" => new BitType(),
                     "GET" or "FIRST" or "LAST" => tlt.ValueType,
                     "GETRANGE" => tlt,
                     "COUNT" => new LongType(),

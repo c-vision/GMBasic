@@ -332,6 +332,10 @@ gmb_list_t gmb_dict_keys_sorted(gmb_dict_t d);
  * , vedi il commento sopra gmb_dict_keys_typed in gmb_dict.c. */
 gmb_list_t gmb_dict_keys_typed(gmb_dict_t d);
 gmb_list_t gmb_dict_keys_typed_sorted(gmb_dict_t d);
+/* TIMELINE (mappa ordinata a chiave-DATA in C99 = gmb_dict_t con chiavi seriale-stringa):
+ * JSON oggetto con chiavi ISO-8601 — stessa forma di IL/PCode/VM-C e delle chiavi-data
+ * dei DICT. */
+gmb_string_t gmb_dict_to_json_iso_keys(gmb_dict_t d);
 gmb_list_t gmb_dict_values(gmb_dict_t d);
 gmb_list_t gmb_dict_values_sorted(gmb_dict_t d);
 gmb_dict_t gmb_dict_copy(gmb_dict_t d);

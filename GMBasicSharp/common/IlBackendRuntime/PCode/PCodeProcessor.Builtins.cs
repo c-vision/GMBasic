@@ -2385,6 +2385,13 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         },
         [BuiltInFunction.TOARRAY] = (task, args) =>
         {
+                // TIMELINE: coppie {Key:<seriale>,Value:…} (stessa forma di First/GetRange
+                // e delle altre gambe) — il ramo IEnumerable sotto rendeva KeyValuePair col
+                // Key DateTimeOffset, che JSON.STRINGIFY serializzava come "Key":{}.
+                if (args.Length >= 1 && args[0] is not null
+                    && args[0].GetType().Name.StartsWith("Timeline", StringComparison.Ordinal)
+                    && args[0].GetType().Namespace?.StartsWith("CommonLib.Collections", StringComparison.Ordinal) == true)
+                    return IlRuntime.CollectionInvoke(args[0], "ToArray", []);
                 if (args.Length >= 1 && args[0] is System.Collections.ICollection ccc) { return ccc.Cast<object?>().ToArray(); }
                 if (args.Length >= 1 && args[0] is System.Collections.IEnumerable en) { return en.Cast<object?>().ToArray(); }
                 // RedBlackTree non è IEnumerable — usa Entries() (ordinato).

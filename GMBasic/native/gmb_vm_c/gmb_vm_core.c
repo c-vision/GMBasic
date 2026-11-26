@@ -14755,7 +14755,25 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             push_val_entry(task, gmb_coll_first(ch));
                     }
                     else if (strcasecmp(methodName, "Last") == 0)
-                        push_val_entry(task, gmb_coll_last(ch));
+                    {
+                        if (tc == 18)
+                        {
+                            /* Timeline.Last: coppia {Key, Value} — parità con First (prima
+                             * rendeva il solo VALORE, mentre IL/PCode/C99 davano la coppia). */
+                            gmb_val_t k = gmb_coll_kv_max_key(ch);
+                            gmb_val_t val = gmb_coll_kv_max_value(ch);
+                            gmb_obj_shared_val_t* pair = gmb_shared_dict_new();
+                            if (pair)
+                            {
+                                gmb_dict_set(pair->dict, "Key", k);
+                                gmb_dict_set(pair->dict, "Value", val);
+                                push_ref_new(task, (gmb_obj_t*)pair, GMB_BT_OBJECT);
+                            }
+                            else push_nil(task);
+                        }
+                        else
+                            push_val_entry(task, gmb_coll_last(ch));
+                    }
                     else if (strcasecmp(methodName, "IndexOf") == 0 && argCount >= 1)
                         push_num_entry(task, (double)gmb_coll_index_of(ch, v0), GMB_BT_NUMBER);
                     else if (strcasecmp(methodName, "Sort") == 0)

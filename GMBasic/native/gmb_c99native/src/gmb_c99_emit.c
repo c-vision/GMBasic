@@ -899,6 +899,14 @@ int gmb_c99_emit_coll_json(ctx_t* c, const char* name) {
     var_t* av = lookup_var(c, name);
     if (!av || !av->gkind) return 0;
     if (gk_is_dict(av->gkind)) {
+        /* TIMELINE: oggetto con chiavi-date ISO-8601 (canone DATA come chiave), non un
+         * oggetto con chiavi-seriali. */
+        if (av->coll_type_code == 18) {
+            sb_put(&c->out, "gmb_dict_to_json_iso_keys(");
+            sb_ident(&c->out, av->name);
+            sb_put(&c->out, ")");
+            return 1;
+        }
         sb_put(&c->out, "gmb_val_to_json(gmb_make_val_dict(");
         sb_ident(&c->out, av->name);
         sb_put(&c->out, "))");
@@ -4982,7 +4990,7 @@ if (s->for_var && !use_global(c, scope, s->for_var)) {
                         if (fav && fav->gkind && gk_is_list(fav->gkind) && fav->elem_class[0] && !fv->vclass[0])
                             snprintf(fv->vclass, sizeof(fv->vclass), "%s", fav->elem_class);
                         if (keys_single && fav && gk_is_dict(fav->gkind))
-                            fv->type = TY_STR;
+                            fv->type = (fav->coll_type_code == 18) ? TY_NUM : TY_STR;
                         else if (fav && fav->type == TY_STR
                                  && (fav->is_array || (fav->gkind && (gk_is_list(fav->gkind) || gk_is_dict(fav->gkind)))
                                      || (!fav->is_array && !fav->gkind)))
@@ -5026,7 +5034,8 @@ if (s->for_var && !use_global(c, scope, s->for_var)) {
                 var_t* dav = vars_find(scope, s->for_from->var);
                 if (!dav) dav = vars_find(&c->globals, s->for_from->var);
                 if (dav && gk_is_dict(dav->gkind)) {
-                    fv->type = TY_STR;
+                    /* TIMELINE: la chiave è un SERIALE OADate (numero), non stringa. */
+                    fv->type = (dav->coll_type_code == 18) ? TY_NUM : TY_STR;
                     if (!vars_find(scope, s->for_to->var)
                         && !vars_find(&c->globals, s->for_to->var)
                         && !use_global(c, scope, s->for_to->var))
@@ -12662,7 +12671,15 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                  * copia del dict: parità IL/PCode/VM/C, dove TYPENAME è STRING
                                  * e JSON.STRINGIFY(d.ToJson()) dà la stringa quotata
                                  * (Collections/CollectionsDictLists: su C99 usciva
-                                 * l'oggetto — JSON.STRINGIFY non lo quotava). */
+                                 * l'oggetto — JSON.STRINGIFY non lo quotava).
+                                 * TIMELINE: oggetto a chiavi-date ISO-8601. */
+                                if (cv->coll_type_code == 18)
+                                {
+                                    sb_put(&c->out, "gmb_make_val_string(gmb_dict_to_json_iso_keys(");
+                                    sb_ident(&c->out, cv->name);
+                                    sb_put(&c->out, ").data)");
+                                    return;
+                                }
                                 sb_put(&c->out, "gmb_make_val_string(gmb_val_to_json(gmb_make_val_dict(gmb_dict_copy(");
                                 sb_ident(&c->out, cv->name);
                                 sb_put(&c->out, "))).data)");
@@ -12691,6 +12708,14 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             sb_put(&c->out, ")");
                                 return;
                             }
+                            if (mk == GMB_TOK_Clear) {
+                                /* DICT/SORTED.Clear(): prima era un no-op silenzioso
+                                 * (nessun ramo per i dict; `t.Clear()` lasciava le voci). */
+                                sb_put(&c->out, "({ gmb_dict_clear(&");
+                                sb_ident(&c->out, cv->name);
+                                sb_put(&c->out, "); (void)0; })");
+                                return;
+                            }
                             /* F1: MaxPair/MinPair (0 arg) — chiave della voce max/min:
                              * helper condiviso gmb_dict_max_min_key (§0bis runtime). Il runtime
                              * ritorna gmb_string_t, ma i contesti stringa lo avvolgono in
@@ -12705,7 +12730,10 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             }
                         }
                         if (nargs == 1) {
-                            if (mk == GMB_TOK_ContainsKey) {
+                            if (mk == GMB_TOK_ContainsKey || mk == GMB_TOK_Contains) {
+                                /* ContainsKey/Contains su DICT/SORTED (TIMELINE inclusa):
+                                 * appartenenza per CHIAVE, -1/0. Prima `Contains` non era
+                                 * gestito e cadeva nel fallback (0 costante). */
                                 sb_put(&c->out, "(gmb_dict_contains_key(");
                                 sb_ident(&c->out, cv->name);
                                 sb_put(&c->out, ", ");
@@ -15561,7 +15589,9 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                          * IL/PCode/VM-C, che restituiscono una LISTA → la forma stampabile è
                          * "[a, b]" (prima era il testo joined "a, b": sample
                          * Collections/CollectionsFluent, gamba C99). */
-                        sb_put(&c->out, "gmb_val_to_display(gmb_make_val_list(gmb_dict_keys_typed(");
+                        sb_put(&c->out, "gmb_val_to_display(gmb_make_val_list(");
+                        sb_put(&c->out, gmb_c99_var_coll_sorted(c, pv->name)
+                            ? "gmb_dict_keys_typed_sorted(" : "gmb_dict_keys_typed(");
                         sb_ident(&c->out, pv->name);
                         sb_put(&c->out, ")))");
                         break;
@@ -19979,8 +20009,9 @@ static void st_let_assign(ctx_t* c, gmb_stmt_t* s) {
                     sb_put(&c->out, ", ");
                     /* chiave tipizzata (numerica o stringa): emit_dict_key gestisce entrambi
                      * — prima si emetteva sempre `(<key>).data`, che su una chiave NUMERICA
-                     * dava `(2).data` (C non compilabile: "member reference base type 'int'"). */
-                    emit_dict_key(c, s->array_index);
+                     * dava `(2).data` (C non compilabile: "member reference base type 'int'").
+                     * Mappe ORDINATE (TIMELINE): chiave-data = seriale, come Add/Keys. */
+                    emit_dict_key_v(c, s->array_index, !gmb_c99_var_coll_sorted(c, v->name));
                     sb_put(&c->out, ", ");
                     /* DICT<...,JSON>: il RHS e' gia' gmb_val_t → nessun wrap double. */
                     if (v->elem_boxed) { sb_put(&c->out, "("); emit_expr(c, s->value); sb_put(&c->out, "));"); }
@@ -21984,6 +22015,10 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                 int pair = (s->for_to && s->for_to->kind == GMB_EXPR_VAR && s->for_to->var
                             && !keys_only && !values_only);
                 if (keys_only || values_only || pair || entry_only) {
+                    /* TIMELINE (coll_type_code 18): la chiave di iterazione è il SERIALE
+                     * OADate (numero), come First/Keys/ToArray e le altre gambe — lo storage
+                     * C99 è la stringa del seriale, quindi si riconverte a numero. */
+                    int tl_sorted = (av->coll_type_code == 18);
                     var_t* kv = lookup_var(c, s->for_var);
                     var_t* vv = NULL;
                     if (pair) vv = lookup_var(c, s->for_to->var);
@@ -22008,13 +22043,13 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     int pushed_key = 0, pushed_val = 0;
                     {
                         if (key_tmp) {
-                            ind(c); sb_printf(&c->out, "gmb_string_t __fek%d;\n", id);
+                            ind(c); sb_printf(&c->out, "%s __fek%d;\n", tl_sorted ? "gmb_double_t" : "gmb_string_t", id);
                             if (c->n_imap < GMB_IMAP_CAP) {
                                 char* tex0 = (char*)malloc(24);
                                 snprintf(tex0, 24, "__fek%d", id);
                                 c->imap_name[c->n_imap] = kv->name;
                                 c->imap_expr[c->n_imap] = tex0;
-                                c->imap_type[c->n_imap] = TY_STR;
+                                c->imap_type[c->n_imap] = tl_sorted ? TY_NUM : TY_STR;
                                 c->n_imap++;
                                 pushed_key = 1;
                             }
@@ -22037,21 +22072,26 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                     c->indent++;
                     if (keys_only || pair) {
                         /* La CHIAVE è sempre stringa (parità IL/PCode): se la variabile ha un
-                         * tipo statico diverso (es. `k` numerica da un altro uso), il corpo usa
+                        * tipo statico diverso (es. `k` numerica da un altro uso), il corpo usa
                          * un temp nascosto via imap e la variabile viene riallineata a fine loop. */
                         if (kv->type == TY_STR && !kv->gkind && !kv->vclass[0] && !kv->is_array) {
                             ind(c);
                             emit_ident(c, kv->name);
                             sb_printf(&c->out, " = gmb_string_alloc(gmb_list_get(__fkp, __fei%d).v_string.data);\n", id);
+                        } else if (tl_sorted) {
+                            ind(c); sb_printf(&c->out, "__fek%d = gmb_string_to_double(gmb_list_get(__fkp, __fei%d).v_string);\n", id, id);
                         } else {
                             ind(c); sb_printf(&c->out, "__fek%d = gmb_string_alloc(gmb_list_get(__fkp, __fei%d).v_string.data);\n", id, id);
                         }
                     }
                     if (entry_only) {
                         /* KeyValuePair {Key,Value} come gmb_val_t dict: e.Key/e.Value passano da
-                         * gmb_json_path_text (is_json_path_member). */
+                         * gmb_json_path_text (is_json_path_member). TIMELINE: Key = seriale
+                         * numerico (parità First/ToArray/altre gambe). */
                         ind(c); sb_printf(&c->out, "gmb_dict_t __kvd%d = gmb_dict_new();\n", id);
-                        ind(c); sb_printf(&c->out, "gmb_dict_set(&__kvd%d, \"Key\", gmb_make_val_string(gmb_list_get(__fkp, __fei%d).v_string.data));\n", id, id);
+                        ind(c); sb_printf(&c->out, "gmb_dict_set(&__kvd%d, \"Key\", ", id);
+                        if (tl_sorted) sb_printf(&c->out, "gmb_make_val_double(gmb_string_to_double(gmb_list_get(__fkp, __fei%d).v_string)));\n", id);
+                        else sb_printf(&c->out, "gmb_make_val_string(gmb_list_get(__fkp, __fei%d).v_string.data));\n", id);
                         ind(c); sb_printf(&c->out, "gmb_dict_set(&__kvd%d, \"Value\", gmb_dict_get(", id);
                         emit_ident(c, av->name);
                         sb_printf(&c->out, ", gmb_list_get(__fkp, __fei%d).v_string.data));\n", id);
@@ -22121,7 +22161,8 @@ static void st_for(ctx_t* c, gmb_stmt_t* s) {
                         if (kv->type != TY_STR || kv->gkind || kv->vclass[0] || kv->is_array) {
                             ind(c);
                             emit_ident(c, kv->name);
-                            sb_printf(&c->out, " = (gmb_double_t)atof(__fek%d.data ? __fek%d.data : \"\");\n", id, id);
+                            if (tl_sorted) sb_printf(&c->out, " = __fek%d;\n", id);
+                            else sb_printf(&c->out, " = (gmb_double_t)atof(__fek%d.data ? __fek%d.data : \"\");\n", id, id);
                         }
                     }
                     c->indent--;

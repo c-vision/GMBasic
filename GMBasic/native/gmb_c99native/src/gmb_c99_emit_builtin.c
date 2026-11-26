@@ -1418,8 +1418,11 @@ int js_stringify(ctx_t* c, gmb_expr_t** a, int n) {   /* §0quater: usata anche 
                             if (gmb_c99_var_coll_sorted(c, kp)) sb_put(&c->out, "values_sorted(");
                             else sb_put(&c->out, "values(");
                         } else {
-                            if (gmb_c99_var_coll_sorted(c, kp)) sb_put(&c->out, "keys_sorted(");
-                            else sb_put(&c->out, "keys(");
+                            /* _typed: chiavi col tipo REALE (numerico per date/seriali di
+                             * TIMELINE e mappe a chiave numerica), come il contesto VALORE
+                             * (`emit_call`): prima questa forma dava stringhe sempre. */
+                            if (gmb_c99_var_coll_sorted(c, kp)) sb_put(&c->out, "keys_typed_sorted(");
+                            else sb_put(&c->out, "keys_typed(");
                         }
                         emit_ident(c, kv->name);
                         sb_put(&c->out, ")))");

@@ -947,6 +947,25 @@ public sealed partial class IlProgramCompiler
             return;
         }
 
+        // TIMELINE: t(data) = valore — scrittura per CHIAVE DATA (Add con sovrascrittura),
+        // dispatch runtime condiviso (normalizza la data → seriale). Prima cadeva nel path
+        // array ("accesso a un array non DIMensionato").
+        var aetTimelineType = NormalizeInferredType(_program.Symbols.GetSymbol(target.SymbolId).DataType);
+        if (aetTimelineType is TimelineType)
+        {
+            if (target.Indices.Length != 1)
+                throw new NotSupportedException("Backend IL: indicizzazione di una TIMELINE richiede 1 indice (chiave data).");
+            EmitLoadVariable(target.SymbolId);
+            EmitExpression(target.Indices[0]);
+            var tlIdxClr = DataTypeMapper.Map(NormalizeInferredType(InferType(target.Indices[0])), _types, _classTypes);
+            if (tlIdxClr.IsValueType) _il.Emit(OpCodes.Box, tlIdxClr);
+            EmitExpression(value);
+            var tlValClr = DataTypeMapper.Map(NormalizeInferredType(InferType(value)), _types, _classTypes);
+            if (tlValClr.IsValueType) _il.Emit(OpCodes.Box, tlValClr);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionIndexSet), typeof(object), typeof(object), typeof(object)));
+            return;
+        }
+
         // MyList2(0) = "BETA" su una LIST (non un array): usa l'indexer CLR List<T>[int].
         // Il tipo statico può essere AnyType (`DIM MyList2 = MyList.ToList()` senza AS) — il
         // local è object boxed: dispatch runtime via IlRuntime.CollectionIndexSet.

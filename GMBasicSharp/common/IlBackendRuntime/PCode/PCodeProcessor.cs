@@ -1715,6 +1715,29 @@ internal sealed partial class PCodeProcessor
                 }
                 else if (arr is System.Collections.IEnumerable genEnumP && numIndices == 1)
                 {
+                    /* TIMELINE: la entry di iterazione è {Key:seriale, Value:…} (parità DICT
+                     * e VM/C/C99) — prima l'elemento grezzo era un KeyValuePair<DateTimeOffset,T>. */
+                    if (arr.GetType().Name.StartsWith("Timeline", StringComparison.Ordinal)
+                        && arr.GetType().Namespace?.StartsWith("CommonLib.Collections", StringComparison.Ordinal) == true)
+                    {
+                        var tidx = Convert.ToInt32(keys[0] ?? 0);
+                        object? titem = null;
+                        var tk = 0;
+                        foreach (var it in genEnumP) { if (tk++ == tidx) { titem = it; break; } }
+                        if (titem is null) { task.PushRef(null); return true; }
+                        var ttype = titem.GetType();
+                        var tkey = ttype.GetProperty("Key")?.GetValue(titem);
+                        var tval = ttype.GetProperty("Value")?.GetValue(titem);
+                        double tserial = tkey switch
+                        {
+                            DateTimeOffset dto => dto.DateTime.ToOADate(),
+                            DateTime dtl => dtl.ToOADate(),
+                            null => 0.0,
+                            _ => Convert.ToDouble(tkey)
+                        };
+                        task.PushRef(new System.Collections.DictionaryEntry(tserial, tval));
+                        return true;
+                    }
                     var gidxP = Convert.ToInt32(keys[0] ?? 0);
                     object? gitemP = null;
                     var gkP = 0;
@@ -3680,7 +3703,8 @@ internal sealed partial class PCodeProcessor
                     {
                         /* Timeline/Graph: forme canoniche nel dispatcher condiviso
                          * ({"Key":seriale,"Value":...} e lista {"node","dist"} ordinata). */
-                        if (((upName is "FIRST" or "LAST" or "GETRANGE" or "KEYS")
+                        if (((upName is "FIRST" or "LAST" or "GETRANGE" or "KEYS" or "CONTAINSKEY"
+                              or "CONTAINS" or "GET" or "REMOVE" or "VALUES" or "TOARRAY" or "CLEAR" or "COUNT")
                              && instType.Name.StartsWith("Timeline", StringComparison.Ordinal))
                             || (upName == "DIJKSTRA"
                                 && instType.Name.StartsWith("Graph", StringComparison.Ordinal)))

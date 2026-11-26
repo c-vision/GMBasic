@@ -732,6 +732,16 @@ internal sealed partial class PCodeProcessor
                     try { task.PushRef(idx >= 0 && idx < str.Length ? str[idx].ToString() : null); }
                     catch { task.PushRef(null); }
                 }
+                /* TIMELINE (CommonLib): è IEnumerable ma l'indicizzazione è per CHIAVE
+                 * DATA, non posizionale — prima l'accesso cadeva nel ramo enumerabile
+                 * (chiave → int) e lanciava "Invalid cast from DateTime to Int32".
+                 * Il runtime condiviso normalizza la data → seriale. */
+                else if (arr is not null && numIndices == 1
+                         && arr.GetType().Name.StartsWith("Timeline", StringComparison.Ordinal)
+                         && arr.GetType().Namespace?.StartsWith("CommonLib.Collections", StringComparison.Ordinal) == true)
+                {
+                    task.PushRef(IlRuntime.CollectionIndexGet(arr, keys[0]));
+                }
                 /* Collezioni enumerabili NON IList/IDictionary (CommonLib TRIE e affini):
                  * elemento POSIZIONALE nell'ordine di enumerazione. Senza, il FOR EACH
                  * (UBOUND + LOAD_ELEMENT_POSITIONAL) iterava correttamente ma stampava
@@ -818,6 +828,13 @@ internal sealed partial class PCodeProcessor
                 else if (arr is CommonLib.Collections.IKeyValueIndexable kvi && numIndices == 1)
                 {
                     try { kvi.Set(keys[0], val); } catch { }
+                }
+                // TIMELINE: scrittura per CHIAVE DATA (Add con sovrascrittura).
+                else if (arr is not null && numIndices == 1
+                         && arr.GetType().Name.StartsWith("Timeline", StringComparison.Ordinal)
+                         && arr.GetType().Namespace?.StartsWith("CommonLib.Collections", StringComparison.Ordinal) == true)
+                {
+                    IlRuntime.CollectionIndexSet(arr, keys[0], val);
                 }
                 return true;
             }
