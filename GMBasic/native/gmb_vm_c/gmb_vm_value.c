@@ -83,6 +83,22 @@ uint32_t gmb_str_len(const gmb_obj_string_t* s)
     return s ? s->length : 0;
 }
 
+/* Chiave STRINGA di un indice numerico (dict/sorted): una DATA (tag GMB_BT_DATE) usa
+ * l'ISO-8601 "yyyy-MM-ddTHH:mm:ss", come IL/PCode/C99 (`d(DATEVALUE(...))` →
+ * "2023-01-10T00:00:00"); un numero il canone %.15g. Unica sede (§0bis): prima ogni sito
+ * faceva snprintf("%.15g") e la chiave-data usciva "44936". */
+void gmb_vm_key_from_num(char* buf, size_t cap, double num, int is_date)
+{
+    if (!buf || cap == 0) return;
+    if (is_date)
+    {
+        gmb_string_t iso = gmb_dt_datetime_iso(num);
+        snprintf(buf, cap, "%s", iso.data ? iso.data : "");
+        gmb_string_free(&iso);
+    }
+    else snprintf(buf, cap, "%.15g", num);
+}
+
 /* Retain/release generici per qualsiasi gmb_obj_t (canale/wg/future/stringa) */
 void gmb_obj_retain(gmb_obj_t* o) { if (o) o->refcount++; }
 void gmb_obj_release(gmb_obj_t* o)

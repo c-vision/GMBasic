@@ -11000,11 +11000,12 @@ static void emit_make_val(ctx_t* c, const var_t* v, gmb_expr_t* arg) {
     }
 }
 /* chiave dict: stringa → .data; numerica → gmb_double_to_string(...).data */
-static void emit_dict_key(ctx_t* c, gmb_expr_t* e) {
-    /* DATA come CHIAVE: canone ISO-8601 "yyyy-MM-ddTHH:mm:ss" (stessa forma usata da
-     * IL/PCode e dal JSON delle date; `gmb_dt_datetime_iso` è il formatter unico). Prima
-     * il C99 usava il seriale come stringa ("44936"). */
-    if (gmb_expr_is_datetime(c, e)) {
+static void emit_dict_key_v(ctx_t* c, gmb_expr_t* e, int date_iso) {
+    /* DATA come CHIAVE: ISO-8601 "yyyy-MM-ddTHH:mm:ss" (canone del DICT, stessa forma del
+     * JSON delle date; `gmb_dt_datetime_iso` è il formatter unico). Per le mappe ORDINATE
+     * (TIMELINE/SORTED) resta il SERIALE (date_iso=0): l'ordinamento e le query per
+     * intervallo confrontano la chiave numerica. Prima il C99 usava il seriale per entrambi. */
+    if (date_iso && gmb_expr_is_datetime(c, e)) {
         sb_put(&c->out, "gmb_dt_datetime_iso((gmb_double_t)(");
         emit_expr(c, e);
         sb_put(&c->out, ")).data");
@@ -11020,6 +11021,7 @@ static void emit_dict_key(ctx_t* c, gmb_expr_t* e) {
         sb_put(&c->out, ")).data");
     }
 }
+static void emit_dict_key(ctx_t* c, gmb_expr_t* e) { emit_dict_key_v(c, e, 1); }
 static void emit_list_literal(ctx_t* c, gmb_expr_t* e);
 static void emit_set_literal(ctx_t* c, gmb_expr_t* e);
 static void emit_dict_literal(ctx_t* c, gmb_expr_t* e);
@@ -12690,7 +12692,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 sb_put(&c->out, "(gmb_dict_contains_key(");
                                 sb_ident(&c->out, cv->name);
                                 sb_put(&c->out, ", ");
-                                emit_dict_key(c, args[0]);
+                                emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, cv->name));
                                 sb_put(&c->out, ") ? -1 : 0)");
                                 return;
                             }
@@ -12703,7 +12705,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 sb_put(&c->out, "(gmb_dict_remove(&");
                                 sb_ident(&c->out, cv->name);
                                 sb_put(&c->out, ", ");
-                                emit_dict_key(c, args[0]);
+                                emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, cv->name));
                                 sb_put(&c->out, ") ? -1 : 0)");
                                 return;
                             }
@@ -12712,14 +12714,14 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 sb_put(&c->out, "gmb_dict_get(");
                                 sb_ident(&c->out, cv->name);
                                 sb_put(&c->out, ", ");
-                                emit_dict_key(c, args[0]);
+                                emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, cv->name));
                                 sb_put(&c->out, ")");
                                 return;
                                 }
                                 sb_put(&c->out, cv->elem_str ? "gmb_string_alloc(gmb_dict_get(" : "gmb_dict_get(");
                                 sb_ident(&c->out, cv->name);
                                 sb_put(&c->out, ", ");
-                                emit_dict_key(c, args[0]);
+                                emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, cv->name));
             sb_put(&c->out, ")");
                                 if (cv->elem_str) sb_put(&c->out, ".v_string.data)");
                                 else sb_put(&c->out, ".v_double");
@@ -12734,7 +12736,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             sb_put(&c->out, "({ gmb_dict_set(&");
                             sb_ident(&c->out, cv->name);
                             sb_put(&c->out, ", ");
-                            emit_dict_key(c, args[0]);
+                            emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, cv->name));
                             sb_put(&c->out, ", ");
                             /* DICT<...,JSON>: il valore e' gia' gmb_val_t → nessun wrap. */
                             if (cv->elem_boxed) { emit_expr(c, args[1]); }
@@ -13379,20 +13381,20 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
             sb_put(&c->out, "gmb_dict_get(");
             emit_ident(c, av->name);
             sb_put(&c->out, ", ");
-            emit_dict_key(c, args[0]);
+            emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, av->name));
             sb_put(&c->out, ")");
         } else {
             if (av->elem_str) {
                 sb_put(&c->out, "gmb_string_alloc(gmb_dict_get(");
                 emit_ident(c, av->name);
                 sb_put(&c->out, ", ");
-                emit_dict_key(c, args[0]);
+                emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, av->name));
                 sb_put(&c->out, ").v_string.data)");
             } else {
                 sb_put(&c->out, "gmb_dict_get_or_nan(");
                 emit_ident(c, av->name);
                 sb_put(&c->out, ", ");
-                emit_dict_key(c, args[0]);
+                emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, av->name));
             sb_put(&c->out, ")");
             }
         }

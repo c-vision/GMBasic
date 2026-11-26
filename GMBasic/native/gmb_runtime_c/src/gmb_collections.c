@@ -1022,8 +1022,20 @@ int64_t gmb_coll_bag_unique_count(int64_t h)
 /* ---- Map-like (7=Tree, 8=AVL, 9=RedBlack, 26=BPlusTree, 18=Timeline, 19=HashRing) ----
  * Implementazione semplice: lista di coppie {key, value}. Per il sample è sufficiente
  * (le mappe C# reali usano ordinamento bilanciato; qui la semantica osservabile conta). */
+/* Chiave di una mappa ORDINATA: una DATA è il suo seriale OADate (numero). È la stessa
+ * identità che usano il timeline IL/PCode e il C99 (`44936`), ed è l'unica rappresentazione
+ * confrontabile/ordinabile: con la chiave DATETIME `kv_key_less`/`kv_key_equals` non la
+ * riconoscevano (Between vuoto, ContainsKey(date) falso sul sample CollectionsModern).
+ * Valore NON data: invariato. */
+static gmb_val_t kv_norm_key(gmb_val_t k)
+{
+    if (k.kind == GMB_TYPE_DATETIME) return gmb_make_val_double(k.v_double);
+    return k;
+}
+
 static int kv_key_less(gmb_val_t a, gmb_val_t b)
 {
+    a = kv_norm_key(a); b = kv_norm_key(b);
     if ((a.kind == GMB_TYPE_DOUBLE || a.kind == GMB_TYPE_INT) &&
         (b.kind == GMB_TYPE_DOUBLE || b.kind == GMB_TYPE_INT))
     {
@@ -1038,6 +1050,7 @@ static int kv_key_less(gmb_val_t a, gmb_val_t b)
 
 static int kv_key_equals(gmb_val_t a, gmb_val_t b)
 {
+    a = kv_norm_key(a); b = kv_norm_key(b);
     if ((a.kind == GMB_TYPE_DOUBLE || a.kind == GMB_TYPE_INT) &&
         (b.kind == GMB_TYPE_DOUBLE || b.kind == GMB_TYPE_INT))
     {
@@ -1063,6 +1076,7 @@ int gmb_coll_kv_set(int64_t h, gmb_val_t key, gmb_val_t v)
 {
     gmb_collection_t* c = coll_get(h);
     if (!c) return -1;
+    key = kv_norm_key(key);
     gmb_coll_item_t* it = kv_find(c, key);
     if (it)
     {
@@ -1101,7 +1115,7 @@ gmb_val_t gmb_coll_kv_get(int64_t h, gmb_val_t key)
     gmb_collection_t* c = coll_get(h);
     gmb_val_t nil = gmb_val_nil();
     if (!c) return nil;
-    gmb_coll_item_t* it = kv_find(c, key);
+    gmb_coll_item_t* it = kv_find(c, kv_norm_key(key));
     return it ? it->v : nil;
 }
 
@@ -1109,7 +1123,7 @@ int gmb_coll_kv_contains(int64_t h, gmb_val_t key)
 {
     gmb_collection_t* c = coll_get(h);
     if (!c) return 0;
-    return kv_find(c, key) ? -1 : 0;
+    return kv_find(c, kv_norm_key(key)) ? -1 : 0;
 }
 
 int gmb_coll_kv_remove(int64_t h, gmb_val_t key)
@@ -1231,6 +1245,7 @@ gmb_val_t* gmb_coll_timeline_range(int64_t h, double lo, double hi, int* out_len
         double kd = 0;
         if (it->key.kind == GMB_TYPE_DOUBLE) kd = it->key.v_double;
         else if (it->key.kind == GMB_TYPE_INT) kd = (double)it->key.v_int;
+        else if (it->key.kind == GMB_TYPE_DATETIME) kd = it->key.v_double;   /* OADate */
         else continue;
         if (kd >= lo && kd <= hi)
         {

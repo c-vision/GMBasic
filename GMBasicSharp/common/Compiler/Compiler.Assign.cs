@@ -470,7 +470,7 @@ public sealed partial class Compiler
             }
             else if (hasInitialValue)
             {
-                EmitCollectionAwareInitializer(finalVariableType, declaration.InitialValue!);
+                EmitCollectionAwareInitializer(finalVariableType, CoerceDateValueExpr(finalVariableType, declaration.InitialValue!));
 
                 // Vedi commento in VisitLetStatement: un UDT (value type) va sempre copiato per
                 // valore quando assegnato a un target UserDefinedType, anche in un
@@ -817,7 +817,7 @@ public sealed partial class Compiler
                 continue;
             }
 
-            VisitExpression(assignment.Value);
+            VisitExpression(CoerceDateValueExpr(InferExpressionTypeFromTarget(assignment.Target), assignment.Value));
             // Macro &/EVAL che rende NIL su target NUMERICO: coercizione a 0 (parità IL, dove
             // il CLR converte null→0 nello store tipizzato). Senza, PCode lasciava null nello
             // slot → PRINT vuoto (bug ClipperMacroLocalVar local-eval-noleak: PCode stampava
@@ -1226,6 +1226,27 @@ public sealed partial class Compiler
         EmitByte((byte)OpCode.OP_CALL_BUILTIN);
         EmitShort((ushort)fn);
         EmitByte(1);
+    }
+
+    /* Valore NUMERICO assegnato a una variabile DATA: sul bytecode il numero non porta il
+     * tipo, quindi PCode/VM-C lo conserverebbero come numero (PRINT = seriale). Si avvolge
+     * nel builtin DATEADD("d", 0, v), che su TUTTE le gambe rende una data (DateTime/tag
+     * GMB_BT_DATE) — nessun canone numerico→data esisteva prima. */
+    private Expr CoerceDateValueExpr(DataType? targetType, Expr value)
+    {
+        if (targetType is not (DateTimeType or DateType)) return value;
+        if (IsDateProducingExpr(value)) return value;
+        if (!IsNumericTargetType(CompilerInferExpressionType(value))) return value;
+        var pos = value.Position;
+        return new BuiltinFunctionCallExpr(
+            new Token(TokenKind.Identifier, "DATETIME", null, pos),
+            new Token(TokenKind.DateAdd, "DATEADD", null, pos),
+            [
+                new StringExpr("d", new Token(TokenKind.StringLiteral, "d", "d", pos)),
+                new NumberExpr(0, new Token(TokenKind.Number, "0", null, pos)),
+                value
+            ],
+            new DateTimeType());
     }
 
     private void EmitCoerceForTarget(DataType? targetType, Expr? valueExpr)

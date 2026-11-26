@@ -135,6 +135,8 @@ gmb_obj_string_t* gmb_str_cstr(const char* s);
 void gmb_str_retain(gmb_obj_string_t* s);
 void gmb_str_release(gmb_obj_string_t* s);
 uint32_t gmb_str_len(const gmb_obj_string_t* s);
+/* Chiave stringa di un indice numerico: DATE (tag GMB_BT_DATE) → ISO-8601, numero → %.15g. */
+void gmb_vm_key_from_num(char* buf, size_t cap, double num, int is_date);
 /* Appende `len` byte di `data` a `s` in place (realloc + crescita geometrica della
  * capacità). Il CHIAMANTE deve aver già verificato `s->header.refcount == 1` (nessun
  * altro alias) -- questa funzione non lo ricontrolla, si fida della precondizione. */

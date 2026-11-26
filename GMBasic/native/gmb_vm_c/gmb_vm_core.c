@@ -13784,7 +13784,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                          * Prima qui si leggeva solo la stringa: args[0].type==1 finiva su k="". */
                         char kb[64];
                         const char* k;
-                        if (args[0].type == 1) { snprintf(kb, sizeof(kb), "%.15g", args[0].num); k = kb; }
+                        if (args[0].type == 1) { gmb_vm_key_from_num(kb, sizeof(kb), args[0].num, args[0].basic_type == GMB_BT_DATE); k = kb; }
                         else if (args[0].type == 2 && args[0].ref) k = ((gmb_obj_string_t*)args[0].ref)->data;
                         else k = "";
                         /* Convenzione BASIC: TRUE = -1 (parità IL/PCode: il MiniTest set_get_grafe

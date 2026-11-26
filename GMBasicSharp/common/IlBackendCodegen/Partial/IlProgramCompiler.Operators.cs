@@ -1008,6 +1008,25 @@ public sealed partial class IlProgramCompiler
                 return;
             }
         }
+        // Target DATA/ORA e valore NUMERICO: il local è un DateTime CLR (DataMapper:
+        // DateType/TimeType/DateTimeType → DateTime) e lo store di un double è IL INVALIDO
+        // (`DIM d AS DATETIME : d = 43832` → InvalidProgramException, anche su `YEAR(d)`).
+        // Canone del linguaggio: il numero È il seriale OADate → DateTime.FromOADate.
+        if (targetType is DateTimeType or DateType or TimeType)
+        {
+            var dtValType = NormalizeInferredType(InferType(value));
+            if (dtValType is DateTimeType or DateType or TimeType) return;   /* già una data */
+            if (dtValType is AnyType)
+            {
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CoerceDynamicDate), typeof(object)));
+                return;
+            }
+            if (IlConversion.IsNumeric(dtValType))
+            {
+                _il.Emit(OpCodes.Call, _types.IlRuntimeFromOADateMethod);
+            }
+            return;
+        }
         // Skip se target NON è numerico: LambdaExpr → FunctionType, array/UDT...
         // Non chiamiamo InferType su tipi non-numerici per evitare NotSupportedIlExpressionException.
         if (!IlConversion.IsNumeric(targetType)) return;
