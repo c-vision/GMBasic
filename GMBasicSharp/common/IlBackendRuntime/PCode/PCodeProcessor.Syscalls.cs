@@ -255,7 +255,7 @@ internal sealed partial class PCodeProcessor
          * catturabile da TRY/CATCH e ON ERROR — con lo STESSO testo delle altre gambe.
          * Senza questo catch l'eccezione sfuggiva al TRY (divergenza misurata su
          * scene_texture_file: il file inesistente fermava la gamba). */
-        if (code >= (ushort)SysCall.SCENE_RESET && code <= (ushort)SysCall.SCENE_PICK)
+        if (code >= (ushort)SysCall.SCENE_RESET && code <= (ushort)SysCall.SCENE_LIFT)
         {
             try { ExecuteSyscallInner(task, code, argCount); }
             catch (Basic.BasicException bex) { RaiseBasicError(task, 5.0, bex.Message); }
@@ -1070,6 +1070,41 @@ internal sealed partial class PCodeProcessor
                 CommonLib.Scene3DNative.Save(path);
                 break;
             }
+            // P5: superficie interattiva (specifica §3.3). Argomenti nello stack
+            // nell'ordine della sorgente → si estraggono al contrario.
+            case SysCall.SCENE_ZONE:
+            {
+                var tag = argCount >= 8 ? PopString(task) : null;
+                // Ordine di sorgente: id, x1, y1, x2, y2, z1, z2 → estrazione al contrario.
+                var z2 = PopNum(task); var z1 = PopNum(task);
+                var y2 = PopNum(task); var x2 = PopNum(task);
+                var y1 = PopNum(task); var x1 = PopNum(task);
+                var id = (long)PopNum(task);
+                CommonLib.Scene3DNative.Zone(id, x1, y1, x2, y2, z1, z2, tag);
+                break;
+            }
+            case SysCall.SCENE_PLAYER:
+            {
+                var step = PopNum(task); var eye = PopNum(task);
+                var height = PopNum(task); var radius = PopNum(task);
+                CommonLib.Scene3DNative.Player(radius, height, eye, step);
+                break;
+            }
+            case SysCall.SCENE_MOVE:
+            {
+                var right = PopNum(task); var forward = PopNum(task);
+                CommonLib.Scene3DNative.Move(forward, right);
+                break;
+            }
+            case SysCall.SCENE_TURN:
+            {
+                var dPitch = PopNum(task); var dYaw = PopNum(task);
+                CommonLib.Scene3DNative.Turn(dYaw, dPitch);
+                break;
+            }
+            case SysCall.SCENE_LIFT:
+                CommonLib.Scene3DNative.Lift(PopNum(task));
+                break;
             case SysCall.PALETTE_USE:
             {
                 var name = PopString(task) ?? "";

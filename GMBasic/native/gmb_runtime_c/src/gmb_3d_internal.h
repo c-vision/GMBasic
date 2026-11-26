@@ -45,6 +45,89 @@ struct gmb_3d_world {
 /* Imposta gmb_3d_last_error(). Vuoto = errore azzerato. */
 void gmb_3d_set_error(const char* msg);
 
+/* Contatore delle allocazioni del 3D (definito in gmb_3d_frame.c, letto da
+ * gmb_3d_alloc_count): serve a DIMOSTRARE che il frame non alloca. */
+void gmb_3d_note_alloc(unsigned long n);
+
+/* gmb_3d_scene.c — matrici del renderer e culling per oggetto (P5, M-CULL).
+ * La matematica sta UNA volta sola fuori dalla facciata dei comandi, che resta
+ * sotto le 1200 righe (§0quater). 
+ */
+void gmb_3d_m4_mul(float* out, const float* a, const float* b);            /* out = a*b */
+void gmb_3d_m4_perspective(float* m, float fovy, float aspect, float zn, float zf);
+void gmb_3d_m4_look_at(float* m, const float eye[3], const float at[3], const float up[3]);
+void gmb_3d_m4_model(float* m, float x, float y, float z, float yaw_deg);
+/* Sei piani del frustum in coordinate MONDO dalla view-projection (column-major). */
+void gmb_3d_frustum_planes(const float* vp, float planes[6][4]);
+/* 1 = l'oggetto (AABB nello spazio oggetto + modello) è interamente fuori da almeno
+ * un piano: il chiamante conta i suoi triangoli in CULLED e salta il draw. */
+int  gmb_3d_object_outside(const float planes[6][4], const float* model,
+                           const float bmin[3], const float bmax[3]);
+
+/* Superficie interattiva (gmb_3d_scene_actor.c, P5): AABB MONDO degli oggetti,
+ * camera condivisa con la facciata, corpo e zone. Il corpo e le zone vivono nel
+ * modulo actor; la camera resta UNA sola, in gmb_3d_cmd.c, e si legge/scrive da
+ * qui (nessuna seconda copia). */
+typedef struct gmb_3d_aabb {
+    float min[3], max[3];   /* y = altezza (convenzione SCENE) */
+    int   flags;            /* M-FLAGS: 4 = passabile */
+} gmb_3d_aabb_t;
+
+/* --- buffer della scena a capacità dinamica (gmb_3d_scene_buf.c, P5) -------
+ * Il primo blocco di P5 aveva tetti statici (32768 vertici, 16384 triangoli,
+ * 512 oggetti) che rendevano irraggiungibile l'accettazione dei 200k triangoli.
+ * I buffer partono da quei valori e CRESCONO per raddoppio alla dichiarazione
+ * della geometria; il frame legge solo capacità già riservata (nessuna
+ * allocazione per frame). I tetti restano come guardia di memoria. */
+#define GMB_SCENE_VERTS_INIT 32768
+#define GMB_SCENE_TRIS_INIT  16384
+#define GMB_SCENE_OBJS_INIT  512
+#define GMB_SCENE_VERTS_MAX  (1 << 22)   /* 4.194.304 vertici */
+#define GMB_SCENE_TRIS_MAX   (1 << 21)   /* 2.097.152 triangoli */
+#define GMB_SCENE_OBJS_MAX   (1 << 16)   /* 65.536 oggetti */
+
+/* Un oggetto della scena: run di vertici/triangoli, trasformazione (traslazione
+ * + rotazione su y), tinta, flag di materiale e AABB nello spazio oggetto. */
+typedef struct gmb_scene_obj {
+    int first_vert, nvert, first_tri, ntri;
+    float x, y, z, yaw;
+    unsigned char r, g, b;
+    unsigned char flags;   /* M-FLAGS: 1 masked, 2 traslucido, 4 passabile, 8 see-through, 16 due lati */
+    unsigned char light;   /* luce base dell'oggetto 0..255 */
+    unsigned char has_nrm; /* 1 = i vertici dichiarano la normale (M-LIGHT-N) */
+    float bmin[3], bmax[3];
+} gmb_scene_obj_t;
+
+/* Stato della geometria: contatori, buffer e capacità. `cur` = oggetto corrente
+ * (-1 = nessuno). Gli scratch `order`/`dist` (traslucidi) e `bounds` (AABB
+ * mondo) sono dimensionati sulla capacità degli oggetti, quindi il RENDER e le
+ * quote non allocano. */
+typedef struct gmb_3d_scene_geom {
+    int nv, nt, nobj, cur;
+    int cap_v, cap_t, cap_o;
+    float *pos, *uv, *nrm, *nrm_w;
+    int* idx;
+    unsigned char* light;
+    unsigned char* lit_tri;
+    gmb_scene_obj_t* obj;
+    int* order;
+    float* dist;
+    gmb_3d_aabb_t* bounds;
+} gmb_3d_scene_geom_t;
+
+gmb_3d_scene_geom_t* gmb_3d_scene_geom(void);
+void gmb_3d_scene_geom_clear(void);          /* contatori a zero, capacità conservata */
+int  gmb_3d_scene_reserve_verts(int need);
+int  gmb_3d_scene_reserve_tris(int need);
+int  gmb_3d_scene_reserve_objs(int need);
+/* AABB mondo di tutti gli oggetti con geometria, buffer persistente. */
+const gmb_3d_aabb_t* gmb_3d_scene_bounds_all(int* count);
+void gmb_3d_scene_set_texture(unsigned char* buf, int w, int h);
+void gmb_3d_scene_camera_get(float eye[3], float* yaw, float* pitch);
+void gmb_3d_scene_camera_set(float x, float y, float z, float yaw, float pitch);
+void gmb_3d_actor_reset(void);
+void gmb_3d_actor_sync_feet(double eye_y);
+
 /* SCENE PICK (gmb_3d_pick.c). Lo stato della scena resta UNO, in gmb_3d_cmd.c:
  * qui si espone solo il riferimento al suo target e il flag additivo del buffer
  * di id, cosi' VIEW/RENDER possono agganciarlo senza duplicare la scena. */

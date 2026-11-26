@@ -11433,6 +11433,52 @@ static void gmb_bf_scene_pick(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, i
                                          argc >= 2 ? (int64_t)vm_num(&args[1]) : 0);
 }
 
+/* ── P5 — superficie interattiva (specifica §3.3) ─────────────────────────────────────────
+ * Camera/corpo, quote e zone. Come le altre letture SCENE: nessuno stato qui, si
+ * chiama la facciata `gmb_scene_*` (gmb_3d_scene_actor.c). ZONETAG costruisce una
+ * stringa della VM: la facciata ne copia i byte in `gmb_str_cstr` subito. */
+static void gmb_bf_scene_x(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_x(); }
+static void gmb_bf_scene_y(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_y(); }
+static void gmb_bf_scene_z(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_z(); }
+static void gmb_bf_scene_eye(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_eye(); }
+static void gmb_bf_scene_yaw(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_yaw(); }
+static void gmb_bf_scene_pitch(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_pitch(); }
+static void gmb_bf_scene_hit(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_hit(); }
+static double scene_arg(gmb_stack_entry_t* args, int argc, int i)
+{ return i < argc ? vm_num(&args[i]) : 0.0; }
+static void gmb_bf_scene_floorat(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    bout->result = gmb_scene_floor_at(scene_arg(args, argc, 0), scene_arg(args, argc, 1), scene_arg(args, argc, 2));
+}
+static void gmb_bf_scene_ceiling(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    bout->result = gmb_scene_ceil_at(scene_arg(args, argc, 0), scene_arg(args, argc, 1), scene_arg(args, argc, 2));
+}
+static void gmb_bf_scene_zone(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    bout->result = (double)gmb_scene_zone_at(scene_arg(args, argc, 0), scene_arg(args, argc, 1),
+                                             scene_arg(args, argc, 2));
+}
+static void gmb_bf_scene_zonetag(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    const char* s = gmb_scene_zonetag_text((int64_t)scene_arg(args, argc, 0));
+    gmb_obj_string_t* os = gmb_str_cstr(s ? s : "");
+    bout->is_num = 0;
+    bout->result_ref = (gmb_obj_t*)os;
+    bout->result_ref_bt = GMB_BT_STRING;
+}
+
 /* ── TEMPO A PASSO FISSO / CLOCK (2026-11-20) ────────────────────────────────────────────
  * Letture del dominio CLOCK. Come le altre gambe: nessuno stato qui, si chiama la facciata
  * `gmb_clock_frame_*` del runtime condiviso (gmb_clock.c). Nessuna accetta argomenti. */
@@ -16954,6 +17000,18 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3917, gmb_bf_scene_hash },
     { 3918, gmb_bf_scene_pixel },
     { 3919, gmb_bf_scene_pick },
+    /* P5 — superficie interattiva (BuiltInFunction 3920..3930). */
+    { 3920, gmb_bf_scene_zone },
+    { 3921, gmb_bf_scene_zonetag },
+    { 3922, gmb_bf_scene_x },
+    { 3923, gmb_bf_scene_y },
+    { 3924, gmb_bf_scene_z },
+    { 3925, gmb_bf_scene_eye },
+    { 3926, gmb_bf_scene_yaw },
+    { 3927, gmb_bf_scene_pitch },
+    { 3928, gmb_bf_scene_hit },
+    { 3929, gmb_bf_scene_floorat },
+    { 3930, gmb_bf_scene_ceiling },
     { 826, gmb_bf_796_c826 },
     { 827, gmb_bf_796_c827 },
     { 828, gmb_bf_796_c828 },

@@ -2532,4 +2532,25 @@ public enum TokenKind
     SceneThing,
     SceneAa,      // SSAA 2x della scena (spento di default)
     ScenePick,    // SCENE PICK on|off + SCENE.PICK(x, y): buffer di id additivo
+    // P5 — superficie interattiva (specifica §3.3): corpo, movimento, quote e
+    // zone. In coda (ordinali canonici): mai inserire nel mezzo. `MOVE`, `ZONE`,
+    // `PLAYER`, `TURN` e `LIFT` non diventano keyword: il parser normalizza il
+    // lessema del verbo nel TokenKind dedicato (§12), come per gli altri verbi
+    // SCENE. `Zone` e `ZoneTag` sono anche letture (`SCENE.ZONE(x,y,z)`,
+    // `SCENE.ZONETAG(id)`), come `ScenePick` fa per PICK.
+    SceneZone,      // SCENE ZONE id, x1, y1, x2, y2, z1, z2 [, tag] + SCENE.ZONE(x, y, z)
+    SceneZoneTag,   // SCENE.ZONETAG(id)
+    ScenePlayer,    // SCENE PLAYER raggio, altezza, occhio, step
+    SceneMove,      // SCENE MOVE avanti, destra
+    SceneTurn,      // SCENE TURN dyaw [, dpitch]
+    SceneLift,      // SCENE LIFT dy
+    SceneX,         // SCENE.X() … letture della camera e del corpo
+    SceneY,
+    SceneZ,
+    SceneEye,
+    SceneYaw,
+    ScenePitch,
+    SceneHit,
+    SceneFloorAt,   // SCENE.FLOORAT(x, y, z) / SCENE.CEILAT(x, y, z)
+    SceneCeilAt,
   }

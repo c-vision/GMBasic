@@ -149,9 +149,10 @@ double gmb_world_ceil(int sec)
  * contatori come back-face, non sullo schermo.
  */
 
-#define GMB_SCENE_MAX_VERTS 32768
-#define GMB_SCENE_MAX_TRIS  16384
-#define GMB_SCENE_MAX_OBJS  256
+/* I tetti statici sono diventati CAPACITÀ DINAMICA (gmb_3d_scene_buf.c, P5):
+ * si parte dai valori storici e si raddoppia alla dichiarazione della
+ * geometria, così i 200k triangoli dell'accettazione ci stanno. Qui resta solo
+ * il fondo della scena. */
 #define GMB_SCENE_BG        0x0F1729u   /* lo stesso fondo dell'oracolo */
 #define GMB_SCENE_PI        3.14159265358979
 
@@ -181,14 +182,11 @@ static const int g_scene_unit_idx[12 * 3] = {
     20,21,22, 20,22,23
 };
 
-typedef struct gmb_scene_obj {
-    int first_vert, nvert, first_tri, ntri;
-    float x, y, z, yaw;
-    unsigned char r, g, b;
-    unsigned char flags;   /* M-FLAGS: 1 masked, 2 traslucido, 16 due lati */
-    unsigned char light;   /* luce base dell'oggetto 0..255 */
-    unsigned char has_nrm; /* 1 = i vertici dichiarano la normale (M-LIGHT-N) */
-} gmb_scene_obj_t;
+/* La geometria (vertici, triangoli, oggetti) e i suoi scratch vivono in
+ * gmb_3d_scene_buf.c, che ne possiede i buffer e la crescita dinamica: qui si
+ * nomina solo, così la facciata resta una facciata (§0bis: una sola sede).
+ * `gmb_scene_obj_t` e le capacità (INIT/MAX) stanno in gmb_3d_internal.h. */
+#define g_scene (*gmb_3d_scene_geom())
 
 #define GMB_SCENE_MAX_THINGS 256
 
@@ -202,12 +200,7 @@ static gmb_3d_target_t g_scene_target;   /* argb != NULL = target allocato */
 static double  g_scene_fov = 60.0;
 static float   g_scene_eye[3] = { 0.0f, 1.5f, 6.0f };
 static float   g_scene_yaw = 0.0f, g_scene_pitch = 0.0f;
-static float   g_scene_pos[GMB_SCENE_MAX_VERTS * 3];
-static float   g_scene_uv[GMB_SCENE_MAX_VERTS * 2];
-static float   g_scene_nrm[GMB_SCENE_MAX_VERTS * 3];   /* normali dichiarate (M-LIGHT-N) */
-static float   g_scene_nrm_w[GMB_SCENE_MAX_VERTS * 3]; /* le stesse, ruotate da OBJPOS */
-static int     g_scene_idx[GMB_SCENE_MAX_TRIS * 3];
-static unsigned char g_scene_light[GMB_SCENE_MAX_TRIS];
+/* Buffer della geometria: puntatori e capacità stanno in `g_scene` (vedi sopra). */
 
 /* Luce direzionale per faccia (idea #4). `SCENE LIGHT dx, dy, dz, livello` imposta la
  * direzione VERSO la luce (il vettore L di Lambert); la normale di faccia si calcola a
@@ -224,7 +217,7 @@ static unsigned char g_scene_light[GMB_SCENE_MAX_TRIS];
 static int      g_scene_lit = 0;
 static double   g_scene_light_dir[3] = { 0.0, 1.0, 0.0 };
 static int      g_scene_light_level = 255;
-static unsigned char g_scene_lit_tri[GMB_SCENE_MAX_TRIS];
+/* `g_scene.lit_tri`: luce calcolata per triangolo quando LIGHT è attiva. */
 
 /* Flag di MATERIALE (idea #5): il kernel li ha già in `gmb_3d_material_t` (bilinear,
  * masked, two_sided) ma il BASIC non li raggiungeva. `SCENE SMOOTH|ALPHA|TWOSIDED on|off`
@@ -236,8 +229,7 @@ static int g_scene_smooth = 1;        /* 1 = bilineare, 0 = nearest */
 static int g_scene_alpha = 1;         /* 1 = alpha 0 scartato (alpha-test) */
 static int g_scene_two_sided = 0;     /* 1 = niente back-face cull */
 static int g_scene_aa = 0;            /* 1 = SSAA 2x per draw (spento: come P4) */
-static gmb_scene_obj_t g_scene_obj[GMB_SCENE_MAX_OBJS];
-static int     g_scene_nv = 0, g_scene_nt = 0, g_scene_nobj = 0, g_scene_cur = -1;
+/* Contatori in `g_scene`: nv, nt, nobj, cur (capacità: cap_v, cap_t, cap_o). */
 static unsigned char* g_scene_tex = NULL;
 static int     g_scene_tex_w = 0, g_scene_tex_h = 0;
 static gmb_3d_draw_stats_t g_scene_stats;
@@ -254,61 +246,9 @@ static int      g_scene_sky_w = 0, g_scene_sky_h = 0;
 static float    g_scene_sky_repeat = 1.0f, g_scene_sky_shift = 0.0f;
 static gmb_scene_thing_t g_scene_thing[GMB_SCENE_MAX_THINGS];
 
-/* --- matrici (column-major; clip z in [-1,1], come il kernel) ------------ */
-
-static void g_scene_m4_mul(float* out, const float* a, const float* b)   /* out = a*b */
-{
-    float r[16];
-    for (int c = 0; c < 4; c++)
-        for (int row = 0; row < 4; row++)
-        {
-            float s = 0.0f;
-            for (int k = 0; k < 4; k++) s += a[k * 4 + row] * b[c * 4 + k];
-            r[c * 4 + row] = s;
-        }
-    memcpy(out, r, sizeof(r));
-}
-
-static void g_scene_m4_perspective(float* m, float fovy, float aspect, float zn, float zf)
-{
-    memset(m, 0, 16 * sizeof(float));
-    float f = 1.0f / tanf(fovy * 0.5f);
-    m[0] = f / aspect;
-    m[5] = f;
-    m[10] = (zf + zn) / (zn - zf);
-    m[11] = -1.0f;
-    m[14] = (2.0f * zf * zn) / (zn - zf);
-}
-
-static void g_scene_m4_look_at(float* m, const float eye[3], const float at[3], const float up[3])
-{
-    float f[3] = { at[0] - eye[0], at[1] - eye[1], at[2] - eye[2] };
-    float fl = sqrtf(f[0] * f[0] + f[1] * f[1] + f[2] * f[2]);
-    if (fl <= 0.0f) fl = 1.0f;
-    f[0] /= fl; f[1] /= fl; f[2] /= fl;
-    float r[3] = { f[1] * up[2] - f[2] * up[1], f[2] * up[0] - f[0] * up[2], f[0] * up[1] - f[1] * up[0] };
-    float rl = sqrtf(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
-    if (rl <= 0.0f) rl = 1.0f;
-    r[0] /= rl; r[1] /= rl; r[2] /= rl;
-    float u[3] = { r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0] };
-    memset(m, 0, 16 * sizeof(float));
-    m[0] = r[0]; m[4] = r[1]; m[8]  = r[2]; m[12] = -(r[0] * eye[0] + r[1] * eye[1] + r[2] * eye[2]);
-    m[1] = u[0]; m[5] = u[1]; m[9]  = u[2]; m[13] = -(u[0] * eye[0] + u[1] * eye[1] + u[2] * eye[2]);
-    m[2] = -f[0]; m[6] = -f[1]; m[10] = -f[2]; m[14] = (f[0] * eye[0] + f[1] * eye[1] + f[2] * eye[2]);
-    m[15] = 1.0f;
-}
-
-/* Modello di un oggetto: traslazione * rotazione attorno a Y. */
-static void g_scene_m4_model(float* m, float x, float y, float z, float yaw_deg)
-{
-    float a = yaw_deg * (float)(GMB_SCENE_PI / 180.0);
-    float c = cosf(a), s = sinf(a);
-    memset(m, 0, 16 * sizeof(float));
-    m[0] = c; m[2] = -s;
-    m[5] = 1.0f;
-    m[8] = s; m[10] = c;
-    m[12] = x; m[13] = y; m[14] = z; m[15] = 1.0f;
-}
+/* Matrici e culling per oggetto vivono in gmb_3d_scene.c (P5): qui si chiamano
+ * soltanto, così questo file resta la facciata dei comandi e sta sotto le 1200
+ * righe (§0quater). */
 
 /* --- accumulo della geometria -------------------------------------------- */
 
@@ -334,11 +274,11 @@ static int g_scene_finite(const char* msg, double v)
 
 static int g_scene_push_vert_ex(float x, float y, float z, float u, float v, const float* n)
 {
-    if (g_scene_cur < 0)
+    if (g_scene.cur < 0)
         return g_scene_err("SCENE VERTEX: nessun oggetto corrente (SCENE OBJECT prima)");
-    if (g_scene_nv >= GMB_SCENE_MAX_VERTS)
-        return g_scene_err("SCENE VERTEX: massimo 32768 vertici per scena");
-    gmb_scene_obj_t* o = &g_scene_obj[g_scene_cur];
+    /* P5: crescita dinamica (raddoppio) alla DICHIARAZIONE, mai nel frame. */
+    if (gmb_3d_scene_reserve_verts(g_scene.nv + 1) != GMB_3D_OK) return GMB_3D_E_ARG;
+    gmb_scene_obj_t* o = &g_scene.obj[g_scene.cur];
     int has = (n != NULL);
     if (o->nvert == 0) o->has_nrm = (unsigned char)has;
     else if (o->has_nrm != has)
@@ -349,18 +289,31 @@ static int g_scene_push_vert_ex(float x, float y, float z, float u, float v, con
     if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE VERTEX: UV non finite", u);
     if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE VERTEX: UV non finite", v);
     if (fc != GMB_3D_OK) return fc;
-    g_scene_pos[g_scene_nv * 3 + 0] = x;
-    g_scene_pos[g_scene_nv * 3 + 1] = y;
-    g_scene_pos[g_scene_nv * 3 + 2] = z;
-    g_scene_uv[g_scene_nv * 2 + 0] = u;
-    g_scene_uv[g_scene_nv * 2 + 1] = v;
+    g_scene.pos[g_scene.nv * 3 + 0] = x;
+    g_scene.pos[g_scene.nv * 3 + 1] = y;
+    g_scene.pos[g_scene.nv * 3 + 2] = z;
+    /* P5: il primo vertice dell'oggetto apre l'AABB, gli altri lo allargano. */
+    if (o->nvert == 0)
+    {
+        o->bmin[0] = o->bmax[0] = x;
+        o->bmin[1] = o->bmax[1] = y;
+        o->bmin[2] = o->bmax[2] = z;
+    }
+    else
+    {
+        if (x < o->bmin[0]) o->bmin[0] = x; else if (x > o->bmax[0]) o->bmax[0] = x;
+        if (y < o->bmin[1]) o->bmin[1] = y; else if (y > o->bmax[1]) o->bmax[1] = y;
+        if (z < o->bmin[2]) o->bmin[2] = z; else if (z > o->bmax[2]) o->bmax[2] = z;
+    }
+    g_scene.uv[g_scene.nv * 2 + 0] = u;
+    g_scene.uv[g_scene.nv * 2 + 1] = v;
     if (has)
     {
-        g_scene_nrm[g_scene_nv * 3 + 0] = n[0];
-        g_scene_nrm[g_scene_nv * 3 + 1] = n[1];
-        g_scene_nrm[g_scene_nv * 3 + 2] = n[2];
+        g_scene.nrm[g_scene.nv * 3 + 0] = n[0];
+        g_scene.nrm[g_scene.nv * 3 + 1] = n[1];
+        g_scene.nrm[g_scene.nv * 3 + 2] = n[2];
     }
-    g_scene_nv++;
+    g_scene.nv++;
     o->nvert++;
     return GMB_3D_OK;
 }
@@ -372,20 +325,19 @@ static int g_scene_push_vert(float x, float y, float z, float u, float v)
 
 static int g_scene_push_tri(int a, int b, int c, unsigned char light)
 {
-    if (g_scene_cur < 0)
+    if (g_scene.cur < 0)
         return g_scene_err("SCENE QUAD: nessun oggetto corrente (SCENE OBJECT prima)");
-    if (g_scene_nt >= GMB_SCENE_MAX_TRIS)
-        return g_scene_err("SCENE QUAD: massimo 16384 triangoli per scena");
+    if (gmb_3d_scene_reserve_tris(g_scene.nt + 1) != GMB_3D_OK) return GMB_3D_E_ARG;
     if (a < 0 || b < 0 || c < 0
-        || a >= g_scene_obj[g_scene_cur].nvert || b >= g_scene_obj[g_scene_cur].nvert
-        || c >= g_scene_obj[g_scene_cur].nvert)
+        || a >= g_scene.obj[g_scene.cur].nvert || b >= g_scene.obj[g_scene.cur].nvert
+        || c >= g_scene.obj[g_scene.cur].nvert)
         return g_scene_err("SCENE QUAD: indice di vertice fuori range");
-    g_scene_idx[g_scene_nt * 3 + 0] = a;
-    g_scene_idx[g_scene_nt * 3 + 1] = b;
-    g_scene_idx[g_scene_nt * 3 + 2] = c;
-    g_scene_light[g_scene_nt] = light;
-    g_scene_nt++;
-    g_scene_obj[g_scene_cur].ntri++;
+    g_scene.idx[g_scene.nt * 3 + 0] = a;
+    g_scene.idx[g_scene.nt * 3 + 1] = b;
+    g_scene.idx[g_scene.nt * 3 + 2] = c;
+    g_scene.light[g_scene.nt] = light;
+    g_scene.nt++;
+    g_scene.obj[g_scene.cur].ntri++;
     return GMB_3D_OK;
 }
 
@@ -398,8 +350,8 @@ static int g_scene_clampi(int64_t v)
 
 int64_t gmb_scene_reset(void)
 {
-    g_scene_nv = g_scene_nt = g_scene_nobj = 0;
-    g_scene_cur = -1;
+    /* Contatori a zero, capacità CONSERVATA: un RESET non alloca. */
+    gmb_3d_scene_geom_clear();
     memset(&g_scene_stats, 0, sizeof(g_scene_stats));
     g_scene_hash = 0;
     gmb_3d_env_clear(&g_scene_env);
@@ -413,6 +365,7 @@ int64_t gmb_scene_reset(void)
     g_scene_eye[0] = 0.0f; g_scene_eye[1] = 1.5f; g_scene_eye[2] = 6.0f;
     g_scene_yaw = 0.0f;
     g_scene_pitch = 0.0f;
+    gmb_3d_actor_reset();   /* corpo ai default M-PLAYER, zone azzerate */
     g_scene_fov = 60.0;
     gmb_3d_set_error("");
     return GMB_3D_OK;
@@ -434,26 +387,15 @@ int64_t gmb_scene_view(int64_t w, int64_t h, double fov_deg)
     return gmb_scene_pick_attach(&g_scene_target);   /* SCENE PICK acceso: id della nuova dimensione */
 }
 
-int64_t gmb_scene_checker(int64_t cells)
+/* Sostituzione ATOMICA della texture corrente, unica sede: la usano la
+ * scacchiera procedurale (gmb_3d_scene_tex.c) e il PNG, e la leggono RENDER,
+ * SKY e THING. */
+void gmb_3d_scene_set_texture(unsigned char* buf, int w, int h)
 {
-    if (cells < 1 || cells > 64)
-        return g_scene_err("SCENE TEXTURE: celle deve essere tra 1 e 64");
-    const int cell = 8;
-    int size = (int)cells * cell;
-    unsigned char* buf = (unsigned char*)malloc((size_t)size * (size_t)size * 4u);
-    if (buf == NULL) return GMB_3D_E_NOMEM;
-    for (int y = 0; y < size; y++)
-        for (int x = 0; x < size; x++)
-        {
-            unsigned char v = (((x / cell) + (y / cell)) & 1) ? 255u : 96u;
-            unsigned char* p = buf + ((size_t)y * (size_t)size + (size_t)x) * 4u;
-            p[0] = v; p[1] = v; p[2] = v; p[3] = 255u;
-        }
     free(g_scene_tex);
     g_scene_tex = buf;
-    g_scene_tex_w = size;
-    g_scene_tex_h = size;
-    return GMB_3D_OK;
+    g_scene_tex_w = w;
+    g_scene_tex_h = h;
 }
 
 /* SCENE TEXTURE "file.png": il PNG diventa il materiale di tutti i draw successivi.
@@ -700,12 +642,11 @@ int64_t gmb_scene_thing_light(int64_t n, int64_t level)
 
 int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b)
 {
-    if (g_scene_nobj >= GMB_SCENE_MAX_OBJS)
-        return g_scene_err("SCENE OBJECT: massimo 256 oggetti per scena");
-    gmb_scene_obj_t* o = &g_scene_obj[g_scene_nobj];
-    o->first_vert = g_scene_nv;
+    if (gmb_3d_scene_reserve_objs(g_scene.nobj + 1) != GMB_3D_OK) return GMB_3D_E_ARG;
+    gmb_scene_obj_t* o = &g_scene.obj[g_scene.nobj];
+    o->first_vert = g_scene.nv;
     o->nvert = 0;
-    o->first_tri = g_scene_nt;
+    o->first_tri = g_scene.nt;
     o->ntri = 0;
     o->x = o->y = o->z = 0.0f;
     o->yaw = 0.0f;
@@ -715,7 +656,7 @@ int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b)
     o->flags = 0;
     o->light = 255u;
     o->has_nrm = 0;
-    g_scene_cur = g_scene_nobj++;
+    g_scene.cur = g_scene.nobj++;
     return GMB_3D_OK;
 }
 
@@ -726,8 +667,9 @@ int64_t gmb_scene_object_flags(int64_t r, int64_t g, int64_t b, int64_t flags, i
 {
     int64_t rc = gmb_scene_object(r, g, b);
     if (rc != GMB_3D_OK) return rc;
-    g_scene_obj[g_scene_cur].flags = (unsigned char)(flags & 0x13);   /* 1|2|16 */
-    g_scene_obj[g_scene_cur].light = (unsigned char)g_scene_clampi(light);
+    /* 1 masked, 2 traslucido, 4 passabile, 8 see-through, 16 due lati. */
+    g_scene.obj[g_scene.cur].flags = (unsigned char)(flags & 0x1F);
+    g_scene.obj[g_scene.cur].light = (unsigned char)g_scene_clampi(light);
     return GMB_3D_OK;
 }
 
@@ -758,10 +700,13 @@ int64_t gmb_scene_quad(int64_t a, int64_t b, int64_t c, int64_t d)
 int64_t gmb_scene_box(double x0, double y0, double z0,
                       double x1, double y1, double z1)
 {
-    if (g_scene_cur < 0)
+    if (g_scene.cur < 0)
         return g_scene_err("SCENE BOX: serve un oggetto corrente (SCENE OBJECT prima)");
-    if (g_scene_nv + 24 > GMB_SCENE_MAX_VERTS || g_scene_nt + 12 > GMB_SCENE_MAX_TRIS)
+    if (g_scene.nv > GMB_SCENE_VERTS_MAX - 24 || g_scene.nt > GMB_SCENE_TRIS_MAX - 12)
         return g_scene_err("SCENE BOX: limite di geometria della scena");
+    /* Riserva PRIMA di emettere: o entra il box intero o la scena non cambia. */
+    if (gmb_3d_scene_reserve_verts(g_scene.nv + 24) != GMB_3D_OK) return GMB_3D_E_ARG;
+    if (gmb_3d_scene_reserve_tris(g_scene.nt + 12) != GMB_3D_OK) return GMB_3D_E_ARG;
     int fc = g_scene_finite("SCENE BOX: coordinate non finite", x0);
     if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE BOX: coordinate non finite", y0);
     if (fc == GMB_3D_OK) fc = g_scene_finite("SCENE BOX: coordinate non finite", z0);
@@ -772,7 +717,7 @@ int64_t gmb_scene_box(double x0, double y0, double z0,
     float cx = (float)((x0 + x1) * 0.5), hx = (float)((x1 - x0) * 0.5);
     float cy = (float)((y0 + y1) * 0.5), hy = (float)((y1 - y0) * 0.5);
     float cz = (float)((z0 + z1) * 0.5), hz = (float)((z1 - z0) * 0.5);
-    int base = g_scene_obj[g_scene_cur].nvert;
+    int base = g_scene.obj[g_scene.cur].nvert;
     for (int i = 0; i < 24; i++)
     {
         int rc = g_scene_push_vert(cx + g_scene_unit_pos[i * 3 + 0] * hx,
@@ -795,14 +740,14 @@ int64_t gmb_scene_box(double x0, double y0, double z0,
 
 int64_t gmb_scene_objpos(double x, double y, double z, double yaw_deg)
 {
-    if (g_scene_cur < 0)
+    if (g_scene.cur < 0)
         return g_scene_err("SCENE OBJPOS: serve un oggetto corrente (SCENE OBJECT prima)");
     if (!isfinite(x) || !isfinite(y) || !isfinite(z) || !isfinite(yaw_deg))
         return g_scene_err("SCENE OBJPOS: coordinate non finite");
-    g_scene_obj[g_scene_cur].x = (float)x;
-    g_scene_obj[g_scene_cur].y = (float)y;
-    g_scene_obj[g_scene_cur].z = (float)z;
-    g_scene_obj[g_scene_cur].yaw = (float)yaw_deg;
+    g_scene.obj[g_scene.cur].x = (float)x;
+    g_scene.obj[g_scene.cur].y = (float)y;
+    g_scene.obj[g_scene.cur].z = (float)z;
+    g_scene.obj[g_scene.cur].yaw = (float)yaw_deg;
     return GMB_3D_OK;
 }
 
@@ -812,27 +757,55 @@ int64_t gmb_scene_camera(double x, double y, double z, double yaw_deg, double pi
         return g_scene_err("SCENE CAMERA: coordinate non finite");
     if (pitch_deg <= -89.0 || pitch_deg >= 89.0)
         return g_scene_err("SCENE CAMERA: pitch tra -89 e 89 gradi");
-    g_scene_eye[0] = (float)x;
-    g_scene_eye[1] = (float)y;
-    g_scene_eye[2] = (float)z;
-    g_scene_yaw = (float)yaw_deg;
-    g_scene_pitch = (float)pitch_deg;
+    gmb_3d_scene_camera_set((float)x, (float)y, (float)z, (float)yaw_deg, (float)pitch_deg);
     return GMB_3D_OK;
 }
+/* --- camera condivisa con la superficie interattiva ----------------------
+ * UNA sola camera (P3): l'actor la legge per MOVE/TURN/LIFT e le letture
+ * SCENE.X/Y/Z/EYE/YAW/PITCH; `set` riallinea i piedi del corpo all'occhio. */
+void gmb_3d_scene_camera_get(float eye[3], float* yaw, float* pitch)
+{
+    eye[0] = g_scene_eye[0]; eye[1] = g_scene_eye[1]; eye[2] = g_scene_eye[2];
+    *yaw = g_scene_yaw; *pitch = g_scene_pitch;
+}
+void gmb_3d_scene_camera_set(float x, float y, float z, float yaw, float pitch)
+{
+    g_scene_eye[0] = x; g_scene_eye[1] = y; g_scene_eye[2] = z;
+    g_scene_yaw = yaw; g_scene_pitch = pitch;
+    gmb_3d_actor_sync_feet((double)y);
+}
+
+/* AABB MONDO degli oggetti con geometria, per la superficie interattiva
+ * (gmb_3d_scene_actor.c). Il modello è traslazione + rotazione su y: si
+ * ruotano gli otto angoli dell'AABB locale e si ricava l'AABB che li contiene. */
+/* Gli AABB mondo sono in gmb_3d_scene_buf.c (`gmb_3d_scene_bounds_all`): lo
+ * stesso buffer persistente serve al corpo e a FLOORAT/CEILAT, senza copie. */
 
 /* --- disegno -------------------------------------------------------------- */
 
 /* Disegna UN oggetto con il suo modello, la sua luce base e i suoi flag
  * (M-FLAGS). Estratto da gmb_scene_render perché i pass sono due — opachi e
  * traslucidi — e devono usare la stessa strada: una sola implementazione. */
-static int scene_draw_object(int oi, const float* vp, const gmb_3d_env_t* env)
+static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
+                             const gmb_3d_env_t* env)
 {
-    const gmb_scene_obj_t* o = &g_scene_obj[oi];
+    const gmb_scene_obj_t* o = &g_scene.obj[oi];
     if (o->ntri <= 0 || o->nvert <= 0) return GMB_3D_OK;
 
     float model[16], mvp[16];
-    g_scene_m4_model(model, o->x, o->y, o->z, o->yaw);
-    g_scene_m4_mul(mvp, vp, model);
+    gmb_3d_m4_model(model, o->x, o->y, o->z, o->yaw);
+
+    /* P5 — culling per oggetto (M-CULL): interamente fuori dal frustum non entra nel
+     * rasterizzatore. I suoi triangoli finiscono in CULLED esattamente come li avrebbe
+     * contati il clip per triangolo, quindi DRAWN, PIXELS e l'hash del frame non
+     * cambiano: si risparmia solo il lavoro di preparazione. */
+    if (gmb_3d_object_outside(planes, model, o->bmin, o->bmax))
+    {
+        g_scene_stats.tris_culled += (unsigned long)o->ntri;
+        return GMB_3D_OK;
+    }
+
+    gmb_3d_m4_mul(mvp, vp, model);
 
     /* Luce per faccia: una luce per triangolo, dalle posizioni MONDO. Un piano
      * orizzontale illuminato dall'alto dà tutti i triangoli uguali (un run solo),
@@ -841,9 +814,9 @@ static int scene_draw_object(int oi, const float* vp, const gmb_3d_env_t* env)
     {
         for (int t = 0; t < o->ntri; t++)
         {
-            const float* pa = g_scene_pos + (size_t)(o->first_vert + g_scene_idx[(size_t)(o->first_tri + t) * 3 + 0]) * 3;
-            const float* pb = g_scene_pos + (size_t)(o->first_vert + g_scene_idx[(size_t)(o->first_tri + t) * 3 + 1]) * 3;
-            const float* pc = g_scene_pos + (size_t)(o->first_vert + g_scene_idx[(size_t)(o->first_tri + t) * 3 + 2]) * 3;
+            const float* pa = g_scene.pos + (size_t)(o->first_vert + g_scene.idx[(size_t)(o->first_tri + t) * 3 + 0]) * 3;
+            const float* pb = g_scene.pos + (size_t)(o->first_vert + g_scene.idx[(size_t)(o->first_tri + t) * 3 + 1]) * 3;
+            const float* pc = g_scene.pos + (size_t)(o->first_vert + g_scene.idx[(size_t)(o->first_tri + t) * 3 + 2]) * 3;
             double ax = (double)model[0] * pa[0] + (double)model[4] * pa[1] + (double)model[8]  * pa[2] + (double)model[12];
             double ay = (double)model[1] * pa[0] + (double)model[5] * pa[1] + (double)model[9]  * pa[2] + (double)model[13];
             double az = (double)model[2] * pa[0] + (double)model[6] * pa[1] + (double)model[10] * pa[2] + (double)model[14];
@@ -872,21 +845,21 @@ static int scene_draw_object(int oi, const float* vp, const gmb_3d_env_t* env)
             }
             int l = GMB_SCENE_AMBIENT + ((g_scene_light_level - GMB_SCENE_AMBIENT) * q) / 255;
             if (l < 0) l = 0; else if (l > 255) l = 255;
-            g_scene_lit_tri[t] = (unsigned char)l;
+            g_scene.lit_tri[t] = (unsigned char)l;
         }
     }
 
     gmb_3d_mesh_t m;
-    m.pos = g_scene_pos + (size_t)o->first_vert * 3;
-    m.uv = g_scene_uv + (size_t)o->first_vert * 2;
+    m.pos = g_scene.pos + (size_t)o->first_vert * 3;
+    m.uv = g_scene.uv + (size_t)o->first_vert * 2;
     m.nv = o->nvert;
     /* Normali: dichiarate nello spazio dell'oggetto, quindi girano con lui. Il
      * modello e' traslazione + rotazione su y, quindi basta la sua 3x3 (niente
      * traslazione, niente scala); la normalizzazione la fa il nucleo della luce. */
     if (o->has_nrm)
     {
-        const float* src = g_scene_nrm + (size_t)o->first_vert * 3;
-        float* dst = g_scene_nrm_w + (size_t)o->first_vert * 3;
+        const float* src = g_scene.nrm + (size_t)o->first_vert * 3;
+        float* dst = g_scene.nrm_w + (size_t)o->first_vert * 3;
         for (int i = 0; i < o->nvert; i++)
         {
             float x = src[i * 3 + 0], y = src[i * 3 + 1], z = src[i * 3 + 2];
@@ -921,10 +894,10 @@ static int scene_draw_object(int oi, const float* vp, const gmb_3d_env_t* env)
 
     /* Un draw per RUN di triangoli con la stessa luce: le 6 facce del cubo hanno
      * luci diverse, il resto è un run solo. Con LIGHT attiva la luce è quella
-     * calcolata per faccia (g_scene_lit_tri); senza, vale la luce dell'oggetto
+     * calcolata per faccia (g_scene.lit_tri); senza, vale la luce dell'oggetto
      * (default 255, così le scene P3 che non usano OBJECT a 5 argomenti non
      * cambiano byte). */
-    const unsigned char* lights = g_scene_lit ? g_scene_lit_tri : NULL;
+    const unsigned char* lights = g_scene_lit ? g_scene.lit_tri : NULL;
     int start = 0;
     while (start < o->ntri)
     {
@@ -933,7 +906,7 @@ static int scene_draw_object(int oi, const float* vp, const gmb_3d_env_t* env)
         while (start + n < o->ntri && (lights ? lights[start + n] : o->light) == light) n++;
 
         mat.light = light;
-        m.idx = g_scene_idx + (size_t)(o->first_tri + start) * 3;
+        m.idx = g_scene.idx + (size_t)(o->first_tri + start) * 3;
         m.nt = n;
 
         gmb_3d_draw_stats_t s;
@@ -953,7 +926,7 @@ int64_t gmb_scene_render(void)
         return g_scene_err("SCENE RENDER: nessun target (SCENE VIEW prima)");
     /* Una scena può essere fatta di solo cielo o di soli thing: il render non
      * deve pretendere una mesh (M-ORDER/M-SKY/M-THINGS). */
-    if (g_scene_nobj <= 0 && g_scene_nt <= 0 && g_scene_sky == NULL)
+    if (g_scene.nobj <= 0 && g_scene.nt <= 0 && g_scene_sky == NULL)
     {
         int have_thing = 0;
         for (int i = 0; i < GMB_SCENE_MAX_THINGS; i++)
@@ -976,10 +949,14 @@ int64_t gmb_scene_render(void)
     const float up[3] = { 0.0f, 1.0f, 0.0f };
     float at[3] = { g_scene_eye[0] + fwd[0], g_scene_eye[1] + fwd[1], g_scene_eye[2] + fwd[2] };
     float view[16], proj[16], vp[16];
-    g_scene_m4_look_at(view, g_scene_eye, at, up);
-    g_scene_m4_perspective(proj, (float)(g_scene_fov * (GMB_SCENE_PI / 180.0)),
-                           (float)g_scene_target.w / (float)g_scene_target.h, 0.1f, 300.0f);
-    g_scene_m4_mul(vp, proj, view);
+    gmb_3d_m4_look_at(view, g_scene_eye, at, up);
+    gmb_3d_m4_perspective(proj, (float)(g_scene_fov * (GMB_SCENE_PI / 180.0)),
+                          (float)g_scene_target.w / (float)g_scene_target.h, 0.1f, 300.0f);
+    gmb_3d_m4_mul(vp, proj, view);
+
+    /* P5: i sei piani una volta per frame, condivisi da tutti gli oggetti. */
+    float planes[6][4];
+    gmb_3d_frustum_planes(vp, planes);
 
     memset(&g_scene_stats, 0, sizeof(g_scene_stats));
     g_scene_env.colormap = g_scene_colormap;
@@ -994,10 +971,10 @@ int64_t gmb_scene_render(void)
         if (rc != GMB_3D_OK) return rc;
     }
 
-    for (int oi = 0; oi < g_scene_nobj; oi++)
+    for (int oi = 0; oi < g_scene.nobj; oi++)
     {
-        if ((g_scene_obj[oi].flags & 2) != 0) continue;   /* traslucido: dopo i thing */
-        rc = scene_draw_object(oi, vp, &g_scene_env);
+        if ((g_scene.obj[oi].flags & 2) != 0) continue;   /* traslucido: dopo i thing */
+        rc = scene_draw_object(oi, vp, planes, &g_scene_env);
         if (rc != GMB_3D_OK) return rc;
     }
 
@@ -1047,17 +1024,19 @@ int64_t gmb_scene_render(void)
         }
     }
 
-    /* Traslucidi: da lontano a vicino, con fusione (M-PALALPHA). */
+    /* Traslucidi: da lontano a vicino, con fusione (M-PALALPHA). Ordine e
+     * distanza usano gli scratch PERSISTENTI (capacità = oggetti riservati):
+     * il frame non alloca nemmeno con migliaia di oggetti. */
     {
-        int order[GMB_SCENE_MAX_OBJS];
-        float dist[GMB_SCENE_MAX_OBJS];
+        int* order = g_scene.order;
+        float* dist = g_scene.dist;
         int cnt = 0;
-        for (int oi = 0; oi < g_scene_nobj; oi++)
+        for (int oi = 0; oi < g_scene.nobj; oi++)
         {
-            if ((g_scene_obj[oi].flags & 2) == 0) continue;
-            float dx = g_scene_obj[oi].x - g_scene_eye[0];
-            float dy = g_scene_obj[oi].y - g_scene_eye[1];
-            float dz = g_scene_obj[oi].z - g_scene_eye[2];
+            if ((g_scene.obj[oi].flags & 2) == 0) continue;
+            float dx = g_scene.obj[oi].x - g_scene_eye[0];
+            float dy = g_scene.obj[oi].y - g_scene_eye[1];
+            float dz = g_scene.obj[oi].z - g_scene_eye[2];
             dist[cnt] = dx * dx + dy * dy + dz * dz;
             order[cnt] = oi;
             cnt++;
@@ -1073,7 +1052,7 @@ int64_t gmb_scene_render(void)
         }
         for (int k = 0; k < cnt; k++)
         {
-            rc = scene_draw_object(order[k], vp, &g_scene_env);
+            rc = scene_draw_object(order[k], vp, planes, &g_scene_env);
             if (rc != GMB_3D_OK) return rc;
         }
     }
@@ -1103,8 +1082,8 @@ int64_t gmb_scene_save(const char* path)
 
 /* --- letture -------------------------------------------------------------- */
 
-int64_t gmb_scene_verts(void)  { return (int64_t)g_scene_nv; }
-int64_t gmb_scene_tris(void)   { return (int64_t)g_scene_nt; }
+int64_t gmb_scene_verts(void)  { return (int64_t)g_scene.nv; }
+int64_t gmb_scene_tris(void)   { return (int64_t)g_scene.nt; }
 int64_t gmb_scene_drawn(void)  { return (int64_t)g_scene_stats.tris_drawn; }
 int64_t gmb_scene_culled(void) { return (int64_t)g_scene_stats.tris_culled; }
 int64_t gmb_scene_pixels(void) { return (int64_t)g_scene_stats.pixels; }

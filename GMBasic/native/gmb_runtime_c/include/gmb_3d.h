@@ -526,6 +526,45 @@ int64_t gmb_scene_pick_enable(int64_t on);
  * -2 buffer spento con un target che esiste (manca SCENE PICK on). */
 int64_t gmb_scene_pick(int64_t x, int64_t y);
 
+/* --- P5: superficie interattiva (specifica §3.3, M-PLAYER/M-COLLIDE/M-FLOOR/M-ZONE) ---
+ *
+ * Assi SCENE: y = altezza, piano (x, z), fronte a yaw 0 = +z. Il corpo ha i
+ * piedi in (x, y, z); CAMERA continua a posizionare l'OCCHIO (P3), quindi le
+ * letture X/Y/Z sono l'occhio e `EYE` è la sua altezza sopra i piedi.
+ */
+/* SCENE PLAYER raggio, altezza, occhio, step (default 14/56/46/24, M-PLAYER). */
+int64_t gmb_scene_player(double radius, double height, double eye, double step);
+/* SCENE MOVE avanti, destra: relativo a yaw, scivola, sale gradini ≤ step,
+ * bloccato da soffitto basso; lascia i bit di HIT nell'ultimo MOVE. */
+int64_t gmb_scene_move(double forward, double right);
+/* SCENE TURN dyaw [, dpitch]: ruota la vista in gradi (pitch in -89..89). */
+int64_t gmb_scene_turn(double d_yaw, double d_pitch);
+/* SCENE LIFT dy: sposta il corpo in verticale (piedi e occhio). */
+int64_t gmb_scene_lift(double dy);
+/* SCENE ZONE id, x1, y1, x2, y2, z1, z2 [, tag]: x/z sul piano, y in altezza.
+ * L'ordine di creazione conta (M-ZONE). */
+int64_t gmb_scene_zone(int64_t id, double x1, double y1, double x2, double y2,
+                       double z1, double z2, const char* tag);
+/* SCENE.ZONE(x, y, z): id della prima zona che contiene il punto, -1 se nessuna. */
+int64_t gmb_scene_zone_at(double x, double y, double z);
+/* SCENE.ZONETAG(id): tag della zona, "" se l'id non esiste. Ritorna un
+ * puntatore valido fino alla prossima chiamata: le gambe lo copiano subito
+ * (C99: gmb_string_alloc; VM/C: gmb_str_cstr; IL/PCode: Marshal). La superficie
+ * resta senza gmb_string_t, così gmb_3d.h non dipende da gmb_runtime.h. */
+const char* gmb_scene_zonetag_text(int64_t id);
+/* Quote (M-FLOOR): superficie più alta a o sotto y / più bassa a o sopra y,
+ * nel punto (x, z); -1000000 quando non c'è (C-SENTINEL). */
+double gmb_scene_floor_at(double x, double y, double z);
+double gmb_scene_ceil_at(double x, double y, double z);
+/* Letture camera e corpo. */
+double gmb_scene_x(void);
+double gmb_scene_y(void);
+double gmb_scene_z(void);
+double gmb_scene_eye(void);
+double gmb_scene_yaw(void);
+double gmb_scene_pitch(void);
+double gmb_scene_hit(void);
+
 /* Load che hanno parcheggiato il task (R11): 0 in T3, +1 per ogni load dentro
  * un task. Osservabile come alloc_count per R4. */
 unsigned long gmb_3d_load_park_count(void);

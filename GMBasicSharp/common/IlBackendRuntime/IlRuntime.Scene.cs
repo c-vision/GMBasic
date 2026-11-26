@@ -69,6 +69,19 @@ public static partial class IlRuntime
     public static void SceneRender() => CommonLib.Scene3DNative.Render();
     public static void SceneSave(string path) => CommonLib.Scene3DNative.Save(path);
 
+    // --- P5: superficie interattiva (specifica §3.3) ----------------------------------------
+    // Corpo, movimento, quote e zone vivono solo nel runtime C: qui si inoltra.
+    public static void ScenePlayer(double radius, double height, double eye, double step)
+        => CommonLib.Scene3DNative.Player(radius, height, eye, step);
+    public static void SceneMove(double forward, double right)
+        => CommonLib.Scene3DNative.Move(forward, right);
+    public static void SceneTurn(double dYaw, double dPitch)
+        => CommonLib.Scene3DNative.Turn(dYaw, dPitch);
+    public static void SceneLift(double dy) => CommonLib.Scene3DNative.Lift(dy);
+    public static void SceneZone(long id, double x1, double y1, double x2, double y2,
+                                 double z1, double z2, string? tag)
+        => CommonLib.Scene3DNative.Zone(id, x1, y1, x2, y2, z1, z2, tag);
+
     // --- letture (funzioni: ritornano un valore) --------------------------------------------
     public static double SceneVerts() => CommonLib.Scene3DNative.Verts();
     public static double SceneTris() => CommonLib.Scene3DNative.Tris();
@@ -80,4 +93,17 @@ public static partial class IlRuntime
     // PICK(x, y): id dell'oggetto nel pixel (0 fondo, 1..256 oggetto,
     // -1 senza target o fuori target, -2 buffer spento).
     public static double ScenePick(long x, long y) => CommonLib.Scene3DNative.Pick(x, y);
+
+    // P5: camera, corpo, quote e zone. ZONETAG ritorna una stringa (il tag).
+    public static double SceneX() => CommonLib.Scene3DNative.X();
+    public static double SceneY() => CommonLib.Scene3DNative.Y();
+    public static double SceneZ() => CommonLib.Scene3DNative.Z();
+    public static double SceneEye() => CommonLib.Scene3DNative.Eye();
+    public static double SceneYaw() => CommonLib.Scene3DNative.Yaw();
+    public static double ScenePitch() => CommonLib.Scene3DNative.Pitch();
+    public static double SceneHit() => CommonLib.Scene3DNative.Hit();
+    public static double SceneFloorAt(double x, double y, double z) => CommonLib.Scene3DNative.FloorAt(x, y, z);
+    public static double SceneCeilAt(double x, double y, double z) => CommonLib.Scene3DNative.CeilAt(x, y, z);
+    public static double SceneZoneAt(double x, double y, double z) => CommonLib.Scene3DNative.ZoneAt(x, y, z);
+    public static string SceneZoneTag(long id) => CommonLib.Scene3DNative.ZoneTag(id);
 }

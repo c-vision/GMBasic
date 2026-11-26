@@ -36,6 +36,12 @@ public sealed partial class Compiler
         TokenKind.SceneThing => SysCall.SCENE_THING,
         TokenKind.SceneAa => SysCall.SCENE_AA,
         TokenKind.ScenePick => SysCall.SCENE_PICK,
+        // P5: superficie interattiva.
+        TokenKind.SceneZone => SysCall.SCENE_ZONE,
+        TokenKind.ScenePlayer => SysCall.SCENE_PLAYER,
+        TokenKind.SceneMove => SysCall.SCENE_MOVE,
+        TokenKind.SceneTurn => SysCall.SCENE_TURN,
+        TokenKind.SceneLift => SysCall.SCENE_LIFT,
         _ => throw new NotImplementedException($"SCENE: verbo '{kind}' non supportato dalla PCodeVM.")
     };
 

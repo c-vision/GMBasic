@@ -578,6 +578,12 @@ public enum SysCall : ushort
     SCENE_AA = 508,         // (on)                                    → gmb_scene_aa
     // SCENE PICK on|off: buffer di id per pixel, additivo e spento di default.
     SCENE_PICK = 509,       // (on)                                    → gmb_scene_pick_enable
+    // P5 — superficie interattiva (specifica §3.3). In coda: i codici sono canonici.
+    SCENE_ZONE = 510,       // (id, x1, y1, x2, y2, z1, z2 [, tag])     → gmb_scene_zone
+    SCENE_PLAYER = 511,     // (raggio, altezza, occhio, step)         → gmb_scene_player
+    SCENE_MOVE = 512,       // (avanti, destra)                        → gmb_scene_move
+    SCENE_TURN = 513,       // (dyaw, dpitch)                          → gmb_scene_turn
+    SCENE_LIFT = 514,       // (dy)                                    → gmb_scene_lift
 }
 
 /// <summary>

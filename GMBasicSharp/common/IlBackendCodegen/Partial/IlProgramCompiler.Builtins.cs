@@ -523,6 +523,18 @@ public sealed partial class IlProgramCompiler
             case TokenKind.SceneHash: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneHash)); break;
             case TokenKind.ScenePixel: EmitSceneReadPixel(expr, nameof(IlRuntime.ScenePixel)); break;
             case TokenKind.ScenePick: EmitSceneReadPixel(expr, nameof(IlRuntime.ScenePick)); break;
+            // P5: camera/corpo (senza argomenti), quote e zone (punto), tag (id).
+            case TokenKind.SceneX: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneX)); break;
+            case TokenKind.SceneY: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneY)); break;
+            case TokenKind.SceneZ: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneZ)); break;
+            case TokenKind.SceneEye: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneEye)); break;
+            case TokenKind.SceneYaw: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneYaw)); break;
+            case TokenKind.ScenePitch: EmitSceneReadNoArg(expr, nameof(IlRuntime.ScenePitch)); break;
+            case TokenKind.SceneHit: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneHit)); break;
+            case TokenKind.SceneFloorAt: EmitSceneReadPoint(expr, nameof(IlRuntime.SceneFloorAt)); break;
+            case TokenKind.SceneCeilAt: EmitSceneReadPoint(expr, nameof(IlRuntime.SceneCeilAt)); break;
+            case TokenKind.SceneZone: EmitSceneReadPoint(expr, nameof(IlRuntime.SceneZoneAt)); break;
+            case TokenKind.SceneZoneTag: EmitSceneReadZoneTag(expr); break;
             case TokenKind.MatrixColumnCount: EmitMatrixValueOrHandleUnary(expr, nameof(IlRuntime.MatrixValueColumnCount), RuntimeMethod(nameof(IlRuntime.MatrixColumnCount))); break;
             case TokenKind.MatrixClone: EmitMatrixUnaryValue(expr, RuntimeMethod(nameof(IlRuntime.MatrixCloneValue)), nameof(IlRuntime.MatrixValueClone)); break;
             // MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS.

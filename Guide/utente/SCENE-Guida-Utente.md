@@ -26,7 +26,12 @@ Il dominio segue la regola del linguaggio: **il comando scrive, la funzione legg
 | Comando | `SCENE QUAD a, b, c, d` | due triangoli sui quattro vertici indicati |
 | Comando | `SCENE BOX x0, y0, z0, x1, y1, z1` | parallelepipedo: 24 vertici, 12 triangoli, UV per faccia |
 | Comando | `SCENE OBJPOS x, y, z, yaw` | posizione e rotazione dell'oggetto corrente |
-| Comando | `SCENE CAMERA x, y, z, yaw, pitch` | posizione e orientamento dell'osservatore |
+| Comando | `SCENE CAMERA x, y, z, yaw, pitch` | posizione (dell'**occhio**) e orientamento dell'osservatore |
+| Comando | `SCENE PLAYER raggio, altezza, occhio, step` | misure della capsula del corpo |
+| Comando | `SCENE MOVE avanti, destra` | sposta il corpo con collisione, scivolamento e gradini |
+| Comando | `SCENE TURN dyaw [, dpitch]` | ruota lo sguardo, in gradi |
+| Comando | `SCENE LIFT dy` | alza o abbassa il corpo di `dy` |
+| Comando | `SCENE ZONE id, x1, y1, x2, y2, z1, z2 [, tag$]` | dichiara un volume nominato sul piano |
 | Comando | `SCENE LIGHT dx, dy, dz, livello` | luce direzionale: illumina per normale di faccia |
 | Comando | `SCENE LAMP n, x, y, z, raggio, quantità` | lampada puntiforme (point), attenuazione lineare nel raggio |
 | Comando | `SCENE LAMP n, x, y, z, raggio, quantità, dx, dy, dz, angolo` | lampada a cono (spot), semiangolo in gradi |
@@ -50,6 +55,14 @@ Il dominio segue la regola del linguaggio: **il comando scrive, la funzione legg
 | Funzione | `SCENE.HASH()` | FNV-1a del frame (stesso frame ⇒ stesso numero) |
 | Funzione | `SCENE.PIXEL(x, y)` | colore `0x00RRGGBB` del target, `−1` fuori dai limiti |
 | Funzione | `SCENE.PICK(x, y)` | id dell'oggetto nel pixel: `0` fondo, `1..256` oggetto, `−1` senza target o fuori, `−2` buffer spento |
+| Funzione | `SCENE.X()` / `SCENE.Y()` / `SCENE.Z()` | posizione dell'occhio (mondo) |
+| Funzione | `SCENE.EYE()` | altezza dell'occhio sui piedi |
+| Funzione | `SCENE.YAW()` / `SCENE.PITCH()` | orientamento in gradi |
+| Funzione | `SCENE.HIT()` | esito dell'ultimo `MOVE`/`LIFT`: `1` parete, `2` fermo, `4` quota cambiata (maschera) |
+| Funzione | `SCENE.FLOORAT(x, y, z)` | superficie calpestabile più alta a o sotto `y`, `−1000000` se nessuna |
+| Funzione | `SCENE.CEILAT(x, y, z)` | soffitto più basso a o sopra `y`, `−1000000` se nessuno |
+| Funzione | `SCENE.ZONE(x, y, z)` | id della prima zona che contiene il punto, `−1` se nessuna |
+| Funzione | `SCENE.ZONETAG(id)` | tag della zona, `""` se l'id non esiste |
 
 `IMPORT SCENE` è **obbligatoria**: il dominio non è implicito (come `WORLD` e `CLOCK`). Senza
 l'import il programma non compila, sia per il comando sia per le letture qualificate:
@@ -128,9 +141,15 @@ anche il caso del file inesistente). Sample: `Samples3D/TextureFile.bas`.
 
 Apre un **nuovo oggetto** e lo rende quello corrente: i `VERTEX`, `QUAD` e `BOX` successivi
 appartengono a lui. `r, g, b` sono `0…255` e valgono come **tinta** (moltiplicata per la texture e
-per la luce della faccia). Un oggetto senza vertici non disegna nulla. Il numero massimo di
-oggetti è 256, di vertici 32768 e di triangoli 16384: oltre, il comando è rifiutato e la scena
-resta quella di prima.
+per la luce della faccia). Un oggetto senza vertici non disegna nulla.
+
+I buffer della scena hanno **capacità dinamica**: partono da 512 oggetti, 32768 vertici e 16384
+triangoli e **raddoppiano** quando la geometria cresce, quindi una scena da 200.000 triangoli
+(16.667 box) è normale. La crescita avviene alla dichiarazione (`OBJECT`/`VERTEX`/`QUAD`/`BOX`),
+mai durante `RENDER`: **il frame non alloca**, e `SCENE RESET` conserva la capacità acquisita
+senza riallocare. I tetti restano come guardia di memoria — 65.536 oggetti, 4.194.304 vertici,
+2.097.152 triangoli — e oltre il comando è rifiutato con un errore esplicito, lasciando la scena
+com'era.
 
 Con **cinque** argomenti si impostano anche i **flag di materiale** e la **luce base**
 dell'oggetto:
@@ -177,6 +196,43 @@ Posizione dell'oggetto corrente nel mondo e rotazione attorno all'asse verticale
 `yaw` in **gradi**: `0` guarda verso `+z`, `90` verso `+x`. `pitch` in **gradi**, negativo =
 guarda in basso; il valore deve stare in `−89 … +89` (oltre, il comando è rifiutato e la camera
 resta quella di prima).
+
+`CAMERA` posiziona l'**occhio**, come in P3: i **piedi** stanno `EYE` sotto, e sono loro a
+collidere. `SCENE.X/Y/Z` leggono l'occhio (quindi sono coerenti con quello che hai scritto in
+`CAMERA`), `SCENE.EYE` è l'altezza dell'occhio sui piedi.
+
+### `SCENE PLAYER raggio, altezza, occhio, step`
+
+Misure della capsula del corpo, in unità del mondo: i default sono **14, 56, 46, 24** (raggio,
+altezza, altezza dell'occhio, altezza massima di un gradino). `step` è anche la tolleranza per
+salire un gradino: un ostacolo il cui tetto sta entro `piedi + step` si **calpesta**, non blocca.
+
+### `SCENE MOVE avanti, destra`
+
+Sposta il corpo sul piano (x, z): `avanti` lungo lo sguardo, `destra` di lato. Il movimento è a
+passi piccoli (mai più di 32 sotto-passi, qualunque sia la distanza) e ogni passo risolve la
+collisione con gli oggetti: **scivola** lungo le pareti invece di incastrarsi, **sale** i gradini
+entro `step`, si **ferma** sotto un soffitto troppo basso. Il corpo non attraversa le pareti anche
+con una richiesta enorme. L'esito finisce in `SCENE.HIT()`.
+
+### `SCENE TURN dyaw [, dpitch]`
+
+Ruota lo sguardo in **gradi** (`dyaw` attorno all'asse verticale, `dpitch` in verticale, `−` in
+basso). `PITCH` resta in `−89 … +89`.
+
+### `SCENE LIFT dy`
+
+Alza (`+`) o abbassa (`−`) il corpo di `dy`, senza collisione: serve per scale, ascensori,
+teletrasporti. Occhio e piedi si spostano insieme.
+
+### `SCENE ZONE id, x1, y1, x2, y2, z1, z2 [, tag$]`
+
+Dichiara un volume nominato. `y` è l'**altezza**; `x1…x2` e `z1…z2` sono gli estremi sul piano,
+`y1…y2` in verticale. Il tag è una stringa facoltativa (default `""`). `SCENE.ZONE(x, y, z)`
+risponde con l'id della **prima zona creata** che contiene il punto (non la più piccola): l'ordine
+di creazione conta, e il punto vale già **2 unità sotto la base** (`y` entro `y1−2 … y2`), così una
+zona che parte dal pavimento contiene anche chi ci sta sopra. `SCENE.ZONETAG(id)` rende il tag.
+Le zone non sono viste dal renderer: servono alla logica (`IF SCENE.ZONE(...) = 1 THEN ...`).
 
 ### `SCENE LIGHT dx, dy, dz, livello`
 
@@ -539,6 +595,39 @@ limiti** risponde `−1`, come `SCENE.PIXEL`: "assente o fuori" è la stessa sen
 il dominio, quindi `−1` non si confonde col fondo (`0`) né con un pick spento (`−2`). Funziona
 anche con `SCENE AA on` (l'id è quello del campione più vicino).
 
+### Camera e corpo: `SCENE.X/Y/Z/EYE/YAW/PITCH/HIT`
+
+`X/Y/Z` sono la posizione dell'**occhio** nel mondo, `EYE` l'altezza dell'occhio sui piedi,
+`YAW`/`PITCH` l'orientamento in gradi. Servono a chiudere il ciclo «leggo, decido, muovo» senza
+tornare al BASIC con variabili parallele: dopo un `MOVE` l'occhio è dove il motore l'ha messo, non
+dove avevi chiesto di metterlo.
+
+`HIT()` è l'esito dell'ultimo `MOVE`/`LIFT`, una **maschera**: `1` = una parete, `2` = fermo (la
+richiesta non ha spostato nulla: eri già addosso), `4` = la quota è cambiata (gradino salito,
+pavimento caduto). I valori si sommano (`3` = parete e fermo), quindi si leggono con `AND`, non
+con `=`. Prima di ogni `MOVE` vale `0`.
+
+### Quote: `SCENE.FLOORAT(x, y, z)` / `SCENE.CEILAT(x, y, z)`
+
+`FLOORAT` è la superficie calpestabile **più alta a o sotto** `y` in quel punto, `CEILAT` il
+soffitto **più basso a o sopra** `y`. `−1000000` significa «niente»: fuori dal mondo o sotto ogni
+pavimento. Sono le letture che permettono di stare su un tavolo senza una fisica generale: chiedi
+la quota e mettici il corpo con `LIFT`. Il flag `4` (**passabile**) non ferma il corpo ma
+`FLOORAT` lo **vede** ancora, quindi un tappeto resta visibile alla lettura e attraversabile al
+passo.
+
+### Zone: `SCENE.ZONE(x, y, z)` / `SCENE.ZONETAG(id)`
+
+`ZONE` risponde con l'id della **prima zona creata** che contiene il punto, `−1` se nessuna;
+`ZONETAG(id)` con il suo tag (`""` se l'id non esiste). La logica tipica è una stanza che si
+attiva entrando:
+
+```
+IF SCENE.ZONE(SCENE.X(), SCENE.Y(), SCENE.Z()) = 1 THEN
+   PRINT "sei in " + SCENE.ZONETAG(1)
+END IF
+```
+
 ---
 
 ## 4. Errori e diagnosi
@@ -654,24 +743,26 @@ geometria dichiarata. Per questo i contatori si leggono insieme, mai come somma.
 
 ## 6. Che cosa non c'è ancora
 
-La superficie `SCENE` copre oggi **22 verbi e 7 letture** (P3 + P4). Mancano, e arriveranno con le
-fasi successive del piano:
+La superficie `SCENE` copre oggi tutti i verbi e le letture elencati in §1 (P3 + P4 + la
+superficie interattiva di P5). Mancano, e arriveranno con le fasi successive del piano:
 
-* `CLEAR`, `TURN`, `PLAYER`, `MOVE`, `LIFT`, `ZONE`, `WORLD`, `SOFTWARE`/`HARDWARE`;
+* `CLEAR`, `WORLD`, `SOFTWARE`/`HARDWARE`;
 * le forme a **id oggetto esplicito** (`VERTEX o, …`, `OBJECT o, flags, light`, `BOX o, …`), la
   faccia singola (`FACE`) e le texture con handle numerico (`TEXTURE n, a$`); oggi l'oggetto
   corrente lo apre `OBJECT` e la texture è una sola per scena (PNG o scacchiera);
 * i comandi per-thing (`THING POS/TEX/OFF/LIGHT/TRANS/MOVE`): il BASIC ha solo
   `THING n, x, y, z, w, h`, con luce piena e la texture corrente;
-* le letture della camera e degli oggetti (`SCENE.X/Y/Z/EYE/YAW/PITCH/HIT/OBJ*`), perché camera e
-  oggetti oggi sono solo ingressi;
+* le letture degli **oggetti** (`SCENE.OBJ*`) e `SCENE.STATS`; la camera e il corpo hanno già le
+  loro (`SCENE.X/Y/Z/EYE/YAW/PITCH/HIT`);
+* i **raggi** (`SHOOT`, `USE`, `SEES`): interazione a distanza con oggetti e thing;
 * il present **a video** e il tetto dei frame: `SCENE PRESENT` porta il target nella pagina 2D
   (canvas o `SCREEN`), e la finestra la mostra il pump SDL al tick successivo; il controllo del
   frame rate resta fuori dal dominio.
 
 MiniTest che bloccano i numeri: `shared/minitests/3d/scene_mesh.bas`,
 `scene_texture_file.bas`, `scene_light.bas`, `scene_material_flags.bas`, `scene_present.bas` per
-la P3, e `scene_lamp_point_spot.bas`, `scene_fog.bas`, `scene_far.bas`, `scene_sky.bas`,
-`scene_colormap.bas`, `scene_thing.bas` per la P4 — tutti con gli stessi valori su C99Native, IL,
-PCode e VM/C. Sample: `Samples3D/MeshBasics.bas`, `TextureFile.bas`, `LightFaces.bas`,
+la P3, `scene_lamp_point_spot.bas`, `scene_fog.bas`, `scene_far.bas`, `scene_sky.bas`,
+`scene_colormap.bas`, `scene_thing.bas` per la P4, e `scene_move.bas` (corpo, `MOVE`/`TURN`/
+`LIFT`, `HIT`, letture camera) e `scene_zones.bas` (zone, tag, `FLOORAT`/`CEILAT`, passabile) per
+la superficie interattiva — tutti con gli stessi valori su C99Native, IL, PCode e VM/C. Sample: `Samples3D/MeshBasics.bas`, `TextureFile.bas`, `LightFaces.bas`,
 `MaterialFlags.bas`, `PresentLoop.bas`.

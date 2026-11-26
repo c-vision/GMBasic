@@ -447,11 +447,85 @@ aggiunge:
   texture corrente; `LAMP` è un solo verbo con due arità (6 e 10), non due comandi; la luce del
   thing non ha ancora un verbo BASIC (`gmb_scene_thing_light` è solo facciata C).
 
-### P5 — Scena, animazione, scalabilità (8–12 gg)
+### P5 — Scena, animazione, scalabilità (8–12 gg) — **IN CORSO** (primo blocco + superficie interattiva, 2026-11-26)
 
 * Culling spaziale + frustum per oggetto, LOD, instancing per materiale, `KEY` TRS, skinning 64 ossa, zone, `SCENE.STATS`.
 * `tools/sh/bench_3d.sh`: tabella misurata (tris, draw, ms, MB) su 3 risoluzioni; prima overhead, poi fill (§0septies).
 * **Accettazione**: 500 oggetti / 200k tris a ≥30 fps a 640×360 software; curva di degradazione misurata.
+
+**Consegnato il 2026-11-26 (primo blocco: culling per oggetto e banco).**
+
+| Pezzo | Dove | Verifica |
+|---|---|---|
+| Culling per **oggetto** (AABB + 6 piani del frustum, conservativo) | `src/gmb_3d_scene.c` (`gmb_3d_frustum_planes`, `gmb_3d_object_outside`), chiamato da `gmb_3d_cmd.c` prima di ogni draw | `gmb_3d_oracle --cullcheck`: **P5-CULL ok=10 fail=0** |
+| Matrici del renderer fuori dalla facciata | `gmb_3d_scene.c` (`gmb_3d_m4_*`), prototipi in `gmb_3d_internal.h` | gate A/B `cc`+`zcc` sul file; `gmb_3d_cmd.c` **1178** righe (era 1305) |
+| Tetto oggetti 256 → **512**, poi capacità **dinamica** (vedi terzo blocco) | `GMB_SCENE_OBJS_INIT/MAX` (`gmb_3d_internal.h`) | 500 oggetti nel banco |
+| Banco misurato a 3 risoluzioni | `tools/sh/bench_3d.sh` → `gmb_3d_oracle --bench-scene` | tabella sotto |
+| Accettazione «500 oggetti a ≥30 fps» | `tools/sh/check_3d_oracle.sh` (3quater) | **mediana ≤ 33,3 ms** a 640×360 |
+
+**Perché il culling non si vede**: il rasterizzatore scarta già i triangoli fuori dal frustum
+uno per uno e li conta in `CULLED`; un oggetto interamente fuori ha tutti i triangoli fuori. Il
+culling per oggetto prende la stessa decisione una volta sola, con un AABB e un margine, e salta
+la preparazione. Prova: con gli oggetti fuori campo l'hash del frame è **identico** a quello di
+una scena in cui quegli oggetti non sono mai stati dichiarati (`--cullcheck`), e le **20 golden
+restano `diff=0`**.
+
+**Misura** (`bash tools/sh/bench_3d.sh 500 60`, `osx-arm64`, macchina condivisa — min e mediana):
+
+| risoluzione | tris | drawn | culled | min ms | med ms | fps (mediana) |
+|---|---|---|---|---|---|---|
+| 320×180 | 6000 | 2989 | 3059 | 0,823 | 0,842 | 1188 |
+| 640×360 | 6000 | 2989 | 3059 | 1,714 | 1,753 | 571 |
+| 960×540 | 6000 | 2989 | 3059 | 3,149 | 3,233 | 309 |
+
+`culled=3059` sono le facce posteriori dei 500 box chiusi (back-face), non oggetti scartati: la
+scena del banco è tutta davanti alla camera. La demo a settori resta a **0,69 ms** mediana
+(limite 4 ms).
+
+**Consegnato il 2026-11-26 (secondo blocco: superficie interattiva).**
+
+| Pezzo | Dove | Verifica |
+|---|---|---|
+| Corpo, `MOVE`/`TURN`/`LIFT`, collisione con scivolamento, gradini ≤ step, soffitto, `HIT` | `src/gmb_3d_scene_actor.c` (nuovo: `gmb_scene_player/move/turn/lift`) | `gmb_3d_oracle --interactcheck`: **P5-INTERACT ok=45 fail=0** |
+| `FLOORAT`/`CEILAT` sulle AABB MONDO degli oggetti, flag 4 passabile | `gmb_3d_scene_bounds` (`gmb_3d_cmd.c`) + `gmb_scene_floor_at/ceil_at` | stessi check; MiniTest `scene_zones.bas` |
+| Zone (`ZONE`/`ZONETAG`), prima creata vince, tolleranza `−2` | `gmb_scene_zone/zone_at/zonetag_text` (`gmb_3d_scene_actor.c`) | MiniTest `scene_zones.bas` |
+| Camera/corpo leggibili: `SCENE.X/Y/Z/EYE/YAW/PITCH/HIT` | facciata C + 4 gambe | MiniTest `scene_move.bas` |
+| 15 TokenKind nuovi, parser C#/C, emitter C99, IL, PCode, VM/C (510–514 e 3920–3930) | `TokenKind.cs`/`gmb_tokenkind.h`, `gmb_c99_emit_3d.c`, `IlRuntime.Scene.cs`, `PCodeProcessor.*`, `gmb_vm_core.c`/`gmb_builtin.c` | le 36 prove di `shared/minitests/3d` PASS; 2 MiniTest nuovi identici su 4 gambe |
+
+`CAMERA` continua a posizionare l'**occhio** (le 20 golden restano `diff=0`): i piedi stanno
+`EYE` sotto. Divergenza di assi dichiarata in specifica (`C-DIVERGE-AXES`, y-up).
+
+**Consegnato il 2026-11-27 (terzo blocco: buffer a capacità dinamica e accettazione 200k).**
+
+| Pezzo | Dove | Verifica |
+|---|---|---|
+| Buffer geometria da statici a **capacità dinamica** (raddoppio alla dichiarazione) | `src/gmb_3d_scene_buf.c` (nuovo): `gmb_3d_scene_geom()`, `reserve_verts/tris/objs`; partono da 32768 vertici / 16384 triangoli / 512 oggetti | tetti alzati a **4.194.304 / 2.097.152 / 65.536**; gate A/B `cc`+`zcc` sul file |
+| **Nessuna allocazione per frame** | scratch dei traslucidi (ordine/distanza) e AABB mondo riservati con gli oggetti; `SCENE PICK` alloca una volta per target e azzera a ogni frame | contatore `gmb_3d_alloc_count()`: il banco stampa `allocs=0` e **fallisce** se un frame alloca |
+| AABB mondo in buffer persistente (non più `boxes[512]`) | `gmb_3d_scene_bounds_all` in `gmb_3d_scene_buf.c`, usato da `FLOORAT`/`CEILAT`/`MOVE` | `P5-INTERACT ok=45 fail=0`; MiniTest `scene_move.bas`/`scene_zones.bas` invariati |
+| Banco a triangoli | `gmb_3d_oracle --bench-scene --tris N` (griglia frontale, 12 triangoli per box) + `tools/sh/bench_3d.sh --tris N` | accettazione **200k dentro `check_3d_oracle.sh`** (3quater-bis) |
+
+**Misura dei 200k** (`bash tools/sh/bench_3d.sh --tris 200000`, `osx-arm64`, macchina condivisa,
+20 frame per risoluzione):
+
+| risoluzione | tris | drawn | culled | min ms | med ms | fps (mediana) |
+|---|---|---|---|---|---|---|
+| 320×180 | 200.004 | 99.742 | 100.262 | 16,881 | 17,286 | **57,9** |
+| 640×360 | 200.004 | 99.742 | 100.262 | 19,061 | 19,162 | **52,2** |
+| 960×540 | 200.004 | 99.742 | 100.262 | 21,296 | 21,466 | **46,6** |
+
+`culled=100.262` sono le facce posteriori (6 su 12 per box): `drawn` ~100k è la metà frontale dei
+200k dichiarati. **Accettazione P5 soddisfatta**: 52 fps mediana a 640×360, contro il limite di 30.
+Curva di degradazione a 640×360 (stessa scena, solo densità): 50k → 5,209 ms (192 fps),
+100k → 10,088 ms (99 fps), 200k → 19,162 ms (52 fps) — lineare, nessun ginocchio.
+
+**Memoria** della scena da 200k triangoli (capacità riservate, non la dimensione usata: 524.288
+vertici e 262.144 triangoli, il raddoppio sopra il necessario): vertici 23,1 MB (pos 6,3 + UV
+4,2 + normali 6,3 + normali-mondo 6,3), triangoli 3,7 MB (indici 3,1 + due luci 0,5), oggetti,
+scratch e AABB 3,3 MB → **≈ 30 MB** più il target (1,8 MB a 640×360). Tutto riservato alla
+dichiarazione e riusato: `SCENE RESET` non libera e non rialloca.
+
+**Non ancora fatto, dichiarato**: LOD, instancing per materiale, `KEY` TRS, skinning 64 ossa,
+`SCENE.STATS` e i raggi (`M-RAYS`: `SHOOT`/`USE`/`SEES`).
 
 ### P6 — Audio 3D e input (5–7 gg)
 
@@ -510,7 +584,7 @@ Sta in fondo di proposito: non compare nella sequenza P0–P9 e non è un requis
 | `include/gmb_3d.h` | ~300 (~15 funzioni × 20) | API `gmb_3d_*` |
 | `src/gmb_3d_api.c` | ~800 | facade, handle, opzioni, errori |
 | `src/gmb_3d_frame.c` | ~500 | VIEW/clip, target, present 3D |
-| `src/gmb_3d_scene.c` | ~700 | oggetti/thing/lampade/zone (usa `gm_gfx_scene`) |
+| `src/gmb_3d_scene.c` | **143 misurate** (2026-11-26) | matrici del renderer e culling per oggetto — **fatto in P5**; oggetti/thing/lampade/zone restano in `gmb_3d_cmd.c` |
 | `src/gmb_3d_mesh3.c` | ~600 | attributi, materiali, upload texture |
 | `src/gmb_3d_sector.c` | ~400 | binding su `gm_gfx_sector` |
 | `src/gmb_3d_collide.c` | ~600 | move/shoot/use/sees |
@@ -612,7 +686,7 @@ Con P0+P1 (≈1 settimana) si ha la pipeline di verifica; con P2 (≈3–4 setti
 | 3 | Modello di thread e present (GPM + main thread SDL) | **Fatto e chiuso**: nota con attori, `R1`–`R9`, ciclo del frame, sincrono vs park, `RENDER` negli handler, headless, vincolo GL; le 3 domande finali sono decise (nota §13): cap unico `auto` (60 col 3D, 30 senza), triple buffer solo dietro misura (nota §8.3), identità **del task** (`gmb_cur()`) perché il GPM è multi-worker | `Nota-Tecnica-Thread-Present-3D.md` |
 | 4 | Oracolo headless prima dei renderer | **Fatto e chiuso in P1 (2026-11-19), esteso in P3 (2026-11-24) e P4 (2026-11-25)**: `tools/sh/check_3d_oracle.sh` con gate A/B `cc`+`zcc`, `--selftest` **139 check / 0 fail** (95 di P1/P2 + 26 di P3 + 18 di P4), **18 golden** per RID (`--check` → `diff=0`, incluse le 5 scene mesh e le 6 scene P4), `--perturb 1` respinto con `exit 1` | piano §6 P1, P3, P4 |
 | 5 | Palette vs ARGB | **Deciso: ARGB** — target `0x00RRGGBB` come le pagine, luce a 32 livelli fixed point, alpha dalle texture, palette solo per i colori nominati. Il fill indicizzato guadagna ~2–5 decimi di ms (stima) e costa un secondo modello di colore: non paga | specifica §11 (motivo) e §11.6 (confronto di costo) |
-| 6 | Budget di superficie (90 comandi × 4 backend) | **In corso**: kernel di ~25 comandi per P0–P4 (MVP + i due renderer + luci), resto in "superficie v2". Consegnato il kernel di **P0–P2** il 2026-11-19 — 9 comandi (`WORLD LOAD/CLOSE/TICK`, `SECMOVE`, `HEIGHT`, `ANIM`, `SCROLL`, `LIGHTFX`, `LAMP`) e 5 letture (`WORLD.MOVING/LIGHTNOW/TIME/FLOORZ/CEILZ`) con TokenKind canonici, agganciati **a tutte e quattro le gambe** (ponte C# via `libgmb_3d`) e coperti da 20 MiniTest. Per **P3** sono consegnati il **motore** (`gmb_3d_mesh_draw`: target ARGB+depth, clip/frustum, z-buffer, UV prospettici, back-face, nearest/bilinear, masked, two_sided) con 5 golden e 26 check, e la **superficie BASIC** `SCENE`: dal 2026-11-24 11 verbi + 7 letture su tutte e quattro le gambe, dal 2026-11-25 (`e53cbfcc`) `LIGHT`, `SMOOTH`/`ALPHA`/`TWOSIDED`, `TEXTURE "file.png"` e `PRESENT`, per **16 verbi e 7 letture**; P4 (2026-11-25) aggiunge `LAMP` (6/10 argomenti), `FOG`, `FAR`, `SKY`, `COLORMAP`, `THING` e `OBJECT` a 5 argomenti, per **22 verbi e 7 letture**. Copertura: 31 MiniTest in `shared/minitests/3d` (20 `WORLD` + 11 `SCENE`), 18 golden per RID, 139 check di selftest. Il sample d'accettazione `Samples3D/MeshBasics.bas` gira su tutte e quattro le gambe con lo stesso output. **P4 è consegnato** (lampade point/spot, fog, FAR, sky, `COLORMAP`, `THING`, ordine di disegno) con 6 MiniTest e 6 golden, stessi valori su quattro gambe; resta il kernel di **P5** | specifica §7; piano §6 P2, P3, P4 |
+| 6 | Budget di superficie (90 comandi × 4 backend) | **In corso**: kernel di ~25 comandi per P0–P4 (MVP + i due renderer + luci), resto in "superficie v2". Consegnato il kernel di **P0–P2** il 2026-11-19 — 9 comandi (`WORLD LOAD/CLOSE/TICK`, `SECMOVE`, `HEIGHT`, `ANIM`, `SCROLL`, `LIGHTFX`, `LAMP`) e 5 letture (`WORLD.MOVING/LIGHTNOW/TIME/FLOORZ/CEILZ`) con TokenKind canonici, agganciati **a tutte e quattro le gambe** (ponte C# via `libgmb_3d`) e coperti da 20 MiniTest. Per **P3** sono consegnati il **motore** (`gmb_3d_mesh_draw`: target ARGB+depth, clip/frustum, z-buffer, UV prospettici, back-face, nearest/bilinear, masked, two_sided) con 5 golden e 26 check, e la **superficie BASIC** `SCENE`: dal 2026-11-24 11 verbi + 7 letture su tutte e quattro le gambe, dal 2026-11-25 (`e53cbfcc`) `LIGHT`, `SMOOTH`/`ALPHA`/`TWOSIDED`, `TEXTURE "file.png"` e `PRESENT`, per **16 verbi e 7 letture**; P4 (2026-11-25) aggiunge `LAMP` (6/10 argomenti), `FOG`, `FAR`, `SKY`, `COLORMAP`, `THING` e `OBJECT` a 5 argomenti, per **22 verbi e 7 letture**. Copertura: 22 MiniTest `SCENE` in `shared/minitests/3d`, 18 golden per RID, 139 check di selftest. Il sample d'accettazione `Samples3D/MeshBasics.bas` gira su tutte e quattro le gambe con lo stesso output. **P4 è consegnato** (lampade point/spot, fog, FAR, sky, `COLORMAP`, `THING`, ordine di disegno) con 6 MiniTest e 6 golden, stessi valori su quattro gambe. **P5** ha consegnato il culling per oggetto, il tetto di 512 oggetti, il banco misurato e la **superficie interattiva** (`PLAYER`/`MOVE`/`TURN`/`LIFT`, `ZONE`/`ZONETAG`, `FLOORAT`/`CEILAT`, letture `SCENE.X/Y/Z/EYE/YAW/PITCH/HIT`) con i MiniTest `scene_move.bas` e `scene_zones.bas`: le 36 prove di `shared/minitests/3d` PASS, le 20 golden `diff=0`. Il terzo blocco (2026-11-27) porta i buffer a **capacità dinamica** e consegna l'**accettazione dei 200k triangoli** (52 fps mediani a 640×360, `allocs=0`, dentro `check_3d_oracle.sh`). Restano LOD, instancing, `KEY` TRS, skinning, `SCENE.STATS` e i raggi | specifica §7; piano §6 P2, P3, P4, P5 |
 | 7 | Ordine delle fasi | **Applicato come numerazione**: P0 → P1 oracolo → P2 settori → P3 mesh → P4 luce → P5 scena → P6–P9 → `PH` hardware fuori numerazione | piano §6 |
 | 8 | Formati versionati e passo fisso | **Deciso in v1**: un solo schema `gmb-3d` con `kind` obbligatorio e un documento per file (`.gmbscene`), migrazione dichiarata, `F-ROUNDTRIP` come test del formato; `T-FIXED`, `T-CLOCK` come da specifica | specifica §4, §7, §12.1 |
 | 9 | Inventario come oracolo (non prosa) | **Fatto**: specifica con ID e tabella ID→test | `3D-Specifica-Comportamenti.md` |
@@ -623,4 +697,4 @@ Con P0+P1 (≈1 settimana) si ha la pipeline di verifica; con P2 (≈3–4 setti
 | 14 | **Compatibilità GPM di tutto il motore 3D** | **Fatto e chiuso**: comandi/`RENDER` solo in un task, I/O che parca con ripiego sincrono fuori, ciclo park-based (`R10`), load atomico con validazione nel task (`R11`), stato 3D verso T0 solo per atomi, nessuna seconda via di dispatch | piano §3.1.11; nota §2, §3, §8.1, §8.3, §10, §14; specifica `C-GPM` |
 | 15 | **Ponte C# dei comandi 3D (IL/PCode/VM-C)** | **Chiuso (2026-11-19)**: `StdLib.World.cs` (`RegisterCommand`/`RegisterFunction`), nodo `WorldCommandStmt`, linker dei tre backend, P/Invoke `World3DNative` → le stesse `gmb_world_*` via `libgmb_3d`, syscall/builtin in VM/C. Ritirati il marcatore `native-only`, `gmb_p_native_ns_lookup` e le righe WORLD di `gmb_members.h`; i 20 MiniTest girano su tutte e quattro le gambe | piano §6 P2 (aggancio al linguaggio), §7.2 |
 
-**I tre che valgono più di tutti**, nell'ordine: (1) provenienza — fatto; (2) oracolo headless — fatto in P1; (3) handle fra istanze — deciso. La **nota di thread/present** (3) e la **decisione palette/ARGB** (5, → ARGB) sono fatte. Dal 2026-11-19 sono chiuse anche le sei domande che P2 ereditava: le tre di formato/semantica — schema JSON unico (§3.1.8), `WORLD CHECK` come tool con validazione nel load (§3.1.9), `SEES` 1/0/−1 (§3.1.10) — e le tre della nota tecnica (cap `auto`, triple buffer solo dietro misura, identità del **task** invece del thread). Restano aperti la **revisione indipendente** della provenienza (riga 1) e il **kernel di P5** (culling spaziale, LOD, instancing, animazione; riga 6). Dal 2026-11-19 c'è anche l'obbligazione trasversale della **compatibilità GPM** (riga 14, §3.1.11): non è una scelta, è un vincolo che ogni fase verifica in accettazione. Il prossimo passo è **P5**: culling spaziale e frustum per oggetto, LOD, instancing per materiale, animazione TRS e skinning. La superficie `SCENE` di P3+P4 è agganciata e verde su quattro gambe; restano fuori `ZONE`, `PLAYER`/`MOVE`, `TURN`/`LIFT` e le letture della camera.
+**I tre che valgono più di tutti**, nell'ordine: (1) provenienza — fatto; (2) oracolo headless — fatto in P1; (3) handle fra istanze — deciso. La **nota di thread/present** (3) e la **decisione palette/ARGB** (5, → ARGB) sono fatte. Dal 2026-11-19 sono chiuse anche le sei domande che P2 ereditava: le tre di formato/semantica — schema JSON unico (§3.1.8), `WORLD CHECK` come tool con validazione nel load (§3.1.9), `SEES` 1/0/−1 (§3.1.10) — e le tre della nota tecnica (cap `auto`, triple buffer solo dietro misura, identità del **task** invece del thread). Restano aperti la **revisione indipendente** della provenienza (riga 1) e il **kernel di P5** (culling spaziale, LOD, instancing, animazione; riga 6). Dal 2026-11-19 c'è anche l'obbligazione trasversale della **compatibilità GPM** (riga 14, §3.1.11): non è una scelta, è un vincolo che ogni fase verifica in accettazione. **P5 è in corso**: il primo blocco (2026-11-26) consegna il **culling per oggetto** (AABB + sei piani, conservativo: le 20 golden restano `diff=0`), il tetto di **512 oggetti**, il banco misurato `tools/sh/bench_3d.sh` e l'accettazione «500 oggetti a ≥30 fps a 640×360» dentro `check_3d_oracle.sh`. Il secondo blocco (2026-11-26) consegna la **superficie interattiva**: `PLAYER`/`MOVE`/`TURN`/`LIFT` con collisione a scivolamento, gradini e soffitto, `HIT`, `ZONE`/`ZONETAG`, `FLOORAT`/`CEILAT` e le letture `SCENE.X/Y/Z/EYE/YAW/PITCH` — su tutte e quattro le gambe, con i MiniTest `scene_move.bas` e `scene_zones.bas`. Il terzo blocco (2026-11-27) porta i buffer della scena da statici a **capacità dinamica**: 200.000 triangoli dichiarati rendono a **52 fps mediani** a 640×360 (limite 30) con `allocs=0` per frame, e l'accettazione è dentro `check_3d_oracle.sh`. Restano LOD, instancing per materiale, `KEY` TRS, skinning 64 ossa, `SCENE.STATS` e i raggi (`SHOOT`/`USE`/`SEES`). La superficie `SCENE` resta agganciata e verde su quattro gambe.

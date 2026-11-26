@@ -9,7 +9,8 @@
 ' Tre cose verificate:
 '   1. il quad rosso si vede (red=): la geometria e il raster funzionano;
 '   2. il PNG caricato viene CAMPIONATO (loaded=, quad bianco + texture rossa);
-'   3. un file inesistente non azzera la texture: vale quella precedente (atomic=).
+'   3. un file inesistente solleva un errore catturabile e NON azzera la texture:
+'      vale quella precedente (atomic=).
 IMPORT SCENE
 
 SUB Main()
@@ -41,8 +42,14 @@ SUB Main()
   PRINT "loaded="; SCENE.PIXEL(4, 4)
   PRINT "drawn="; SCENE.DRAWN()
 
-  ' 3) load atomico: un percorso sbagliato lascia in piedi la texture precedente
-  SCENE TEXTURE "non_esiste_mai.png"
+  ' 3) load atomico: un percorso sbagliato è un ERRORE esplicito (non un no-op
+  ' silenzioso) e lascia in piedi la texture precedente. Si cattura con TRY/CATCH:
+  ' il messaggio canonico e l'exit code sono verificati da check_scene_negatives.sh.
+  TRY
+    SCENE TEXTURE "non_esiste_mai.png"
+    PRINT "BAD-load"
+  CATCH e AS ERR
+  END TRY
   SCENE RENDER
   PRINT "atomic="; SCENE.PIXEL(4, 4)
 END SUB

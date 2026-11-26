@@ -127,6 +127,50 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneLight)));
                 return;
 
+            // P5: superficie interattiva (specifica §3.3).
+            case TokenKind.SceneZone:
+                if (a.Length == 8)
+                {
+                    EmitInt64Argument(a[0]);
+                    for (int i = 1; i < 7; i++) EmitDoubleArgument(a[i]);
+                    EmitStringArgument(a[7]);
+                    _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneZone)));
+                    return;
+                }
+                RequireSceneArgs(stmt, 7, "SCENE ZONE id, x1, y1, x2, y2, z1, z2");
+                EmitInt64Argument(a[0]);
+                for (int i = 1; i < 7; i++) EmitDoubleArgument(a[i]);
+                _il.Emit(OpCodes.Ldnull);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneZone)));
+                return;
+
+            case TokenKind.ScenePlayer:
+                RequireSceneArgs(stmt, 4, "SCENE PLAYER raggio, altezza, occhio, step");
+                for (int i = 0; i < 4; i++) EmitDoubleArgument(a[i]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ScenePlayer)));
+                return;
+
+            case TokenKind.SceneMove:
+                RequireSceneArgs(stmt, 2, "SCENE MOVE avanti, destra");
+                EmitDoubleArgument(a[0]);
+                EmitDoubleArgument(a[1]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneMove)));
+                return;
+
+            case TokenKind.SceneTurn:
+                if (a.Length < 1 || a.Length > 2)
+                    throw new NotSupportedException("Backend IL: SCENE TURN dyaw [, dpitch].");
+                EmitDoubleArgument(a[0]);
+                if (a.Length == 2) EmitDoubleArgument(a[1]); else _il.Emit(OpCodes.Ldc_R8, 0.0);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneTurn)));
+                return;
+
+            case TokenKind.SceneLift:
+                RequireSceneArgs(stmt, 1, "SCENE LIFT dy");
+                EmitDoubleArgument(a[0]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneLift)));
+                return;
+
             case TokenKind.ScenePresent:
                 RequireSceneArgs(stmt, 0, "SCENE PRESENT non accetta argomenti");
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ScenePresent)));
@@ -202,6 +246,24 @@ public sealed partial class IlProgramCompiler
         if (expr.Args.Length != 0)
             throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} non accetta argomenti.");
         _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
+    }
+
+    /// <summary>SCENE.FLOORAT/CEILAT/ZONE(x, y, z): tre argomenti double, risultato double.</summary>
+    private void EmitSceneReadPoint(BuiltinFunctionCallExpr expr, string methodName)
+    {
+        if (expr.Args.Length != 3)
+            throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 3 argomenti (x, y, z).");
+        for (int i = 0; i < 3; i++) EmitDoubleArgument(expr.Args[i]);
+        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
+    }
+
+    /// <summary>SCENE.ZONETAG(id): un argomento intero, risultato stringa.</summary>
+    private void EmitSceneReadZoneTag(BuiltinFunctionCallExpr expr)
+    {
+        if (expr.Args.Length != 1)
+            throw new NotSupportedException("Backend IL: SCENE.ZONETAG richiede 1 argomento (id).");
+        EmitInt64Argument(expr.Args[0]);
+        _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneZoneTag)));
     }
 
     /// <summary>SCENE.PIXEL(x, y): due argomenti interi, risultato double.</summary>

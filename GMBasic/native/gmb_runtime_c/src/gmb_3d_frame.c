@@ -125,14 +125,20 @@ int gmb_3d_target_ids(gmb_3d_target_t* t, int on)
         return GMB_3D_OK;
     }
     size_t n = (size_t)t->w * (size_t)t->h;
-    uint32_t* ids = (uint32_t*)realloc(t->id, n * sizeof(uint32_t));
-    if (ids == NULL)
+    /* Allocazione UNA volta per target: il buffer si azzera a ogni frame (RENDER
+     * lo riusa) e `gmb_3d_target_free` lo libera a ogni VIEW di dimensione
+     * diversa. Così nemmeno il pick aggiunge allocazioni nel frame. */
+    if (t->id == NULL)
     {
-        set_err("target: memoria esaurita per il buffer di id");
-        return GMB_3D_E_NOMEM;
+        t->id = (uint32_t*)malloc(n * sizeof(uint32_t));
+        if (t->id == NULL)
+        {
+            set_err("target: memoria esaurita per il buffer di id");
+            return GMB_3D_E_NOMEM;
+        }
+        g_alloc_count++;
     }
-    t->id = ids;
-    for (size_t i = 0; i < n; i++) ids[i] = 0;
+    for (size_t i = 0; i < n; i++) t->id[i] = 0;
     return GMB_3D_OK;
 }
 
@@ -291,6 +297,14 @@ int gmb_3d_render_depth(void)
 unsigned long gmb_3d_alloc_count(void)
 {
     return g_alloc_count;
+}
+
+/* Le crescite della scena (gmb_3d_scene_buf.c) si contano qui: il banco e il
+ * selftest verificano «nessuna allocazione per frame» col contatore, non a
+ * occhio, così ogni nuovo buffer che allocasse nel frame fallisce il check. */
+void gmb_3d_note_alloc(unsigned long n)
+{
+    g_alloc_count += n;
 }
 
 const char* gmb_3d_last_error(void)

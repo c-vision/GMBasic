@@ -1601,4 +1601,17 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     SCENE_PIXEL = 3918,
     // SCENE.PICK(x, y): id dell'oggetto nel pixel dal buffer di SCENE PICK.
     SCENE_PICK = 3919,
+    // P5 — superficie interattiva: camera/corpo, quote e zone. In coda, come
+    // sempre: mirror in gmb_builtin.c.
+    SCENE_ZONE = 3920,      // (x, y, z)   → gmb_scene_zone_at
+    SCENE_ZONETAG = 3921,   // (id)        → gmb_scene_zonetag_text
+    SCENE_X = 3922,         // ()          → gmb_scene_x
+    SCENE_Y = 3923,
+    SCENE_Z = 3924,
+    SCENE_EYE = 3925,
+    SCENE_YAW = 3926,
+    SCENE_PITCH = 3927,
+    SCENE_HIT = 3928,
+    SCENE_FLOORAT = 3929,   // (x, y, z)   → gmb_scene_floor_at
+    SCENE_CEILAT = 3930,    // (x, y, z)   → gmb_scene_ceil_at
 }

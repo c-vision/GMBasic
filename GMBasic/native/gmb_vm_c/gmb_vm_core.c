@@ -6112,6 +6112,55 @@ static void vm_sys_scene_object_flags(gmb_vm_t* vm, gmb_task_t* task, int code, 
                                      (int64_t)vm_world_num(&a[4]));
 }
 
+/* P5 — superficie interattiva: corpo, MOVE/TURN/LIFT e zone. Argomenti in ordine di
+ * sorgente (vm_pop_args_ordered); il tag di ZONE e' una stringa, rilasciata dopo la
+ * chiamata perche' la facciata ne copia i byte. */
+static void vm_sys_scene_zone(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[8];
+    int n = argc > 8 ? 8 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 7) {
+        const char* tag = (n >= 8 && a[7].type == 2 && a[7].ref && a[7].ref->kind == GMB_OBJ_STRING)
+            ? ((gmb_obj_string_t*)a[7].ref)->data : NULL;
+        (void)gmb_scene_zone((int64_t)vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]),
+                             vm_world_num(&a[3]), vm_world_num(&a[4]), vm_world_num(&a[5]),
+                             vm_world_num(&a[6]), tag);
+        if (n >= 8) gmb_obj_release(a[7].ref);
+    }
+}
+static void vm_sys_scene_player(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[4];
+    int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 4)
+        (void)gmb_scene_player(vm_world_num(&a[0]), vm_world_num(&a[1]),
+                               vm_world_num(&a[2]), vm_world_num(&a[3]));
+}
+static void vm_sys_scene_move(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[2];
+    int n = argc > 2 ? 2 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 2) (void)gmb_scene_move(vm_world_num(&a[0]), vm_world_num(&a[1]));
+}
+static void vm_sys_scene_turn(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[2];
+    int n = argc > 2 ? 2 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 1)
+        (void)gmb_scene_turn(vm_world_num(&a[0]), n >= 2 ? vm_world_num(&a[1]) : 0.0);
+}
+static void vm_sys_scene_lift(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 1) (void)gmb_scene_lift(vm_world_num(&a[0]));
+}
+
 static void vm_sys_scene_light(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
     (void)vm; (void)code;
     gmb_stack_entry_t a[4];
@@ -7327,6 +7376,12 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_SCENE_COLORMAP, vm_sys_scene_colormap },
     { GMB_SC_SCENE_THING, vm_sys_scene_thing },
     { GMB_SC_SCENE_OBJECT_FLAGS, vm_sys_scene_object_flags },
+    /* P5: superficie interattiva. */
+    { GMB_SC_SCENE_ZONE, vm_sys_scene_zone },
+    { GMB_SC_SCENE_PLAYER, vm_sys_scene_player },
+    { GMB_SC_SCENE_MOVE, vm_sys_scene_move },
+    { GMB_SC_SCENE_TURN, vm_sys_scene_turn },
+    { GMB_SC_SCENE_LIFT, vm_sys_scene_lift },
     { GMB_SC_CLOCK_PAUSE, vm_sys_clock_pause },
     { GMB_SC_CLOCK_RESUME, vm_sys_clock_resume },
     { GMB_SC_CLOCK_SCALE, vm_sys_clock_scale },

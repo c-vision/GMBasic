@@ -2756,9 +2756,26 @@ typedef enum gmb_tokenkind {
     /* SCENE PICK on|off + lettura SCENE.PICK(x, y) — buffer di id per pixel,
      * additivo e spento di default. */
     GMB_TOK_ScenePick,
+    /* P5 — superficie interattiva (specifica §3.3): stessi TokenKind del lato C#,
+     * nello stesso ordine (gli ordinali sono canonici). */
+    GMB_TOK_SceneZone,
+    GMB_TOK_SceneZoneTag,
+    GMB_TOK_ScenePlayer,
+    GMB_TOK_SceneMove,
+    GMB_TOK_SceneTurn,
+    GMB_TOK_SceneLift,
+    GMB_TOK_SceneX,
+    GMB_TOK_SceneY,
+    GMB_TOK_SceneZ,
+    GMB_TOK_SceneEye,
+    GMB_TOK_SceneYaw,
+    GMB_TOK_ScenePitch,
+    GMB_TOK_SceneHit,
+    GMB_TOK_SceneFloorAt,
+    GMB_TOK_SceneCeilAt,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2724
+  #define GMB_TOK_COUNT 2739
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

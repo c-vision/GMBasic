@@ -242,6 +242,67 @@ public static class Scene3DNative
     [DllImport(Lib, EntryPoint = "gmb_scene_pixel", CallingConvention = CallingConvention.Cdecl)]
     public static extern long Pixel(long x, long y);
 
+    // ── P5: superficie interattiva (specifica §3.3) ─────────────────────────────────────────
+    // Corpo, movimento, quote e zone vivono solo nel runtime C (gmb_3d_scene_actor.c):
+    // qui si inoltra, come per gli altri verbi SCENE (§0bis).
+    [DllImport(Lib, EntryPoint = "gmb_scene_player", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long PlayerRaw(double radius, double height, double eye, double step);
+    public static long Player(double radius, double height, double eye, double step)
+    { var rc = PlayerRaw(radius, height, eye, step); Check(rc); return rc; }
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_move", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long MoveRaw(double forward, double right);
+    public static long Move(double forward, double right)
+    { var rc = MoveRaw(forward, right); Check(rc); return rc; }
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_turn", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long TurnRaw(double dYaw, double dPitch);
+    public static long Turn(double dYaw, double dPitch)
+    { var rc = TurnRaw(dYaw, dPitch); Check(rc); return rc; }
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_lift", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long LiftRaw(double dy);
+    public static long Lift(double dy) { var rc = LiftRaw(dy); Check(rc); return rc; }
+
+    // SCENE ZONE id, x1, y1, x2, y2, z1, z2 [, tag]: tag NULL quando assente.
+    [DllImport(Lib, EntryPoint = "gmb_scene_zone", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long ZoneRaw(long id, double x1, double y1, double x2, double y2,
+                                       double z1, double z2, [MarshalAs(UnmanagedType.LPUTF8Str)] string? tag);
+    public static long Zone(long id, double x1, double y1, double x2, double y2,
+                            double z1, double z2, string? tag)
+    { var rc = ZoneRaw(id, x1, y1, x2, y2, z1, z2, tag); Check(rc); return rc; }
+
+    // Letture: camera (X/Y/Z = occhio), corpo (EYE, HIT), quote e zone.
+    [DllImport(Lib, EntryPoint = "gmb_scene_x", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double X();
+    [DllImport(Lib, EntryPoint = "gmb_scene_y", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double Y();
+    [DllImport(Lib, EntryPoint = "gmb_scene_z", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double Z();
+    [DllImport(Lib, EntryPoint = "gmb_scene_eye", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double Eye();
+    [DllImport(Lib, EntryPoint = "gmb_scene_yaw", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double Yaw();
+    [DllImport(Lib, EntryPoint = "gmb_scene_pitch", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double Pitch();
+    [DllImport(Lib, EntryPoint = "gmb_scene_hit", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double Hit();
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_floor_at", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double FloorAt(double x, double y, double z);
+    [DllImport(Lib, EntryPoint = "gmb_scene_ceil_at", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double CeilAt(double x, double y, double z);
+    [DllImport(Lib, EntryPoint = "gmb_scene_zone_at", CallingConvention = CallingConvention.Cdecl)]
+    public static extern long ZoneAt(double x, double y, double z);
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_zonetag_text", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ZoneTagRaw(long id);
+    public static string ZoneTag(long id)
+    {
+        var p = ZoneTagRaw(id);
+        return p == IntPtr.Zero ? "" : (Marshal.PtrToStringUTF8(p) ?? "");
+    }
+
     // PICK(x, y): id dell'oggetto nel pixel dal buffer di SCENE PICK.
     [DllImport(Lib, EntryPoint = "gmb_scene_pick", CallingConvention = CallingConvention.Cdecl)]
     public static extern long Pick(long x, long y);

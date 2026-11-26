@@ -393,6 +393,16 @@ set(GMB_ALL_SRCS
     # (DOEVENTS) e, insieme, punto unico dove si decide quanto tempo e' passato.
     src/gmb_clock.c
     src/gmb_3d_cmd.c
+    # P5: matrici del renderer e culling per oggetto (M-CULL), separati per non
+    # superare le 1200 righe della facciata dei comandi.
+    src/gmb_3d_scene.c
+    # P5: superficie interattiva (corpo, MOVE, quote, zone), separata per non
+    # superare le 1200 righe della facciata; la texture procedurale ha il suo file.
+    src/gmb_3d_scene_actor.c
+    # P5: buffer della scena a capacità dinamica (200k triangoli) e AABB mondo,
+    # così il frame non alloca e la facciata non cresce.
+    src/gmb_3d_scene_buf.c
+    src/gmb_3d_scene_tex.c
     # SCENE PICK (buffer di id additivo, spento di default): stato del flag e
     # superficie, separati per non superare le 1200 righe del dominio.
     src/gmb_3d_pick.c
@@ -839,6 +849,10 @@ endif()
 # implementazione, nessun doppio stato.
 add_library(gmb_3d SHARED
     src/gmb_3d_cmd.c
+    src/gmb_3d_scene.c
+    src/gmb_3d_scene_actor.c
+    src/gmb_3d_scene_buf.c
+    src/gmb_3d_scene_tex.c
     # gmb_3d_io.o (dentro gmb_runtime) usa gm_tex_* e il raster della suite: le stesse
     # sorgenti che compila l'oracolo, così la dylib non resta con simboli irrisolti e
     # un dlopen dal C# non muore al primo WORLD LOAD.

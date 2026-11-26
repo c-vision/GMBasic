@@ -227,6 +227,10 @@ static int gmb_p_scene_verb_tk(const char* v)
         { "AA", GMB_TOK_SceneAa },
         /* SCENE PICK on|off: buffer di id additivo (lettura SCENE.PICK). */
         { "PICK", GMB_TOK_ScenePick },
+        /* P5: superficie interattiva. ZONE è anche lettura (SCENE.ZONE). */
+        { "ZONE", GMB_TOK_SceneZone }, { "PLAYER", GMB_TOK_ScenePlayer },
+        { "MOVE", GMB_TOK_SceneMove }, { "TURN", GMB_TOK_SceneTurn },
+        { "LIFT", GMB_TOK_SceneLift },
     };
     for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
         if (strcasecmp(v, map[i].word) == 0) return (int)map[i].tk;

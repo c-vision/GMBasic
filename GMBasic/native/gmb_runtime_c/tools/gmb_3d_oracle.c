@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <time.h>          /* P5: banco della scena (tempo mediano per frame) */
 
 #include "gmb_3d.h"
 #include "gmb_c99gpm.h"              /* R3/R5 con due task veri (scheduler GPM) */
@@ -1344,6 +1345,314 @@ static int run_selftest(const char* dir)
     return fail == 0 ? 0 : 1;
 }
 
+/* ═══ P5 — culling per oggetto (M-CULL) e banco della scena ═════════════════
+ *
+ * Due prove, entrambe sulla SUPERFICIE (`gmb_scene_*`), che è ciò che chiamano le
+ * quattro gambe: la decisione di culling vive in `gmb_3d_scene.c` e qui si guarda
+ * solo il risultato osservabile — DRAWN, CULLED, HASH — non l'interno.
+ */
+
+/* Otto box identici: quattro davanti alla camera (z >= 0) e quattro dietro
+ * (z < -6). `twosided` è acceso perché CULLED deve contare SOLO ciò che il frustum
+ * scarta: con il back-face attivo metà facce di un box chiuso finirebbero lì e il
+ * numero non direbbe più niente sul culling per oggetto. */
+static int p5_declare(int n, const double* zs)
+{
+    if (gmb_scene_reset() != GMB_3D_OK) return 0;
+    if (gmb_scene_view(320, 180, 60.0) != GMB_3D_OK) return 0;
+    if (gmb_scene_twosided(1) != GMB_3D_OK) return 0;
+    if (gmb_scene_camera(0.0, 0.0, -6.0, 0.0, 0.0) != GMB_3D_OK) return 0;
+    for (int i = 0; i < n; i++)
+    {
+        if (gmb_scene_object(200, 200, 200) != GMB_3D_OK) return 0;
+        if (gmb_scene_box(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5) != GMB_3D_OK) return 0;
+        if (gmb_scene_objpos(0.0, 0.0, zs[i], 0.0) != GMB_3D_OK) return 0;
+    }
+    return 1;
+}
+
+static int run_p5_cull(void)
+{
+    int ok = 0, fail = 0;
+    const double both[8] = { 0.0, 3.0, 6.0, 9.0, -12.0, -15.0, -18.0, -21.0 };
+    const double front[4] = { 0.0, 3.0, 6.0, 9.0 };
+    long drawn, culled = 0;
+
+/* Un check = una riga di stampa solo quando fallisce, come il selftest. */
+#define P5_CHECK(cond, ...) do { if (cond) ok++; else { fail++; printf("P5-CULL fail: "); printf(__VA_ARGS__); printf("\n"); } } while (0)
+
+    /* 1: ogni triangolo finisce in DRAWN o in CULLED — il culling per oggetto non
+     *    fa sparire triangoli dal conteggio. */
+    P5_CHECK(p5_declare(8, both), "dichiarazione di %d oggetti", 8);
+    drawn = gmb_scene_render() == GMB_3D_OK ? gmb_scene_drawn() : -1;
+    culled = gmb_scene_culled();
+    P5_CHECK(drawn >= 0, "render fallito: %s", gmb_3d_last_error());
+    P5_CHECK(drawn + culled == 96, "drawn+culled=%ld, atteso 96 (8 box x 12)", drawn + culled);
+
+    /* 2: i quattro dietro la camera non si disegnano, i quattro davanti sì. */
+    P5_CHECK(drawn == 48 && culled == 48, "davanti/indietro: drawn=%ld culled=%ld (attesi 48/48)",
+             drawn, culled);
+
+    /* 3: il frame è IDENTICO a quello di una scena in cui i quattro dietro non
+     *    esistono mai: il culling salta lavoro, non cambia un pixel. */
+    {
+        long h_all = gmb_scene_hash();
+        P5_CHECK(p5_declare(4, front), "dichiarazione dei soli 4 davanti");
+        drawn = gmb_scene_render() == GMB_3D_OK ? gmb_scene_drawn() : -1;
+        P5_CHECK(drawn == 48, "soli 4 davanti: drawn=%ld (atteso 48)", drawn);
+        P5_CHECK(gmb_scene_hash() == h_all, "hash diverso: il culling ha cambiato i pixel");
+    }
+
+    /* 4: girando la camera i ruoli si invertono; i conteggi restano simmetrici. */
+    {
+        P5_CHECK(p5_declare(8, both), "dichiarazione di 8 oggetti (camera girata)");
+        P5_CHECK(gmb_scene_camera(0.0, 0.0, -6.0, 180.0, 0.0) == GMB_3D_OK, "camera girata");
+        drawn = gmb_scene_render() == GMB_3D_OK ? gmb_scene_drawn() : -1;
+        culled = gmb_scene_culled();
+        P5_CHECK(drawn == 48 && culled == 48, "camera girata: drawn=%ld culled=%ld (attesi 48/48)",
+                 drawn, culled);
+    }
+#undef P5_CHECK
+
+    printf("P5-CULL ok=%d fail=%d\n", ok, fail);
+    return fail == 0 ? 0 : 1;
+}
+
+/* ═══ P5 — superficie interattiva (M-PLAYER/M-COLLIDE/M-FLOOR/M-ZONE) ══════
+ *
+ * Tutto sulla superficie `gmb_scene_*`, che è ciò che chiamano le quattro
+ * gambe: l'oracolo guarda SOLO i valori osservabili (posizione, quote, HIT,
+ * zone), mai l'interno del modulo actor.
+ *
+ * Geometria (y = altezza, piano x/z, fronte a yaw 0 = +z):
+ *   pavimento    y −2..0, x/z −50..50
+ *   muro         z 20..30, alto 100
+ *   gradino      x 10..20, z −10..10, alto 10 (≤ step 24)
+ *   passabile    x −20..−10, z −10..10, alto 5, flag 4
+ *   soffitto     x −45..−35, z −5..5, y 100..120
+ *   mensole      x/z 60..70, tetti 10 e 20 (FLOORAT sovrapposto)
+ */
+static int p5_interact_scene(void)
+{
+    if (gmb_scene_reset() != GMB_3D_OK) return 0;
+    if (gmb_scene_view(64, 32, 60.0) != GMB_3D_OK) return 0;
+    if (gmb_scene_camera(0.0, 46.0, 0.0, 0.0, 0.0) != GMB_3D_OK) return 0;
+
+    if (gmb_scene_object(80, 80, 80) != GMB_3D_OK) return 0;
+    if (gmb_scene_box(-50.0, -2.0, -50.0, 50.0, 0.0, 50.0) != GMB_3D_OK) return 0;
+    if (gmb_scene_object(120, 120, 120) != GMB_3D_OK) return 0;
+    if (gmb_scene_box(-30.0, 0.0, 20.0, 30.0, 100.0, 30.0) != GMB_3D_OK) return 0;
+    if (gmb_scene_object(200, 180, 60) != GMB_3D_OK) return 0;
+    if (gmb_scene_box(10.0, 0.0, -10.0, 20.0, 10.0, 10.0) != GMB_3D_OK) return 0;
+    if (gmb_scene_object_flags(60, 200, 60, 4, 255) != GMB_3D_OK) return 0;
+    if (gmb_scene_box(-20.0, 0.0, -10.0, -10.0, 5.0, 10.0) != GMB_3D_OK) return 0;
+    if (gmb_scene_object(90, 90, 160) != GMB_3D_OK) return 0;
+    if (gmb_scene_box(-45.0, 100.0, -5.0, -35.0, 120.0, 5.0) != GMB_3D_OK) return 0;
+    if (gmb_scene_object(180, 140, 180) != GMB_3D_OK) return 0;
+    if (gmb_scene_box(60.0, 0.0, 60.0, 70.0, 10.0, 70.0) != GMB_3D_OK) return 0;
+    if (gmb_scene_object(180, 140, 180) != GMB_3D_OK) return 0;
+    if (gmb_scene_box(60.0, 0.0, 60.0, 70.0, 20.0, 70.0) != GMB_3D_OK) return 0;
+
+    /* M-ZONE: la PRIMA creata vince, anche se una successiva si sovrappone. */
+    if (gmb_scene_zone(2, -20.0, -100.0, 20.0, 100.0, -20.0, 20.0, "outer") != GMB_3D_OK) return 0;
+    if (gmb_scene_zone(1, -10.0, 0.0, 10.0, 50.0, -10.0, 10.0, "inner") != GMB_3D_OK) return 0;
+    if (gmb_scene_zone(3, 30.0, 10.0, 40.0, 20.0, 30.0, 40.0, "shelf") != GMB_3D_OK) return 0;
+    return 1;
+}
+
+static int run_p5_interact(void)
+{
+    int ok = 0, fail = 0;
+#define P5I_CHECK(cond, ...) do { if (cond) ok++; else { fail++; printf("P5-INTERACT fail: "); printf(__VA_ARGS__); printf("\n"); } } while (0)
+
+    P5I_CHECK(p5_interact_scene(), "dichiarazione della scena interattiva");
+
+    /* Letture camera: CAMERA posiziona l'occhio, EYE è l'altezza sui piedi. */
+    P5I_CHECK(gmb_scene_x() == 0.0 && gmb_scene_y() == 46.0 && gmb_scene_z() == 0.0,
+              "camera x/y/z = %g/%g/%g (attesi 0/46/0)", gmb_scene_x(), gmb_scene_y(), gmb_scene_z());
+    P5I_CHECK(gmb_scene_eye() == 46.0 && gmb_scene_yaw() == 0.0 && gmb_scene_pitch() == 0.0,
+              "eye/yaw/pitch = %g/%g/%g (attesi 46/0/0)", gmb_scene_eye(), gmb_scene_yaw(), gmb_scene_pitch());
+    P5I_CHECK(gmb_scene_hit() == 0.0, "HIT iniziale = %g (atteso 0)", gmb_scene_hit());
+
+    /* M-FLOOR: superficie più alta a o sotto il punto; sentinella fuori piano. */
+    P5I_CHECK(gmb_scene_floor_at(0.0, 0.0, 0.0) == 0.0, "FLOORAT sul pavimento = %g", gmb_scene_floor_at(0.0, 0.0, 0.0));
+    P5I_CHECK(gmb_scene_floor_at(65.0, 25.0, 65.0) == 20.0, "FLOORAT sopra le mensole = %g (atteso 20)",
+              gmb_scene_floor_at(65.0, 25.0, 65.0));
+    P5I_CHECK(gmb_scene_floor_at(65.0, 15.0, 65.0) == 10.0, "FLOORAT fra le mensole = %g (atteso 10)",
+              gmb_scene_floor_at(65.0, 15.0, 65.0));
+    P5I_CHECK(gmb_scene_floor_at(65.0, 5.0, 65.0) == -1000000.0, "FLOORAT sotto le mensole = %g (atteso -1000000)",
+              gmb_scene_floor_at(65.0, 5.0, 65.0));
+    P5I_CHECK(gmb_scene_ceil_at(-40.0, 0.0, 0.0) == 100.0, "CEILAT sotto il soffitto = %g (atteso 100)",
+              gmb_scene_ceil_at(-40.0, 0.0, 0.0));
+    P5I_CHECK(gmb_scene_ceil_at(0.0, 0.0, 0.0) == -1000000.0, "CEILAT a cielo aperto = %g", gmb_scene_ceil_at(0.0, 0.0, 0.0));
+
+    /* M-PASSABLE: FLOORAT vede il passabile, il corpo ci passa attraverso. */
+    P5I_CHECK(gmb_scene_floor_at(-15.0, 6.0, 0.0) == 5.0, "FLOORAT sul passabile = %g (atteso 5)",
+              gmb_scene_floor_at(-15.0, 6.0, 0.0));
+    P5I_CHECK(gmb_scene_camera(-15.0, 46.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "camera sul passabile");
+    P5I_CHECK(gmb_scene_move(5.0, 0.0) == GMB_3D_OK, "MOVE attraverso il passabile");
+    P5I_CHECK(fabs(gmb_scene_z() - 5.0) < 1e-3 && fabs(gmb_scene_y() - 46.0) < 1e-3,
+              "passabile: z=%g y=%g (attesi 5/46, nessun gradino)", gmb_scene_z(), gmb_scene_y());
+    P5I_CHECK(gmb_scene_hit() == 0.0, "passabile: HIT=%g (atteso 0)", gmb_scene_hit());
+
+    /* M-COLLIDE: scivolamento e stop sul muro. */
+    P5I_CHECK(gmb_scene_camera(0.0, 46.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "camera davanti al muro");
+    P5I_CHECK(gmb_scene_move(100.0, 0.0) == GMB_3D_OK, "MOVE contro il muro");
+    P5I_CHECK(fabs(gmb_scene_z() - 6.0) < 1e-3, "muro: z=%g (atteso 6 = 20 − raggio 14)", gmb_scene_z());
+    P5I_CHECK((int)gmb_scene_hit() & 1, "muro: HIT=%g senza bit 1", gmb_scene_hit());
+    P5I_CHECK(gmb_scene_move(10.0, 0.0) == GMB_3D_OK, "MOVE addosso al muro");
+    P5I_CHECK((int)gmb_scene_hit() & 2, "fermo: HIT=%g senza bit 2", gmb_scene_hit());
+
+    /* Scivolamento: spinta obliqua, la componente lungo il muro sopravvive. */
+    P5I_CHECK(gmb_scene_camera(0.0, 46.0, 6.0, 0.0, 0.0) == GMB_3D_OK, "camera a contatto");
+    P5I_CHECK(gmb_scene_move(10.0, 10.0) == GMB_3D_OK, "MOVE obliquo sul muro");
+    P5I_CHECK(fabs(gmb_scene_x() - 10.0) < 1e-3 && fabs(gmb_scene_z() - 6.0) < 1e-3,
+              "scivolamento: x=%g z=%g (attesi 10/6)", gmb_scene_x(), gmb_scene_z());
+
+    /* Gradino ≤ step: si sale (HIT bit 4). */
+    P5I_CHECK(gmb_scene_camera(15.0, 46.0, -20.0, 0.0, 0.0) == GMB_3D_OK, "camera davanti al gradino");
+    P5I_CHECK(gmb_scene_move(15.0, 0.0) == GMB_3D_OK, "MOVE sul gradino");
+    P5I_CHECK(fabs(gmb_scene_y() - 56.0) < 1e-3, "gradino: y=%g (atteso 56 = 10 + occhio 46)", gmb_scene_y());
+    P5I_CHECK((int)gmb_scene_hit() & 4, "gradino: HIT=%g senza bit 4", gmb_scene_hit());
+
+    /* M-ZONE: prima creata vince, tolleranza di 2 sotto la base, sentinelle. */
+    P5I_CHECK(gmb_scene_zone_at(0.0, 0.0, 0.0) == 2, "ZONE = %lld (atteso 2, la prima creata)",
+              (long long)gmb_scene_zone_at(0.0, 0.0, 0.0));
+    P5I_CHECK(gmb_scene_zone_at(0.0, 500.0, 0.0) == -1, "ZONE fuori quota = %lld",
+              (long long)gmb_scene_zone_at(0.0, 500.0, 0.0));
+    P5I_CHECK(gmb_scene_zone_at(35.0, 8.5, 35.0) == 3, "ZONE a 1,5 sotto la base = %lld (atteso 3)",
+              (long long)gmb_scene_zone_at(35.0, 8.5, 35.0));
+    P5I_CHECK(gmb_scene_zone_at(35.0, 7.5, 35.0) == -1, "ZONE a 2,5 sotto la base = %lld (atteso -1)",
+              (long long)gmb_scene_zone_at(35.0, 7.5, 35.0));
+    P5I_CHECK(!strcmp(gmb_scene_zonetag_text(2), "outer") && !strcmp(gmb_scene_zonetag_text(1), "inner"),
+              "ZONETAG = \"%s\"/\"%s\" (attesi outer/inner)", gmb_scene_zonetag_text(2), gmb_scene_zonetag_text(1));
+    P5I_CHECK(gmb_scene_zonetag_text(99)[0] == '\0', "ZONETAG di un id inesistente non è vuoto");
+
+    /* TURN: yaw in gradi, fronte a 90° = +x; LIFT sposta piedi e occhio insieme. */
+    P5I_CHECK(gmb_scene_camera(0.0, 46.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "camera per TURN");
+    P5I_CHECK(gmb_scene_turn(90.0, -10.0) == GMB_3D_OK, "TURN 90/-10");
+    P5I_CHECK(gmb_scene_yaw() == 90.0 && gmb_scene_pitch() == -10.0, "TURN: yaw=%g pitch=%g",
+              gmb_scene_yaw(), gmb_scene_pitch());
+    P5I_CHECK(gmb_scene_move(5.0, 0.0) == GMB_3D_OK, "MOVE dopo TURN");
+    P5I_CHECK(fabs(gmb_scene_x() - 5.0) < 1e-3 && fabs(gmb_scene_z()) < 1e-3,
+              "TURN+MOVE: x=%g z=%g (attesi 5/0)", gmb_scene_x(), gmb_scene_z());
+    P5I_CHECK(gmb_scene_lift(5.0) == GMB_3D_OK && fabs(gmb_scene_y() - 51.0) < 1e-3,
+              "LIFT: y=%g (atteso 51)", gmb_scene_y());
+    P5I_CHECK(gmb_scene_eye() == 46.0, "LIFT non cambia EYE (%g)", gmb_scene_eye());
+
+    /* PLAYER: cambia le misure del corpo; l'occhio resta sopra i piedi. */
+    P5I_CHECK(gmb_scene_player(10.0, 50.0, 40.0, 20.0) == GMB_3D_OK, "PLAYER 10/50/40/20");
+    P5I_CHECK(gmb_scene_eye() == 40.0 && fabs(gmb_scene_y() - 45.0) < 1e-3,
+              "PLAYER: eye=%g y=%g (attesi 40/45 = piedi 5 + occhio 40)", gmb_scene_eye(), gmb_scene_y());
+    P5I_CHECK(gmb_scene_player(0.0, 50.0, 40.0, 20.0) != GMB_3D_OK && strstr(gmb_3d_last_error(), "raggio"),
+              "PLAYER con raggio 0 non è un errore esplicito");
+    P5I_CHECK(gmb_scene_turn(0.0, 100.0) != GMB_3D_OK && strstr(gmb_3d_last_error(), "pitch"),
+              "TURN oltre 89° non è un errore esplicito");
+
+#undef P5I_CHECK
+    printf("P5-INTERACT ok=%d fail=%d\n", ok, fail);
+    return fail == 0 ? 0 : 1;
+}
+
+static int cmp_double(const void* a, const void* b)
+{
+    double x = *(const double*)a, y = *(const double*)b;
+    return (x < y) ? -1 : (x > y) ? 1 : 0;
+}
+
+/* Banco della scena (P5, accettazione «N oggetti a >= 30 fps»): N box in griglia
+ * davanti alla camera, FRAMES render misurati a orologio monotono. Il numero che
+ * conta è la MEDIANA, non una stima: la macchina è condivisa (piano §0septies). */
+static int p5_scene_bench(int n, int w, int h, int frames, int grid)
+{
+    if (n <= 0 || n > 65536 || w <= 0 || h <= 0 || frames < 1 || frames > 100000)
+    {
+        printf("BENCH-SCENE uso: --objects 1..65536 | --tris 1..786432, --size WxH, --frames N\n");
+        return 2;
+    }
+    if (gmb_scene_reset() != GMB_3D_OK || gmb_scene_view(w, h, 60.0) != GMB_3D_OK)
+    {
+        printf("BENCH-SCENE errore: %s\n", gmb_3d_last_error());
+        return 2;
+    }
+
+    /* Due disposizioni, per misurare due cose diverse:
+     *  - `--objects N` (griglia 25 colonne davanti alla camera): il banco storico
+     *    del primo blocco di P5, 12 triangoli per oggetto, numeri confrontabili;
+     *  - `--tris N` (griglia QUADRATA larga tutta la camera): serve a riempire il
+     *    quadro con ~N triangoli senza finire fuori dal frustum, che è il modo
+     *    onesto di misurare l'accettazione dei 200k (con 25 colonne e 16k oggetti
+     *    si uscirebbe dal campo visivo e si misurerebbe il culling, non il raster). */
+    const int cols = grid ? (int)ceil(sqrt((double)n)) : 25;
+    const int rows = (n + cols - 1) / cols;
+    for (int i = 0; i < n; i++)
+    {
+        double x, y, z;
+        if (grid)
+        {
+            x = (double)(i % cols) - (cols - 1) * 0.5;
+            y = (double)(i / cols) - (rows - 1) * 0.5;
+            z = 0.0;
+        }
+        else
+        {
+            x = ((double)(i % cols) - (cols - 1) * 0.5) * 1.2;
+            y = ((double)(i / cols) - (rows - 1) * 0.5) * 1.2 + 4.0;
+            z = 2.0 + (double)(i % 7) * 0.5;
+        }
+        if (gmb_scene_object(180, 190, 210) != GMB_3D_OK
+            || gmb_scene_box(-0.45, -0.45, -0.45, 0.45, 0.45, 0.45) != GMB_3D_OK
+            || gmb_scene_objpos(x, y, z, grid ? 0.0 : 25.0) != GMB_3D_OK)
+        {
+            printf("BENCH-SCENE errore: %s\n", gmb_3d_last_error());
+            return 2;
+        }
+    }
+    if (grid ? (gmb_scene_camera(0.0, 0.0, -120.0, 0.0, 0.0) != GMB_3D_OK)
+             : (gmb_scene_camera(0.0, 4.0, -24.0, 0.0, -6.0) != GMB_3D_OK))
+    {
+        printf("BENCH-SCENE errore: %s\n", gmb_3d_last_error());
+        return 2;
+    }
+
+    /* Nessuna allocazione per frame: si misura col contatore, non a occhio. La
+     * geometria (buffer dinamici) è già riservata: un RENDER che allocasse — un
+     * buffer nuovo, un realloc — fa fallire il banco. */
+    unsigned long alloc0 = gmb_3d_alloc_count();
+    for (int i = 0; i < 5; i++)                    /* warm-up: cache e target caldi */
+        if (gmb_scene_render() != GMB_3D_OK) { printf("BENCH-SCENE render: %s\n", gmb_3d_last_error()); return 2; }
+
+    double* ms = (double*)malloc((size_t)frames * sizeof(double));
+    if (ms == NULL) return 2;
+    for (int i = 0; i < frames; i++)
+    {
+        struct timespec a, b;
+        clock_gettime(CLOCK_MONOTONIC, &a);
+        if (gmb_scene_render() != GMB_3D_OK) { free(ms); printf("BENCH-SCENE render: %s\n", gmb_3d_last_error()); return 2; }
+        clock_gettime(CLOCK_MONOTONIC, &b);
+        ms[i] = (double)(b.tv_sec - a.tv_sec) * 1000.0 + (double)(b.tv_nsec - a.tv_nsec) / 1e6;
+    }
+
+    unsigned long alloc_n = gmb_3d_alloc_count() - alloc0;
+    if (alloc_n != 0)
+    {
+        printf("BENCH-SCENE allocazioni nel frame: %lu (attese 0)\n", alloc_n);
+        free(ms);
+        return 1;
+    }
+
+    double sum = 0.0;
+    for (int i = 0; i < frames; i++) sum += ms[i];
+    qsort(ms, (size_t)frames, sizeof(double), cmp_double);
+    double med = ms[frames / 2];
+    printf("BENCH-SCENE objects=%d verts=%ld tris=%ld drawn=%ld culled=%ld w=%d h=%d frames=%d "
+           "allocs=%lu min=%.3f med=%.3f mean=%.3f\n",
+           n, gmb_scene_verts(), gmb_scene_tris(), gmb_scene_drawn(), gmb_scene_culled(),
+           w, h, frames, alloc_n, ms[0], med, sum / (double)frames);
+    free(ms);
+    return 0;
+}
+
 /* --- main ---------------------------------------------------------------- */
 
 static void usage(void)
@@ -1352,9 +1661,16 @@ static void usage(void)
            "     gmb_3d_oracle --bless DIR [--rid RID]\n"
            "     gmb_3d_oracle --selftest DIR\n"
            "     gmb_3d_oracle --bench [--frames N]\n"
+           "     gmb_3d_oracle --cullcheck\n"
+           "     gmb_3d_oracle --interactcheck\n"
+           "     gmb_3d_oracle --bench-scene [--objects N | --tris N] [--size WxH] [--frames N]\n"
            "  DIR   = cartella delle golden (<scena>.<rid>.png)\n"
            "  --demo MAPPA = mappa demo (.gmbscene): scena `demo`, T-* e bench\n"
-           "  --bench = frame time della demo a 640x300 (limite 4 ms)\n");
+           "  --bench = frame time della demo a 640x300 (limite 4 ms)\n"
+           "  --cullcheck = culling per oggetto sulla superficie SCENE (P5)\n"
+           "  --interactcheck = corpo, MOVE, quote e zone della superficie SCENE (P5)\n"
+           "  --bench-scene = N oggetti (default 500) a --size (default 640x360)\n"
+           "  --tris N = N triangoli dichiarati (12 per box) in griglia frontale\n");
 }
 
 int main(int argc, char** argv)
@@ -1365,6 +1681,8 @@ int main(int argc, char** argv)
     const char* demo = NULL;
     double tol = 0.0;
     int bench = 0, frames = 120;
+    int cullcheck = 0, interactcheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
+    int tris_target = 0;   /* --tris N: 0 = griglia storica a oggetti */
 
     for (int i = 1; i < argc; i++)
     {
@@ -1383,11 +1701,32 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "--perturb") && i + 1 < argc) g_perturb = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--demo") && i + 1 < argc) demo = argv[++i];
         else if (!strcmp(argv[i], "--bench")) bench = 1;
+        else if (!strcmp(argv[i], "--cullcheck")) cullcheck = 1;
+        else if (!strcmp(argv[i], "--interactcheck")) interactcheck = 1;
+        else if (!strcmp(argv[i], "--bench-scene")) bench_scene = 1;
+        else if (!strcmp(argv[i], "--objects") && i + 1 < argc) objects = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--tris") && i + 1 < argc) tris_target = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--size") && i + 1 < argc)
+        {
+            if (sscanf(argv[++i], "%dx%d", &bw, &bh) != 2) { printf("--size WxH\n"); return 2; }
+        }
         else if (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) { usage(); return 0; }
         else { printf("argomento non riconosciuto: %s\n", argv[i]); usage(); return 2; }
     }
     if (demo) w_set_demo_path(demo);
+    if (cullcheck) return run_p5_cull();
+    if (interactcheck) return run_p5_interact();
+    if (bench_scene)
+    {
+        /* --tris N: 12 triangoli per box, griglia quadrata (vedi p5_scene_bench). */
+        if (tris_target > 0)
+        {
+            objects = (tris_target + 11) / 12;
+            return p5_scene_bench(objects, bw, bh, frames, 1);
+        }
+        return p5_scene_bench(objects, bw, bh, frames, 0);
+    }
     if (bench) return w_bench_demo(640, 300, frames, 4.0);
     if (!mode) { usage(); return 2; }
     if (!dir) { usage(); return 2; }

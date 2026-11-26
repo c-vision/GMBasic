@@ -23,6 +23,18 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.SCENE_HASH,
         BuiltInFunction.SCENE_PIXEL,
         BuiltInFunction.SCENE_PICK,
+        // P5: camera/corpo, quote e zone.
+        BuiltInFunction.SCENE_ZONE,
+        BuiltInFunction.SCENE_ZONETAG,
+        BuiltInFunction.SCENE_X,
+        BuiltInFunction.SCENE_Y,
+        BuiltInFunction.SCENE_Z,
+        BuiltInFunction.SCENE_EYE,
+        BuiltInFunction.SCENE_YAW,
+        BuiltInFunction.SCENE_PITCH,
+        BuiltInFunction.SCENE_HIT,
+        BuiltInFunction.SCENE_FLOORAT,
+        BuiltInFunction.SCENE_CEILAT,
     ];
 
     private object? ExecuteBuiltInScene(PCodeTask task, BuiltInFunction fn, object?[] args)
@@ -44,6 +56,23 @@ internal sealed partial class PCodeProcessor
             // -1 senza target o fuori target, -2 buffer di SCENE PICK spento).
             case BuiltInFunction.SCENE_PICK:
                 return (double)CommonLib.Scene3DNative.Pick((long)ToDouble(args, 0), (long)ToDouble(args, 1));
+            // P5: camera e corpo.
+            case BuiltInFunction.SCENE_X: return CommonLib.Scene3DNative.X();
+            case BuiltInFunction.SCENE_Y: return CommonLib.Scene3DNative.Y();
+            case BuiltInFunction.SCENE_Z: return CommonLib.Scene3DNative.Z();
+            case BuiltInFunction.SCENE_EYE: return CommonLib.Scene3DNative.Eye();
+            case BuiltInFunction.SCENE_YAW: return CommonLib.Scene3DNative.Yaw();
+            case BuiltInFunction.SCENE_PITCH: return CommonLib.Scene3DNative.Pitch();
+            case BuiltInFunction.SCENE_HIT: return CommonLib.Scene3DNative.Hit();
+            // Quote e zone (punto x, y, z).
+            case BuiltInFunction.SCENE_FLOORAT:
+                return CommonLib.Scene3DNative.FloorAt(ToDouble(args, 0), ToDouble(args, 1), ToDouble(args, 2));
+            case BuiltInFunction.SCENE_CEILAT:
+                return CommonLib.Scene3DNative.CeilAt(ToDouble(args, 0), ToDouble(args, 1), ToDouble(args, 2));
+            case BuiltInFunction.SCENE_ZONE:
+                return (double)CommonLib.Scene3DNative.ZoneAt(ToDouble(args, 0), ToDouble(args, 1), ToDouble(args, 2));
+            case BuiltInFunction.SCENE_ZONETAG:
+                return CommonLib.Scene3DNative.ZoneTag((long)ToDouble(args, 0));
         }
         return null;
     }

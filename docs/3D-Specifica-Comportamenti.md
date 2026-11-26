@@ -170,7 +170,7 @@ ok=18 diff=0`.
 | ID | Superficie BASIC | Comportamento implementato |
 |---|---|---|
 | `M-PICK` | `SCENE PICK on\|off` + `SCENE.PICK(x, y)` | buffer di id per pixel **additivo** e **spento di default**: spento non si alloca e non si scrive nulla, quindi colore, profondità, `PIXEL`, `HASH`, `SAVE` e `PRESENT` restano byte per byte quelli di una scena senza pick. Acceso alloca un terzo array `w×h` di `uint32` accanto a colore e depth; lo stato sopravvive a `RESET`, come gli altri flag |
-| `M-PICK-ID` | valore di `SCENE.PICK(x, y)` | l'id è l'**ordine di dichiarazione** degli `SCENE OBJECT`: `1…256` (il tetto di `M-MODEL`), stabile per tutta la vita della scena e rinumerato solo da `RESET` |
+| `M-PICK-ID` | valore di `SCENE.PICK(x, y)` | l'id è l'**ordine di dichiarazione** degli `SCENE OBJECT`: `1…65536` (capacità dinamica della scena, `M-CAP`), stabile per tutta la vita della scena e rinumerato solo da `RESET` |
 | `M-PICK-BG` | valore di `SCENE.PICK(x, y)` | `0` = **fondo**: nessuna geometria ha vinto il pixel. Fondo del target, cielo e **thing** valgono `0` (i thing sono billboard, non hanno id d'oggetto) |
 | `M-PICK-DEPTH` | valore di `SCENE.PICK(x, y)` | l'id si scrive **dopo** il depth test, quindi l'occlusione vale: dove due oggetti si sovrappongono vince il **più vicino**, anche se dichiarato per primo. Con `SCENE AA on` l'id è quello del campione a **profondità minima** del pixel (i colori si mediano, l'id no) |
 | `M-PICK-SENT` | sentinelle | `−1` = **assente o fuori**: `SCENE VIEW` mai chiamato (nessun target) oppure `x`/`y` fuori da `0…w−1` / `0…h−1`; è la stessa sentinella di `SCENE.PIXEL`. `−2` = **buffer spento**: il target esiste ma `SCENE PICK on` non è stato chiamato (o è stato spento). `−2` non ha altri significati |
@@ -188,12 +188,13 @@ occlusione `1` invece del lontano `2`, fondo `0`, fuori target `−1`, colore in
 
 | ID | Comportamento |
 |---|---|
-| `M-PLAYER` | Capsula verticale: default **raggio 14, altezza 56, occhio 46, step 24**. `CAMERA x,y,z,yaw[,pitch]` posiziona i **piedi**. |
-| `M-COLLIDE` | Stessa semantica di `W-MOVE`: scivola, sale gradini ≤ step, bloccato da soffitto basso; `HIT` uguale. |
+| `M-PLAYER` | Capsula verticale: default **raggio 14, altezza 56, occhio 46, step 24**; `PLAYER raggio, altezza, occhio, step` li cambia. `CAMERA x,y,z,yaw[,pitch]` posiziona l'**occhio** (P3: le golden restano `diff=0`), quindi i **piedi** stanno `EYE` sotto: `SCENE.X/Y/Z` leggono l'occhio e `SCENE.EYE` è l'altezza dell'occhio sui piedi. |
+| `M-COLLIDE` | Stessa semantica di `W-MOVE`, sul piano (x, z) e con `y` come altezza: scivola, sale gradini ≤ step, bloccato da soffitto basso. `MOVE avanti, destra` (unità del mondo), `TURN dyaw[, dpitch]` (gradi), `LIFT dy`. `HIT` è una maschera: **1** parete, **2** fermo (la richiesta non ha spostato nulla), **4** quota cambiata. |
 | `M-RAYS` | `SHOOT(range)` contro thing e oggetti (`SHOTKIND` 0/1 oggetto/2 thing, `SHOTOBJ`, `SHOTDIST`, `SHOTX/Y/Z`); `USE(reach)` l'oggetto davanti **qualunque siano i flag**; `SEES(n)` linea di vista del thing verso l'occhio. Passano solo i flag 8 (non 4) per vista/colpi. |
-| `M-FLOOR` | `FLOORAT(x,y,z)` = **superficie più alta a o sotto z**; `CEILAT` l'analogo sopra. È ciò che permette di stare su un mobile senza una fisica generale. |
-| `M-ZONE` | `ZONE id,x1,y1,x2,y2,z1,z2[,tag]`: `ZONE(x,y,z)` = id della **prima** zona che contiene il punto (`z` entro `z1−2 … z2`), `−1` se nessuna; `ZONETAG` il tag. **L'ordine di creazione conta**: le zone dei piani superiori e dei mobili calpestabili vanno create **prima** di quelle sotto. Il renderer non usa le zone. |
-| `M-PASSABLE` | Flag 4: nessuna collisione e nessun pavimento/soffitto (auto, oggetti decorativi). Sul pavimento ci si passa attraverso **visivamente**, ma `FLOORAT` continua a vederlo. |
+| `M-FLOOR` | `FLOORAT(x,y,z)` = **superficie più alta a o sotto `y`**, sul punto (x, z); `CEILAT` l'analogo sopra. `−1000000` = nessuna superficie. È ciò che permette di stare su un mobile senza una fisica generale. |
+| `M-ZONE` | `ZONE id,x1,y1,x2,y2,z1,z2[,tag]` (`y` = altezza): `ZONE(x,y,z)` = id della **prima** zona che contiene il punto (`y` entro `y1−2 … y2`, `x` in `x1…x2` e `z` in `z1…z2`, estremi inclusi), `−1` se nessuna; `ZONETAG(id)` = il tag (`""` se l'id non esiste). **L'ordine di creazione conta**: le zone dei piani superiori e dei mobili calpestabili vanno create **prima** di quelle sotto. Il renderer non usa le zone. |
+| `M-PASSABLE` | Flag 4: nessuna collisione, nessun soffitto e nessun gradino (auto, oggetti decorativi). Sul pavimento ci si passa attraverso **visivamente**, ma `FLOORAT` continua a vederlo. |
+| `M-CAP` | Capacità della scena **dinamica**: i buffer partono da 512 oggetti / 32768 vertici / 16384 triangoli e **raddoppiano** alla dichiarazione (`OBJECT`/`VERTEX`/`QUAD`/`BOX`); tetti 65536 / 4.194.304 / 2.097.152, oltre i quali il comando è rifiutato e la scena resta com'era. `RENDER` non alloca (scratch e AABB mondo sono riservati) e `RESET` conserva la capacità. Misurato: 200k triangoli a 52 fps mediani a 640×360. |
 
 ---
 
@@ -202,6 +203,7 @@ occlusione `1` invece del lontano `2`, fondo `0`, fuori target `−1`, colore in
 | ID | Tema | Riferimento | Noi |
 |---|---|---|---|
 | `C-DIVERGE-TIME` | Tempo | `TICK` a secondi, occhio che insegue il pavimento al 40 % **per frame disegnato** | **Passo fisso**, interpolazione sull'occhio legata al tempo simulato (`T-FIXED`) |
+| `C-DIVERGE-AXES` | Assi del mondo | z-up: altezza in `z`, piano (x, y) | **y-up**: altezza in `y`, piano (x, z), fronte a `yaw` 0 = `+z`, destra = `+x`; `ZONE` ha `y1/y2` in altezza e `x1/x2`, `z1/z2` sul piano (coerente con P3/P4, campioni e golden) |
 | `C-DIVERGE-JSON` | Formato mondo | due dialetti: `world-model` (settori) e `e99-mesh-world` (mesh) | **un solo schema** `gmb-3d` v1: un documento per file, `kind: "sectors" \| "mesh"` **obbligatorio**, estensione convenzionale `.gmbscene` (`F-SCHEMA`, deciso in **§12.1**) |
 | `C-DIVERGE-SEES` | Sentinella di `SEES` | `−1` = **vede** (invertita rispetto a tutto il resto) | `1` = vede, `0` = non vede, `−1` = **thing inesistente**: `−1` significa "assente" in tutta la superficie (specifica §12.3; la conversione degli script presi dal riferimento va in guida, P9) |
 | `C-DIVERGE-HW` | Hardware | GL 2 caricato a runtime, con parità misurata (media < 1,2/255) | stesso approccio, **rinviato** e solo con parità misurata (fase `PH`) |
@@ -235,7 +237,9 @@ occlusione `1` invece del lontano `2`, fondo `0`, fuori target `−1`, colore in
 | `W-INV-*` | 6 mappe rotte apposta: **il `LOAD` fallisce** e `ON ERROR` controlla l'elemento nominato (`F-ERRORS`); mappe buone: anche il tool `tools/sh/check_3d_world.sh` in CI (§12.2) | `world_invariants.bas` + fixture JSON |
 | `M-CULL`, `M-ORDER`, `M-LIGHT`, `M-FOG`, `M-SKY`, `M-THINGS`, `M-PALALPHA` | Golden image (6 scene P4: `lamp_point`, `lamp_spot`, `fog`, `sky`, `thing`, `order`, più le 5 mesh) + MiniTest numerici su colore atteso | `scene_golden1..11`; `shared/minitests/3d/scene_lamp_point_spot.bas`, `scene_fog.bas`, `scene_far.bas`, `scene_sky.bas`, `scene_colormap.bas`, `scene_thing.bas` |
 | `M-PICK`, `M-PICK-ID`, `M-PICK-BG`, `M-PICK-DEPTH`, `M-PICK-SENT` | MiniTest headless: nessun target `−1`, pick spento `−2`, id `1..256`, fondo `0`, occlusione, fuori target `−1`; le golden esistenti restano identiche (additività) | `scene_pick.bas`; `check_3d_oracle.sh` (pick spento `diff=0`) |
-| `M-BUILD`, `M-FLAGS`, `M-ZONE`, `M-FLOOR` | MiniTest: conteggi, maschera `faces`, zona "prima creata vince", `FLOORAT` su piani sovrapposti | `scene_model.bas` |
+| `M-BUILD`, `M-FLAGS` | MiniTest: conteggi, maschera `faces` | `scene_model.bas` |
+| `M-ZONE`, `M-FLOOR`, `M-PASSABLE` | MiniTest: sentinelle (`−1`, `""`, `−1000000`), zona "prima creata vince", tolleranza `−2` sotto la base, tag di un id inesistente, `FLOORAT` su piani sovrapposti, passabile visto da `FLOORAT`, `CEILAT` | `scene_zones.bas` |
+| `M-PLAYER`, `M-COLLIDE` | MiniTest: `MOVE` libero, stop a un raggio dal muro, fermo addosso (`HIT` 3), scivolamento obliquo, gradino ≤ step (`HIT` 4), `TURN`/`LIFT`, `PLAYER`, letture camera | `scene_move.bas` |
 | `T-*` | MiniTest di replay: stesso input + stesso seed → stessa sequenza di posizioni e di frame | `time_replay.bas` |
 | `F-*` | Round-trip `LOAD → SAVE → LOAD` identico + rifiuto di versioni future | `format_roundtrip.bas` |
 | Parità software/hardware | 10 scene, media ≤ 2/255, pixel diversi ≤ 2 %, **golden per RID** | `tools/sh/check_3d_renderers.sh` |
@@ -275,6 +279,7 @@ occlusione `1` invece del lontano `2`, fondo `0`, fuori target `−1`, colore in
 | File | Contenuto | Oracolo |
 |---|---|---|
 | `gmb_3d_world.c` | settori, pareti, flag, thing, query `WORLD.*` | `W-*` |
+| `gmb_3d_scene.c` | **esiste dal 2026-11-26 (P5)**: matrici del renderer (`gmb_3d_m4_*`) e culling per oggetto (`gmb_3d_frustum_planes`, `gmb_3d_object_outside`); nessuno stato, così la facciata dei comandi resta sotto le 1200 righe (§0quater) | `M-CULL` |
 | `gmb_3d_cmd.c` | **esiste dal 2026-11-24 (P3), esteso in P4**: facciata `gmb_scene_*` (accumulo geometria, camera, materiale, 8 lampade, fog/FAR, sky, colormap, thing, `OBJECT` con flag e luce), render ordinato cielo→opachi→thing→traslucidi; nessuna formula duplicata (la luce è `gmb_3d_light_eval` in `gmb_3d_frame.c`) | `M-*`, `C-SAME-COLORMAP` |
 | `gmb_3d_frame.c` | vedere/clip, target (pagina o canvas), null mode, present; **esiste dal 2026-11-19 (P1)**: `gmb_3d_target_*`, cattura headless, guardie di render, `alloc_count` — nessun header SDL, nessuna dipendenza `gm_*` | `C-CAPTURE`, `C-LAYER`, `T-NULL`, `R3`, `R5` |
 | `gmb_3d_scene.c` | oggetti, thing, lampade, zone, query `SCENE.*` | `M-*` |
