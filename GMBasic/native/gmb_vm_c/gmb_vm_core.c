@@ -13774,7 +13774,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             gmb_dict_clear(sv->dict);
                         push_nil(task);
                     }
-                    else if (strcmp(methodName, "ContainsKey") == 0 && argCount >= 1)
+                    else if ((strcmp(methodName, "ContainsKey") == 0 || strcmp(methodName, "Contains") == 0) && argCount >= 1)
                     {
                         /* Chiave NUMERICA: il dict nativo è a chiavi stringa, quindi
                          * args[0] doppio va CANONICALIZZATO con la STESSA formattazione

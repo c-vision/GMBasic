@@ -15224,8 +15224,18 @@ public static double TextWidth(string s)
                 return dk.Keys.Cast<object?>().ToArray();
             case "VALUES" when instance is System.Collections.IDictionary dv:
                 return dv.Values.Cast<object?>().ToArray();
+            case "CONTAINSKEY" when args.Length == 1 && instance is System.Collections.IDictionary dck:
+                /* Su un SortedDictionary a chiavi di un tipo, ContainsKey con un valore di
+                 * ALTRO tipo (es. `tree.ContainsKey(10)` su chiavi STRING) lancia
+                 * ArgumentException dal Comparer: risposta canonica 0 (motivo per cui non
+                 * si delega alla reflection). */
+                try { return dck.Contains(args[0]) ? -1.0 : 0.0; }
+                catch (ArgumentException) { return 0.0; }
             case "CONTAINS" when args.Length == 1 && instance is System.Collections.IDictionary dc:
-                return dc.Contains(args[0] ?? "") ? 1.0 : 0.0;
+                /* Convenzione BASIC -1/0 (come ContainsKey): prima rendeva 1.0/0.0 e
+                 * `d.Contains(k)` stampava 1 mentre C99/VM-C davano -1. */
+                try { return dc.Contains(args[0] ?? "") ? -1.0 : 0.0; }
+                catch (ArgumentException) { return 0.0; }
             // BAG.Remove(item): toglie UNA istanza (molteplicità -1, chiave rimossa a 0),
             // non l'intera chiave: ["a","b","a","c","a"].Remove("a") → "a" resta con 2.
             case "REMOVE" when args.Length >= 1 && instance is IBagMultiset brem:
@@ -15332,6 +15342,10 @@ public static double TextWidth(string s)
             case "CONTAINSKEY" when instance is CommonLib.Collections.IKeyValueIndexable ck && args.Length >= 1:
                 /* Convenzione BASIC -1/0 (parità PCode/VM-C/C99: prima IL stampava 1). */
                 return ck.TryGetValue(args[0], out _) ? -1.0 : 0.0;
+            /* Contains su mappe chiave→valore NON IDictionary (REDBLACK/BPLUS/CACHE):
+             * per le mappe Contains = ContainsKey (VM/C/C99), -1/0. */
+            case "CONTAINS" when instance is CommonLib.Collections.IKeyValueIndexable ckC && args.Length >= 1:
+                return ckC.TryGetValue(args[0], out _) ? -1.0 : 0.0;
             case "GET" when instance is CommonLib.Collections.IKeyValueIndexable gk && args.Length >= 1:
                 return gk.TryGetValue(args[0], out var gkv) ? gkv : null;
             // GET(key) su IDictionary boxed (BPlusTree/RedBlack/...): lookup per chiave.

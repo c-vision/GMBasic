@@ -1039,7 +1039,7 @@ public static partial class Linker
                     "COUNT" => new LongType(),
                     // F1: MaxPair/MinPair → chiave (String); SET/SETKEYVALUE come sopra.
                     "MAXPAIR" or "MINPAIR" => new StringType(),
-                    "REMOVE" or "CONTAINSKEY" or "CONTAINSVALUE" or "TRYGET" or "TRYADD" => new BitType(),
+                    "REMOVE" or "CONTAINS" or "CONTAINSKEY" or "CONTAINSVALUE" or "TRYGET" or "TRYADD" => new BitType(),
                     "CLEAR" => new VoidType(),
                     _ => null
                 };
@@ -1103,7 +1103,7 @@ public static partial class Linker
                     // SET/SETKEYVALUE: InferredType — parity DICT (vedi sopra).
                     "SET" or "SETKEYVALUE" => new InferredType(),
                     "GET" => sdt.ValueType,
-                    "REMOVE" or "CONTAINSKEY" or "TRYGET" => new BitType(),
+                    "REMOVE" or "CONTAINS" or "CONTAINSKEY" or "TRYGET" => new BitType(),
                     "ADD" or "CLEAR" => new VoidType(),
                     _ => null
                 };
@@ -1123,7 +1123,7 @@ public static partial class Linker
                 {
                     "MIN" or "MAX" or "EXTRACTMIN" or "EXTRACTMAX" => new KeyValuePairType(keyType, valueType),
                     "GET" => valueType,
-                    "TRYGETVALUE" or "TRYGET" or "REMOVE" or "CONTAINSKEY" => new BitType(),
+                    "TRYGETVALUE" or "TRYGET" or "REMOVE" or "CONTAINS" or "CONTAINSKEY" => new BitType(),
                     "COUNT" => new LongType(),
                     "KEYS" => new ListType(keyType),
                     "VALUES" => new ListType(valueType),
@@ -1208,7 +1208,7 @@ public static partial class Linker
                 return upperMethodName switch
                 {
                     "GET" => cache.ValueType,
-                    "TRYGETVALUE" or "TRYGET" or "REMOVE" or "CONTAINSKEY" => new BitType(),
+                    "TRYGETVALUE" or "TRYGET" or "REMOVE" or "CONTAINS" or "CONTAINSKEY" => new BitType(),
                     "COUNT" => new LongType(),
                     "KEYS" => new ListType(cache.KeyType),
                     "VALUES" => new ListType(cache.ValueType),

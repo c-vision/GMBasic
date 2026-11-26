@@ -2151,6 +2151,21 @@ public static partial class Linker
 
         DataType instanceType = LinkerInferExpressionType(rewrittenInstance, context, program);
 
+        /* `mappa.Contains(x)` == `ContainsKey(x)`: per le MAPPE Contains significa "la
+         * CHIAVE esiste" (C99/VM-C lo fanno già; .NET Dictionary non ha un metodo
+         * `Contains` → l'IL inferiva VoidType e scartava il risultato). Si riscrive nel
+         * TokenKind canonico CollContainsKey, così TUTTE le gambe usano lo stesso percorso. */
+        if (mce.Args.Length == 1
+            && memberName.Equals("Contains", StringComparison.OrdinalIgnoreCase)
+            && instanceType is DictType or SortedDictType or TreeType or AVLTreeType
+                or RedBlackTreeType or BPlusTreeType or CacheType or TimelineType)
+        {
+            var ckToken = new Token(TokenKind.CollContainsKey, "ContainsKey",
+                null, mce.MethodName.Position);
+            var ckArgs = mce.Args.Select(a => RewriteExpression(a, context, program)).ToImmutableArray();
+            return new MethodCallExpr(rewrittenInstance, ckToken, ckArgs) { ScopeId = mce.ScopeId };
+        }
+
         // ADR-MATRIX F4: `lu.U(i,j)` — il parser produce una MemberCallExpr per
         // `istanza.Campo(args)`. Il campo-fattore di una decomposizione è
         // LINALG.FACTOR(lu,"U") (valore matrice): con argomenti è un accesso indicizzato
