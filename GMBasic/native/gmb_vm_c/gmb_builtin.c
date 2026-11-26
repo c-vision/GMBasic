@@ -283,6 +283,15 @@ static void gmb_bf_7(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_c
                 gmb_obj_string_t* s = gmb_str_cstr(cb);
                 bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
             }
+            else if (args[0].basic_type == GMB_BT_DATE)
+            {
+                /* CSTR(DATETIME) = formato "dd/MM/yyyy HH:mm:ss" (canone IL/PCode: CSTR di un
+                 * DateTime usa ToString). Prima usciva il seriale OADate ("46352.02…"). */
+                gmb_string_t ds = gmb_dt_datetime_to_string(args[0].num);
+                gmb_obj_string_t* s = gmb_str_cstr(ds.data ? ds.data : "");
+                gmb_string_free(&ds);
+                bout->is_num = 0; bout->result_ref = (gmb_obj_t*)s; bout->result_ref_bt = GMB_BT_STRING;
+            }
             else
             {
                 gmb_string_t gs = gmb_val_str(args[0].type == 1 ? args[0].num : 0.0);
@@ -5802,8 +5811,18 @@ static void gmb_bf_3431(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int fun
         }
         else if (args[0].type == 1)
         {
-            snprintf(buf, sizeof(buf), "%.15g", args[0].num);
-            out = gmb_str_cstr(buf);
+            /* DATETIME (tag GMB_BT_DATE): formato data/ora, non il seriale — canone IL/PCode. */
+            if (args[0].basic_type == GMB_BT_DATE)
+            {
+                gmb_string_t ds = gmb_dt_datetime_to_string(args[0].num);
+                out = gmb_str_cstr(ds.data ? ds.data : "");
+                gmb_string_free(&ds);
+            }
+            else
+            {
+                snprintf(buf, sizeof(buf), "%.15g", args[0].num);
+                out = gmb_str_cstr(buf);
+            }
         }
         else if (args[0].type == 2 && args[0].ref)
         {

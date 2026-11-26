@@ -36,6 +36,7 @@ static const gmb_tokenkind_t gmb_tk_dictish[] = { GMB_TOK_Dict, GMB_TOK_Sorted, 
 
 #include <ctype.h>
 #include <limits.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7987,6 +7988,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_ScenePixels, emit_bf_scene },
     { NULL, GMB_TOK_SceneHash,   emit_bf_scene },
     { NULL, GMB_TOK_ScenePixel,  emit_bf_scene },
+    { NULL, GMB_TOK_ScenePick,   emit_bf_scene },
     { NULL, GMB_TOK_MatrixColumnCount, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixIsLowerTriangular, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixIsUpperTriangular, emit_bf_matrix },
@@ -12728,6 +12730,16 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             /* DICT<...,JSON>: il valore e' gia' gmb_val_t → nessun wrap. */
                             if (cv->elem_boxed) { emit_expr(c, args[1]); }
                             else if (cv->elem_str) { sb_put(&c->out, "gmb_make_val_string(("); emit_expr(c, args[1]); sb_put(&c->out, ").data)"); }
+                            /* TIMELINE e map-like senza tipo-elemento dichiarato: il valore va
+                             * boxato secondo il SUO tipo — prima una stringa finiva in
+                             * gmb_make_val_double(<gmb_string_t>) = C non compilabile
+                             * (Collections/CollectionsModern su C99). */
+                            else if (etype(c, args[1]) == TY_STR) {
+                                sb_put(&c->out, "gmb_make_val_string(("); emit_str_operand(c, args[1]); sb_put(&c->out, ").data)");
+                            }
+                            else if (gmb_expr_is_datetime(c, args[1])) {
+                                sb_put(&c->out, "gmb_make_val_datetime((gmb_double_t)("); emit_expr(c, args[1]); sb_put(&c->out, "))");
+                            }
                             /* TRUE/FALSE: valore BOOL, non numero (JSON true/false, ToArray BOOLEAN). */
                             else if (args[1] && args[1]->var
                                      && (strcmp(args[1]->var, "_true_") == 0 || strcmp(args[1]->var, "_false_") == 0)) {
@@ -18365,6 +18377,37 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
     if (v->byref && !v->captured) sb_put(&c->out, "*");
     emit_ident(c, v->name);
     sb_put(&c->out, " = ");
+    /* Assegnazione a una variabile INTERA (LONG/INTEGER/BYTE/SBYTE): il valore va
+     * arrotondato all'intero con pareggio al PARI — canone IL (`Convert.To*` allo store:
+     * 2.5→2, 3.5→4). Prima il C99 conservava il double (2.5) dove IL stampa 2. */
+    int _rint = 0;
+    if (v->type == TY_NUM && !v->is_array && !v->boxed_val && !v->gkind && !v->vclass[0]
+        && !is_macro_rhs && v->fixed_len == 0) {
+        char _ty[32];
+        if (gmb_var_declared_type(c, v->name, _ty, sizeof _ty)
+            && (!strcasecmp(_ty, "LONG") || !strcasecmp(_ty, "INTEGER")
+                || !strcasecmp(_ty, "BYTE") || !strcasecmp(_ty, "SBYTE")
+                || !strcasecmp(_ty, "UINTEGER") || !strcasecmp(_ty, "ULONG")))
+            _rint = 1;
+        /* CONTROLLO di RANGE sui COSTANTI (parità IL/PCode/VM-C: `DIM b AS BYTE : b = 300.2`
+         * è un errore di compilazione). L'arrotondamento half-even va applicato prima, come
+         * fanno le gambe managed (Convert.To* poi il range). */
+        if (_rint && value && value->kind == GMB_EXPR_NUM) {
+            double _lo = 0, _hi = 0, _rv = nearbyint(value->num);
+            if (!strcasecmp(_ty, "BYTE")) { _lo = 0; _hi = 255; }
+            else if (!strcasecmp(_ty, "SBYTE")) { _lo = -128; _hi = 127; }
+            else if (!strcasecmp(_ty, "INTEGER")) { _lo = -2147483648.0; _hi = 2147483647.0; }
+            else if (!strcasecmp(_ty, "UINTEGER")) { _lo = 0; _hi = 4294967295.0; }
+            else if (!strcasecmp(_ty, "LONG")) { _lo = -9.2233720368547758e18; _hi = 9.2233720368547758e18; }
+            else if (!strcasecmp(_ty, "ULONG")) { _lo = 0; _hi = 1.8446744073709552e19; }
+            if (_rv < _lo || _rv > _hi) {
+                c99_fail(c, line, "Overflow: il valore %.15g non rientra nell'intervallo del "
+                         "tipo di destinazione [%.15g, %.15g]", value->num, _lo, _hi);
+                return;
+            }
+        }
+    }
+    if (_rint) sb_put(&c->out, "(gmb_double_t)gmb_round_bankers((gmb_double_t)(");
     if (v->fixed_len > 0 && v->type == TY_STR) {
         /* 2.8: STRING * N — pad/troncamento (parità OP_ADJUST_STRING PCodeVM) */
         sb_put(&c->out, "gmb_string_adjust_fixed(");
@@ -18396,14 +18439,18 @@ static int is_matrix_value_call_tk(gmb_tokenkind_t tk) {
     } else if (v->type == TY_STR && vt == TY_NUM && !v->boxed_val && !v->gkind && !v->vclass[0]) {
         /* MQL: stringa = numero -> gmb_double_to_string. Solo per variabili SCALARI tipizzate (stesso guard del controllo
          * di mismatch sopra): una variabile boxed (JSON/ANY, gmb_val_t) ha spesso type=TY_STR per l'inferenza degli store
-         * di stringa (`g["x"] = "1"`) ma e' un val — `g = NEW JSON` NON va convertito (regressione di 96080682c). */
-        sb_put(&c->out, "gmb_double_to_string("); emit_expr(c, value); sb_put(&c->out, ")");
+         * di stringa (`g["x"] = "1"`) ma e' un val — `g = NEW JSON` NON va convertito (regressione di 96080682c).
+         * DATETIME: formato "dd/MM/yyyy HH:mm:ss" (canone IL/PCode/VM-C; prima il C99 salvava il seriale). */
+        if (gmb_expr_is_datetime(c, value)) {
+            sb_put(&c->out, "gmb_dt_datetime_to_string((gmb_double_t)("); emit_expr(c, value); sb_put(&c->out, "))");
+        } else { sb_put(&c->out, "gmb_double_to_string("); emit_expr(c, value); sb_put(&c->out, ")"); }
     } else if (v->type == TY_NUM && vt == TY_STR && !v->boxed_val && !v->gkind && !v->vclass[0]) {
         /* MQL: numero = stringa -> gmb_string_to_double (stesso guard: solo variabili scalari tipizzate). */
         sb_put(&c->out, "gmb_string_to_double("); emit_expr(c, value); sb_put(&c->out, ")");
     } else {
         emit_expr(c, value);
     }
+    if (_rint) sb_put(&c->out, "))");
     sb_put(&c->out, ";\n");
     c->cur_assign_target = NULL;
 }

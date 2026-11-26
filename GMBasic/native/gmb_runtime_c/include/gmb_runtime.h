@@ -1042,7 +1042,10 @@ gmb_string_t gmb_format(gmb_double_t value, gmb_string_t format);
 
 /* --- Builtin matematiche (Numerics C#) --- */
 gmb_double_t gmb_round(gmb_double_t value, gmb_int_t digits);
-gmb_double_t gmb_rnd(void);
+/* Arrotondamento all'intero più vicino con pareggio al PARI (canone .NET Convert.ToInt64/
+ * ToInt32/ToByte: 2.5→2, 3.5→4, -2.5→-2). Usato dall'emitter C99 per l'assegnazione a una
+ * variabile INTERA (parità con IL, che converte al momento dello store). */
+gmb_double_t gmb_round_bankers(gmb_double_t value);gmb_double_t gmb_rnd(void);
 void gmb_rnd_seed(uint64_t seed); /* RANDOMIZE: semina lo xorshift64 di gmb_rnd */
 gmb_double_t gmb_pi(void);
 gmb_double_t gmb_min(gmb_double_t a, gmb_double_t b);

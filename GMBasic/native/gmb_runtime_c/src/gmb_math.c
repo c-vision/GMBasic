@@ -28,6 +28,14 @@ static const unsigned long long gmb_pow10_ull[19] = {
  * 2.345*100 = 234.50000000000003 supera il mezzo e darebbe 2.35 invece di 2.34. Qui si
  * lavora sulla mantissa decimale esatta del double a 15 cifre significative (via %.14e,
  * locale-independent) e si arrotonda con aritmetica intera half-even. */
+/* Arrotondamento half-even all'intero (canone .NET Convert.ToInt64/Int32/Byte: 2.5→2,
+ * 3.5→4, -2.5→-2). `nearbyint` usa il modo di arrotondamento corrente, che per default è
+ * "to nearest, ties to even". Unica sede (§0bis): l'emitter C99 la usa per l'assegnazione a
+ * una variabile INTERA (parità IL, che converte allo store). */
+gmb_double_t gmb_round_bankers(gmb_double_t value) {
+    return (gmb_double_t)nearbyint(value);
+}
+
 gmb_double_t gmb_round(gmb_double_t value, gmb_int_t digits) {
     if (digits < 0) digits = 0;
     if (!isfinite(value) || value == 0.0) return value;

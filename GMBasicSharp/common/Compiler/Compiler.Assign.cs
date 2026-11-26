@@ -52,6 +52,7 @@ public sealed partial class Compiler
                         // NON lo è — senza questo reset, EndScope/EmitFinalizeBodyLocals
                         // salterebbero la finalizzazione del nuovo valore a fine scope/SUB.
                         _locals[localIndex].AlreadyFinalized = false;
+                        EmitCoerceForTarget(_locals[localIndex].Type, valueExpr);
                         EmitAdjustStringForLocal(localIndex);
                         EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)localIndex);
                     }
@@ -63,6 +64,7 @@ public sealed partial class Compiler
                     else
                     {
                         AddImplicitLocal(vt.NameCleaned, vt.NameSuffixed);
+                        EmitCoerceForTarget(_locals.Count > 0 ? _locals[^1].Type : null, valueExpr);
                         EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)(_locals.Count - 1));
                     }
                 }
@@ -83,6 +85,7 @@ public sealed partial class Compiler
                         // NON lo è — senza questo reset, EndScope/EmitFinalizeBodyLocals
                         // salterebbero la finalizzazione del nuovo valore a fine scope/SUB.
                         _locals[localIndex].AlreadyFinalized = false;
+                        EmitCoerceForTarget(_locals[localIndex].Type, valueExpr);
                         EmitAdjustStringForLocal(localIndex);
                         EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)localIndex);
                     }
@@ -659,6 +662,7 @@ public sealed partial class Compiler
                 case TokenKind.Global:
                 case TokenKind.Dim when _scopeDepth == 0:
                     var globalIndex = DefineGlobal(declaration.NameCleaned.Lexeme, finalVariableType);
+                    EmitCoerceForTarget(finalVariableType, declaration.InitialValue);
                     // Store in local slot first (if variable is also accessed as local)
                     var localIdx = ResolveLocal(declaration.NameCleaned.Lexeme);
                     if (localIdx != -1)
@@ -716,6 +720,7 @@ public sealed partial class Compiler
                         // Store the value (from CREATE_ARRAY or initializer) to the local slot
                         if (localIndex != -1)
                         {
+                            EmitCoerceForTarget(finalVariableType, declaration.InitialValue);
                             EmitByte((byte)OpCode.OP_STORE_LOCAL); EmitShort((ushort)localIndex);
                         }
                         else
@@ -1197,6 +1202,58 @@ public sealed partial class Compiler
         }
     }
 
+    /* ── Coercizione del valore all'assegnazione, per TIPO della variabile ─────────────
+     * Il bytecode (PCode e VM/C) non ha una tabella dei tipi delle variabili: la
+     * coercizione va emessa dal COMPILATORE, che il tipo lo conosce. Canone = IL:
+     *   - target NUMERICO (o variabile implicita): DATE → CDBL (seriale OADate);
+     *   - target STRINGA: DATE → CSTR (formato "dd/MM/yyyy HH:mm:ss");
+     *   - target DATETIME (`AS DATETIME`) / ANY: nessuna coercizione, la data resta data.
+     * Prima erano coperti solo TODAY/RDD.TODAY/CTOD/RDD.CTOD e SOLO i globali: `n = NOW()`
+     * e le LOCALI conservavano l'oggetto DateTime ("26/11/2026 …" dove IL dà 46352). */
+    private static bool IsDateProducingExpr(Expr? e) =>
+        e is BuiltinFunctionCallExpr b && b.Name.Kind is TokenKind.Now or TokenKind.Today
+            or TokenKind.RddToday or TokenKind.Ctod or TokenKind.RddCtod
+            or TokenKind.DateValue or TokenKind.Stod or TokenKind.DateSerial or TokenKind.TimeSerial
+            or TokenKind.DateAdd or TokenKind.Eomonth or TokenKind.FirstDayOfMonth or TokenKind.DateFromUnix;
+
+    private static bool IsNumericTargetType(DataType? t) =>
+        t is null or InferredType
+          || t is DoubleType or SingleType or LongType or ULongType or QuadType or UQuadType
+                or IntegerType or UIntegerType or ByteType or SByteType or CurrencyType or BitType;
+
+    private void EmitOneArgBuiltin(BuiltInFunction fn)
+    {
+        EmitByte((byte)OpCode.OP_CALL_BUILTIN);
+        EmitShort((ushort)fn);
+        EmitByte(1);
+    }
+
+    private void EmitCoerceForTarget(DataType? targetType, Expr? valueExpr)
+    {
+        if (valueExpr is null) return;
+        /* DATETIME dichiarato / ANY: la data resta una data (nessuna coercizione). */
+        if (targetType is DateTimeType or DateType or AnyType) return;
+        if (IsDateProducingExpr(valueExpr))
+        {
+            if (targetType is StringType) { EmitOneArgBuiltin(BuiltInFunction.CSTR); return; }
+            if (!IsNumericTargetType(targetType)) return;
+            EmitOneArgBuiltin(BuiltInFunction.CDBL);      /* DATE → seriale OADate */
+            /* e prosegue: un target INTERO arrotonda anche il seriale (canone IL) */
+        }
+        else
+        {
+            if (!IsNumericTargetType(targetType)) return;
+            /* Nessuna coercizione se il valore è già un intero: evita un builtin per
+             * assegnazione nei cicli caldi. */
+            var vt = CompilerInferExpressionType(valueExpr);
+            if (vt is LongType or IntegerType or ByteType or SByteType or ULongType or UIntegerType) return;
+        }
+        /* ARROTONDAMENTO half-even come Convert.To* di IL allo store (2.5→2, 3.5→4). */
+        if (targetType is LongType or SByteType or ULongType) EmitOneArgBuiltin(BuiltInFunction.CLNG);
+        else if (targetType is IntegerType or UIntegerType) EmitOneArgBuiltin(BuiltInFunction.CINT);
+        else if (targetType is ByteType) EmitOneArgBuiltin(BuiltInFunction.CBYTE);
+    }
+
     /// <summary>Parità con IL (IlProgramCompiler.Operators.cs, EmitCoerceTypes): TODAY()/
     /// RDD.TODAY()/CTOD()/RDD.CTOD() ritornano un DateTime CLR. IL applica ToOADate SOLO
     /// quando il target è NUMERICO (IlConversion.IsNumeric — una variabile IMPLICITA,
@@ -1216,12 +1273,7 @@ public sealed partial class Compiler
 
     private void EmitCoerceDateForGlobal(int globalIndex, Expr? valueExpr)
     {
-        if (valueExpr is not BuiltinFunctionCallExpr { Name.Kind: TokenKind.Today or TokenKind.RddToday
-            or TokenKind.Ctod or TokenKind.RddCtod }) return;
         var isImplicit = globalIndex < 0 || globalIndex >= _globalInfos.Count;
-        if (!isImplicit && !IsNumericGlobalType(_globalInfos[globalIndex].Type)) return;
-        EmitByte((byte)OpCode.OP_CALL_BUILTIN);
-        EmitShort((ushort)BuiltInFunction.CDBL);
-        EmitByte(1);
+        EmitCoerceForTarget(isImplicit ? null : _globalInfos[globalIndex].Type, valueExpr);
     }
 }

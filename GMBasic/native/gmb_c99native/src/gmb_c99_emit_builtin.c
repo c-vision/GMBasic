@@ -1655,6 +1655,14 @@ static int cv_bin(ctx_t* c, gmb_expr_t** a, int n) { if (n < 1) return 0; sb_put
 static int cv_cbyte(ctx_t* c, gmb_expr_t** a, int n) { if (n < 1) return 0; sb_put(&c->out, "gmb_cbyte("); emit_expr(c, a[0]); sb_put(&c->out, ")"); return 1; }
 static int cv_cstr(ctx_t* c, gmb_expr_t** a, int n) {
     if (n < 1) return 0;
+    /* DATETIME: formato "dd/MM/yyyy HH:mm:ss" (canone IL/PCode: CSTR di un DateTime).
+     * Prima usciva il seriale OADate. */
+    if (gmb_expr_is_datetime(c, a[0])) {
+        sb_put(&c->out, "gmb_dt_datetime_to_string((gmb_double_t)(");
+        emit_expr(c, a[0]);
+        sb_put(&c->out, "))");
+        return 1;
+    }
     /* campo BIT/BOOL di un UDT (`rec.Attivo`): il bool BASIC -1/0 → "True"/"False"
      * (parità C# Conversions.CStr(bool); gmb_str_basic(-1) dava "-1"). */
     if (a[0] && a[0]->kind == GMB_EXPR_VAR && a[0]->var) {
