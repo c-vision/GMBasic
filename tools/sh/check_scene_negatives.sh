@@ -167,12 +167,51 @@ rawtail() {
 
 # Firme dell'HARNESS (non del programma BASIC) nel log di una gamba. Quando compaiono e la
 # gamba non ha prodotto il messaggio atteso, la gamba è morta PRIMA di eseguire il caso:
-# è un guasto d'infrastruttura, non una divergenza delle aspettative. Fonti: `test_vmrun`
-# (`build GMBASIC.Conformance FALLITA:`, `GMBASIC.Conformance.dll non trovata…`, `file non
-# trovato:`, `root GMBasic non trovata`, `impossibile avviare il vmtest`) e `VmHostFreshness`
-# (`[vm/c] …`). Il TIMEOUT (exit 124) NON è qui: il programma è partito e non è finito, e un
-# blocco è un difetto del codice, non dell'harness.
-INFRA_RE='\[vm/c\] |build GMBASIC\.Conformance FALLITA|GMBASIC\.Conformance\.dll non trovata|build del conformance non avviata|impossibile avviare il vmtest|file non trovato:|root GMBasic non trovata'
+# è un guasto d'infrastruttura, non una divergenza delle aspettative.
+#
+# Fonti, e SOLO messaggi fatali (un avviso informativo non deve mai classificare come
+# infrastruttura un fallimento vero che viene dopo):
+#   test_vmrun          `[vm/c] …` (VmHostFreshness), `build GMBASIC.Conformance FALLITA`,
+#                       `GMBASIC.Conformance.dll non trovata`, `build del conformance non
+#                       avviata`, `impossibile avviare il vmtest`, `file non trovato:`,
+#                       `root GMBasic non trovata`
+#   gmb_c99native_run   `driver assente: …`, `[c99native] suite 3D: compilazione di …`,
+#                       `[c99native] runtime <rid> ASSENTE`, i quattro `[c99native] --static:`,
+#                       `[c99native] ERRORE: link riuscito ma eseguibile INCOMPLETO`
+#   test_ilrun          `[ILGEN] …` (exit 3), `[LOAD] …` (exit 4), `[DBG] metodo …` (exit 5),
+#                       `[RUN] GeneratedProgram.Main non trovato` (exit 5) — le gambe IL e PCode
+#                       muoiono prima di eseguire il caso, sempre su stderr e senza prefisso
+#                       riconosciuto da `norm()`. Solo per [RUN] il testo è ristretto al metodo
+#                       mancante: vedi sotto, le altre due righe [RUN] sono un errore BASIC.
+#
+# DELIBERATAMENTE FUORI (restano divergenze reali: l'ambiguità si risolve verso il sospetto,
+# non verso il silenzio):
+#   - `driver fallito:` — può essere il driver C che muore (build in corso) MA anche un difetto
+#     dell'emitter sul C generato: non si può decidere dal testo;
+#   - gli errori di `cc`/`ld` sul `.c` GENERATO (`error:`, `Undefined symbols`) — sono difetti
+#     dell'emitter, non dell'infrastruttura;
+#   - `[COMPILE] …` (test_ilrun, exit 2) — il BASIC è stato rifiutato o l'emitter è fallito: è un
+#     difetto nostro, e per i casi di arità è esattamente il punto che il gate misura;
+#   - `[RUN] exit code N` (PCode) e `[RUN] <Tipo>: <msg>` (IL) — sono il percorso NORMALE di un
+#     errore BASIC di runtime (exit 6): la gamba ha ESEGUITO il programma. Un `[RUN] ` nudo in
+#     INFRA_RE classificherebbe come infrastruttura ogni divergenza di messaggio sui casi
+#     `value`, cioè proprio quelli che il gate deve vedere. Resta firma di morte solo
+#     `[RUN] GeneratedProgram.Main non trovato`;
+#   - `[DBG] key iniettata: …` — avviso informativo, non una morte (la firma è `[DBG] metodo `);
+#   - `[OK] terminato senza eccezioni` — esito verde;
+#   - `gmb_link_set:` — lo stesso prefisso copre sia `die()` sia l'avviso `terze parti assenti`
+#     che NON ferma nulla;
+#   - gli avvisi `[c99native]` che possono precedere un successo (`statica mancante…`,
+#     `TRAY: … assente`, `dyld_info assente`, `bundle ->`, `libs.txt ->`, `cross … prodotto`).
+# Il TIMEOUT (exit 124) NON è qui: il programma è partito e non è finito, e un blocco è un
+# difetto del codice, non dell'harness.
+# test_ilrun: quattro firme, tutte su stderr e tutte PRIMA dell'esecuzione del caso.
+#   [ILGEN] — `IlProgramCompiler.Compile` ha lanciato o non ha prodotto l'assembly (exit 3);
+#   [LOAD]  — l'assembly non si carica (exit 4);
+#   [DBG]   — `--define`/GAI_METHOD chiede un metodo che non esiste (exit 5);
+#   [RUN]   — l'assembly non ha `GeneratedProgram.Main` (exit 5). SOLO questa forma di [RUN]:
+#             le altre due righe [RUN] del runner sono un errore BASIC di runtime (exit 6).
+INFRA_RE='\[vm/c\] |build GMBASIC\.Conformance FALLITA|GMBASIC\.Conformance\.dll non trovata|build del conformance non avviata|impossibile avviare il vmtest|file non trovato:|root GMBasic non trovata|driver assente: |\[c99native\] suite 3D: compilazione di|\[c99native\] runtime [a-z0-9-]+ ASSENTE|\[c99native\] --static: (runtime per|manca|link fallito|il binario NON risulta statico)|\[c99native\] ERRORE: link riuscito ma eseguibile INCOMPLETO|\[ILGEN\] |\[LOAD\] |\[DBG\] metodo |\[RUN\] GeneratedProgram\.Main non trovato'
 
 # Conserva una divergenza FUORI da $WORK: il trap cancella $WORK all'uscita, e un FAIL
 # transiente (gamba che muore per un rebuild dell'host in corso) senza i log grezzi non è
