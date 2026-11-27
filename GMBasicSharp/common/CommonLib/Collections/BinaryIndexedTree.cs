@@ -95,6 +95,9 @@ public class BinaryIndexedTree<T> where T : notnull
     /// <returns>La somma cumulativa degli elementi fino all'indice specificato.</returns>
     public T Query(int index)
     {
+        /* Indice fuori dalla dimensione (albero VUOTO o oltre _size): somma 0/default come
+         * il runtime C (gmb_coll_bitree_query) e VM/C, invece di IndexOutOfRangeException. */
+        if (index < 0 || index >= _size) return default!;
         // Converte l'indice in 1-based
         index++;
         T sum = default!;

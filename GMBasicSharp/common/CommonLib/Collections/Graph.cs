@@ -219,8 +219,9 @@ public class Graph<TNode> where TNode : notnull
     /// <exception cref="ArgumentException">Lanciata se il nodo di partenza non esiste nel grafo.</exception>
     public IEnumerable<TNode> Bfs(TNode startNode)
     {
+        /* Nodo assente: sequenza VUOTA (canone runtime C/VM/C/C99), non eccezione. */
         if (!_adjacencyList.ContainsKey(startNode))
-            throw new ArgumentException("Il nodo di partenza non esiste nel grafo.");
+            yield break;
 
         var visited = new HashSet<TNode>();
         var queue = new Queue<TNode>();
@@ -251,8 +252,9 @@ public class Graph<TNode> where TNode : notnull
     /// <exception cref="ArgumentException">Lanciata se il nodo di partenza non esiste nel grafo.</exception>
     public IEnumerable<TNode> Dfs(TNode startNode)
     {
+        /* Nodo assente: sequenza VUOTA (canone runtime C/VM/C/C99), non eccezione. */
         if (!_adjacencyList.ContainsKey(startNode))
-            throw new ArgumentException("Il nodo di partenza non esiste nel grafo.");
+            yield break;
 
         var visited = new HashSet<TNode>();
         var stack = new Stack<TNode>();

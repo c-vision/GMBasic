@@ -15436,6 +15436,17 @@ public static double TextWidth(string s)
             // non l'intera chiave: ["a","b","a","c","a"].Remove("a") → "a" resta con 2.
             case "REMOVE" when args.Length >= 1 && instance is IBagMultiset brem:
                 brem.RemoveOne(args[0]); return -1.0;   /* predicato BASIC -1 (parità PCode/VM-C/C99) */
+            /* MAPPE IKeyValueIndexable (BPlusTree): il metodo CLR è Delete (non Remove) —
+             * prima la reflection cercava "Remove" e lanciava NotSupportedException. */
+            case "REMOVE" when args.Length == 1 && instance is CommonLib.Collections.IKeyValueIndexable kviRm:
+            {
+                var del = instance.GetType().GetMethod("Delete",
+                              System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                          ?? instance.GetType().GetMethod("Remove",
+                              System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                bool removed = del != null && del.Invoke(instance, new[] { args[0] }) is bool bb && bb;
+                return removed ? -1.0 : 0.0;
+            }
             case "REMOVE" when args.Length >= 1 && instance is System.Collections.IDictionary dr:
             {
                 /* BAG (Dictionary<elemento,long> = multiset): toglie UNA istanza —
