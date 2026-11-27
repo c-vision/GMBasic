@@ -3448,9 +3448,9 @@ internal sealed partial class PCodeProcessor
                     if (methodName != null && methodName.Equals("Enqueue", StringComparison.OrdinalIgnoreCase) && argCount == 1)
                         { qInst.Enqueue(args[0]); task.PushRef(null); return true; }
                     if (methodName != null && methodName.Equals("Dequeue", StringComparison.OrdinalIgnoreCase) && argCount == 0)
-                        { task.PushRef(qInst.Dequeue()); return true; }
+                        { task.PushRef(qInst.Count > 0 ? qInst.Dequeue() : null); return true; }
                     if (methodName != null && methodName.Equals("Peek", StringComparison.OrdinalIgnoreCase) && argCount == 0)
-                        { task.PushRef(qInst.Peek()); return true; }
+                        { task.PushRef(qInst.Count > 0 ? qInst.Peek() : null); return true; }
                     if (methodName != null && methodName.Equals("Count", StringComparison.OrdinalIgnoreCase) && argCount == 0)
                         { task.PushRef((double)qInst.Count); return true; }
                     if (methodName != null && methodName.Equals("Clear", StringComparison.OrdinalIgnoreCase) && argCount == 0)
@@ -3462,9 +3462,9 @@ internal sealed partial class PCodeProcessor
                     if (methodName != null && methodName.Equals("Push", StringComparison.OrdinalIgnoreCase) && argCount == 1)
                         { stInst.Push(args[0]); task.PushRef(null); return true; }
                     if (methodName != null && methodName.Equals("Pop", StringComparison.OrdinalIgnoreCase) && argCount == 0)
-                        { task.PushRef(stInst.Pop()); return true; }
+                        { task.PushRef(stInst.Count > 0 ? stInst.Pop() : null); return true; }
                     if (methodName != null && methodName.Equals("Peek", StringComparison.OrdinalIgnoreCase) && argCount == 0)
-                        { task.PushRef(stInst.Peek()); return true; }
+                        { task.PushRef(stInst.Count > 0 ? stInst.Peek() : null); return true; }
                     if (methodName != null && methodName.Equals("Count", StringComparison.OrdinalIgnoreCase) && argCount == 0)
                         { task.PushRef((double)stInst.Count); return true; }
                     if (methodName != null && methodName.Equals("Clear", StringComparison.OrdinalIgnoreCase) && argCount == 0)

@@ -8305,6 +8305,29 @@ public static double TextWidth(string s)
     public static double Enqueue(System.Collections.IList q, object val) { q?.Add(val); return 0.0; }
     public static object? Dequeue(System.Collections.IList q)
     { if (q is { Count: > 0 }) { var v = q[0]; q.RemoveAt(0); return v; } return null; }
+    /* Queue<T>/Stack<T> con T = elemento BASIC (double/string/...): Dequeue/Pop/Peek su
+     * collezione VUOTA rendono null (canone VM/C/C99), mai l'eccezione CLR. */
+    private static object? QueueSafe(object q, bool extract)
+    {
+        var t = q.GetType();
+        var count = (int)(t.GetProperty("Count")!.GetValue(q) ?? 0);
+        if (count <= 0) return null;
+        return t.GetMethod(extract ? "Dequeue" : "Peek")!.Invoke(q, null);
+    }
+    private static object? StackSafe(object s, bool extract)
+    {
+        var t = s.GetType();
+        var count = (int)(t.GetProperty("Count")!.GetValue(s) ?? 0);
+        if (count <= 0) return null;
+        return t.GetMethod(extract ? "Pop" : "Peek")!.Invoke(s, null);
+    }
+    /* Varianti per il CODEGEN IL: Pop/Dequeue/Peek su collezione vuota → 0 (elemento
+     * numerico) o null (stringa), senza Unbox_Any su null. */
+    public static double CollectionPopNum(object collection, string method)
+        => CollectionInvoke(collection, method, []) is { } v
+            ? Convert.ToDouble(v, System.Globalization.CultureInfo.InvariantCulture) : 0.0;
+    public static object? CollectionPopObj(object collection, string method)
+        => CollectionInvoke(collection, method, []);
     public static object? First(System.Collections.IList l) => l is { Count: > 0 } ? l[0] : null;
     public static object? Last(System.Collections.IList l) => l is { Count: > 0 } ? l[l.Count - 1] : null;
     public static object? Clear(object c)
@@ -15331,6 +15354,18 @@ public static double TextWidth(string s)
                 return DictEdgePair(emin, max: false, extract: true);
             case "EXTRACTMAX" when instance is System.Collections.IDictionary emax:
                 return DictEdgePair(emax, max: true, extract: true);
+            /* QUEUE/STACK VUOTE: Dequeue/Pop/Peek rendono null (canone VM/C/C99) invece
+             * dell'eccezione CLR "Queue empty"/"Stack empty" (IL/PCode divergevano).
+             * Il tipo reale è Queue<T>/Stack<T> con T = elemento BASIC (double/string/...),
+             * non solo object: si riconosce dal nome generico. */
+            case "DEQUEUE" when args.Length == 0 && instance.GetType().Name.StartsWith("Queue`1", StringComparison.Ordinal):
+                return QueueSafe(instance, extract: true);
+            case "PEEK" when args.Length == 0 && instance.GetType().Name.StartsWith("Queue`1", StringComparison.Ordinal):
+                return QueueSafe(instance, extract: false);
+            case "POP" when args.Length == 0 && instance.GetType().Name.StartsWith("Stack`1", StringComparison.Ordinal):
+                return StackSafe(instance, extract: true);
+            case "PEEK" when args.Length == 0 && instance.GetType().Name.StartsWith("Stack`1", StringComparison.Ordinal):
+                return StackSafe(instance, extract: false);
             // HEAP/MAXHEAP (BinaryHeap<T> canonico): Peek/Extract/Count reali della
             // struttura (prima, materializzata come List, Peek dava il PRIMO INSERITO).
             case "PEEK" when instance is CommonLib.Collections.BinaryHeap<object> hbp:
@@ -15339,9 +15374,9 @@ public static double TextWidth(string s)
                 return hbx.Count > 0 ? hbx.Extract() : null;
             // HEAP (PriorityQueue boxed): Extract() = Dequeue, Peek() = Peek.
             case "EXTRACT" when instance is System.Collections.Generic.PriorityQueue<object, object> pq:
-                return pq.Dequeue();
+                return pq.Count > 0 ? pq.Dequeue() : null;
             case "PEEK" when instance is System.Collections.Generic.PriorityQueue<object, object> pqp:
-                return pqp.Peek();
+                return pqp.Count > 0 ? pqp.Peek() : null;
             // HEAP/MAXHEAP materializzati come List/array (letterale): Peek() = testa,
             // Extract() = testa rimossa (parità pragmatica; l'ordine heap reale non è
             // preservato dal letterale, ma il sample non ne dipende per il valore esatto).

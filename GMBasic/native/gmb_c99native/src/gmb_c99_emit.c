@@ -2803,7 +2803,14 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         || !strcasecmp(_m, "First") || !strcasecmp(_m, "Last")
                         || !strcasecmp(_m, "Extract") || !strcasecmp(_m, "Dequeue")
                         || !strcasecmp(_m, "Pop"))
+                    {
+                        /* QUEUE/STACK: l'emissione rende il gmb_val_t (vuota → NIL) → TY_VAL. */
+                        if ((_rv->coll_type_code == 4 || _rv->coll_type_code == 5)
+                            && (!strcasecmp(_m, "Dequeue") || !strcasecmp(_m, "Pop")
+                                || !strcasecmp(_m, "Peek")))
+                            return TY_VAL;
                         return _rv->coll_handle ? TY_NUM : (_rv->elem_str ? TY_STR : TY_NUM);
+                    }
                 }
             }
         }
@@ -2977,6 +2984,15 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         return TY_NUM;
                     else if (_erxv->gkind && gk_is_list(_erxv->gkind) && !strchr(_erxdot + 1, '.')
                              && !_erxv->elem_boxed
+                             && (_erxv->coll_type_code == 4 || _erxv->coll_type_code == 5)
+                             && (gmb_member_tok(_erxdot + 1) == GMB_TOK_Dequeue
+                                 || gmb_member_tok(_erxdot + 1) == GMB_TOK_Pop
+                                 || gmb_member_tok(_erxdot + 1) == GMB_TOK_Peek))
+                        /* QUEUE/STACK: Dequeue/Pop/Peek emettono il gmb_val_t (vuota → NIL,
+                         * stampato vuoto) — non il double. */
+                        return TY_VAL;
+                    else if (_erxv->gkind && gk_is_list(_erxv->gkind) && !strchr(_erxdot + 1, '.')
+                             && !_erxv->elem_boxed
                              && gmb_tk_in(gmb_member_tok(_erxdot + 1), gmb_tk_list_head,
                                           (unsigned)(sizeof(gmb_tk_list_head)/sizeof(gmb_tk_list_head[0]))))
                         /* Peek/Pop/Dequeue/First/Last su LIST/QUEUE/STACK/SET **scalari**: il ramo
@@ -3103,6 +3119,11 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                     memcpy(cpp, e->var, cpl); cpp[cpl] = 0;
                     var_t* cv = lookup_var(c, cpp);
                     if (cv && cv->gkind && gk_is_list(cv->gkind)) {
+                        if ((cv->coll_type_code == 4 || cv->coll_type_code == 5)
+                            && (gmb_member_tok(cdot + 1) == GMB_TOK_Dequeue
+                                || gmb_member_tok(cdot + 1) == GMB_TOK_Pop
+                                || gmb_member_tok(cdot + 1) == GMB_TOK_Peek))
+                            return TY_VAL;   /* vuota → NIL (stampato vuoto) */
                         if (gmb_tk_in(gmb_member_tok(cdot + 1), gmb_tk_list_head, (unsigned)(sizeof(gmb_tk_list_head)/sizeof(gmb_tk_list_head[0]))))
                             return cv->elem_str ? TY_STR : TY_NUM;
                     }
@@ -3610,6 +3631,13 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                                 || strcasecmp(mdot + 1, "HasItem") == 0))
                             return TY_NUM;
                         if (cv->coll_type_code == 1 && gmb_member_tok(mdot + 1) == GMB_TOK_Count) return TY_NUM;
+                        /* QUEUE/STACK: Dequeue/Pop/Peek su collezione VUOTA → NIL (stampato
+                         * vuoto, canone IL/PCode/VM/C), non 0. */
+                        if ((cv->coll_type_code == 4 || cv->coll_type_code == 5)
+                            && (gmb_member_tok(mdot + 1) == GMB_TOK_Dequeue
+                                || gmb_member_tok(mdot + 1) == GMB_TOK_Pop
+                                || gmb_member_tok(mdot + 1) == GMB_TOK_Peek))
+                            return TY_VAL;
                         if (gmb_tk_in(gmb_member_tok(mdot + 1), gmb_tk_list_head, (unsigned)(sizeof(gmb_tk_list_head)/sizeof(gmb_tk_list_head[0]))))
                             /* Elementi BOXED (gmb_val_t: TREE/HEAP/BAG, markdown): il valore è un
                              * gmb_val_t nudo → TY_VAL, NON double/stringa. */
@@ -13085,6 +13113,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             return;
                         }
                         if (mk == GMB_TOK_Peek) {
+                            if (cv->coll_type_code == 4 || cv->coll_type_code == 5) {
+                                /* QUEUE/STACK: gmb_val_t (vuota → NIL, stampato vuoto). */
+                                sb_put(&c->out, "gmb_list_first(");
+                                sb_ident(&c->out, cv->name);
+                                sb_put(&c->out, ")");
+                                return;
+                            }
                             /* STACK: la cima è l'elemento 0 (lo stack C99 tiene la cima in
                              * TESTA — Push inserisce in testa, Pop rimuove in testa), così
                              * ToArray/JSON/FOR EACH sono top-first come .NET e Front=top. */
@@ -13125,6 +13160,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             return;
                         }
                         if (mk == GMB_TOK_Dequeue) {
+                            if (cv->coll_type_code == 4) {
+                                /* QUEUE: gmb_val_t (vuota → NIL, stampato vuoto). */
+                                sb_put(&c->out, "gmb_list_dequeue(&");
+                                sb_ident(&c->out, cv->name);
+                                sb_put(&c->out, ")");
+                                return;
+                            }
                             sb_put(&c->out, is_str_el ? "gmb_string_alloc(gmb_list_dequeue(&" : "gmb_list_dequeue(&");
                             sb_ident(&c->out, cv->name);
                             if (is_str_el) sb_put(&c->out, ").v_string.data)");
@@ -13141,7 +13183,8 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 sb_put(&c->out, ") > 0) gmb_list_remove_at(&");
                                 sb_ident(&c->out, cv->name);
                                 sb_put(&c->out, ", 0); ");
-                                if (is_str_el) sb_put(&c->out, "gmb_string_alloc(__pv.v_string.data); })");
+                                if (cv->coll_type_code == 5) sb_put(&c->out, "__pv; })");
+                                else if (is_str_el) sb_put(&c->out, "gmb_string_alloc(__pv.v_string.data); })");
                                 else sb_put(&c->out, "__pv.v_double; })");
                                 return;
                             }

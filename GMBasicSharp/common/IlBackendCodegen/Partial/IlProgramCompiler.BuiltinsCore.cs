@@ -1421,6 +1421,21 @@ private void EmitBrowserHumanScrollCall(BuiltinFunctionCallExpr expr)
         if (!TryGetNativeCollectionType(InferType(expr.Args[0]), out var collectionType))
             throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede una collection CLR nativa.");
 
+        /* Pop/Dequeue/Peek su QUEUE/STACK VUOTE: il metodo CLR lancia "Queue empty"/
+         * "Stack empty"; dispatch runtime che rende null (canone VM/C/C99). */
+        if (expr.Args.Length == 1
+            && (methodName.Equals("Pop", StringComparison.OrdinalIgnoreCase)
+                || methodName.Equals("Dequeue", StringComparison.OrdinalIgnoreCase)
+                || methodName.Equals("Peek", StringComparison.OrdinalIgnoreCase))
+            && collectionType.IsGenericType
+            && (collectionType.GetGenericTypeDefinition() == typeof(System.Collections.Generic.Queue<>)
+                || collectionType.GetGenericTypeDefinition() == typeof(System.Collections.Generic.Stack<>)))
+        {
+            EmitExpression(expr.Args[0]);
+            _il.Emit(OpCodes.Ldstr, methodName);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionPopObj), typeof(object), typeof(string)));
+            return;
+        }
         var method = collectionType.GetMethods(BindingFlags.Instance | BindingFlags.Public)
             .Where(candidate => candidate.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase))
             .Where(candidate => candidate.GetParameters().Length == expr.Args.Length - 1)

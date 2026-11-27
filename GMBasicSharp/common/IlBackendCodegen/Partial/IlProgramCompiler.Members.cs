@@ -1641,6 +1641,19 @@ public sealed partial class IlProgramCompiler
 
     private MethodInfo? ResolveNativeCollectionMethod(Type collectionType, string methodName, ImmutableArray<Expr> args)
     {
+        /* QUEUE/STACK: Dequeue/Pop/Peek sul CLR lanciano "Queue empty"/"Stack empty";
+         * si forza il dispatch runtime (CollectionInvokeByKind → IlRuntime.CollectionFirst/
+         * safe cases) che rende null su collezione vuota (canone VM/C/C99). */
+        if (collectionType.IsGenericType)
+        {
+            var genDef = collectionType.GetGenericTypeDefinition();
+            if ((genDef == typeof(System.Collections.Generic.Queue<>) || genDef == typeof(System.Collections.Generic.Stack<>))
+                && args.Length == 0
+                && (methodName.Equals("Dequeue", StringComparison.OrdinalIgnoreCase)
+                    || methodName.Equals("Pop", StringComparison.OrdinalIgnoreCase)
+                    || methodName.Equals("Peek", StringComparison.OrdinalIgnoreCase)))
+                return null;
+        }
         // GetMethods diretto su un generico chiuso che CONTIENE un TypeBuilder come argomento
         // (es. List<Person> con Person = TYPE utente) fallisce con "TypeBuilder generic
         // instantiation does not support resolving members" — stesso limite di Reflection.Emit

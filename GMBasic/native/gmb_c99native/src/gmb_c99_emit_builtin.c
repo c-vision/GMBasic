@@ -1373,8 +1373,22 @@ int js_stringify(ctx_t* c, gmb_expr_t** a, int n) {   /* §0quater: usata anche 
             if (hpl < sizeof(hp)) {
                 memcpy(hp, arg->var, hpl); hp[hpl] = 0;
                 if (gmb_c99_coll_handle_supports(c, hp, hd + 1, arg->nargs)) {
+                    int hmk = (int)gmb_member_tok(hd + 1);
                     sb_put(&c->out, "gmb_val_to_json(");
-                    gmb_c99_coll_handle_method(c, hp, hd + 1, arg->args, arg->nargs, arg->line);
+                    /* Peek/Extract rendono il gmb_val_t della radice: val_to_json vuole il VAL,
+                     * non il double (il membro "valore" emette gmb_val_to_double → C invalido
+                     * in JSON.STRINGIFY(heap.Peek())). */
+                    if (hmk == GMB_TOK_Peek) {
+                        sb_put(&c->out, "gmb_coll_heap_peek(gmb_val_collection_handle(");
+                        emit_ident(c, hp);
+                        sb_put(&c->out, "))");
+                    } else if (hmk == GMB_TOK_Extract) {
+                        sb_put(&c->out, "gmb_coll_heap_extract(gmb_val_collection_handle(");
+                        emit_ident(c, hp);
+                        sb_put(&c->out, "))");
+                    } else {
+                        gmb_c99_coll_handle_method(c, hp, hd + 1, arg->args, arg->nargs, arg->line);
+                    }
                     sb_put(&c->out, ")");
                     return 1;
                 }

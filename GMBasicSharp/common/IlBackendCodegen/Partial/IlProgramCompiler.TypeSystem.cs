@@ -399,11 +399,13 @@ public sealed partial class IlProgramCompiler
         BuiltinFunctionCallExpr f when f.Name.Kind == TokenKind.StackPush => new VoidType(),
         // KEYIMPORT(pem, target) — forma COMANDO: il 2° arg è il target, il risultato è
         // già stoccato lì → void (il chiamante statement non deve popare).
+        BuiltinFunctionCallExpr f when f.Name.Kind == TokenKind.StackPop && f.Args.Length > 0
+            && NormalizeInferredType(InferType(f.Args[0])) is StackType => new AnyType(),
         BuiltinFunctionCallExpr f when f.Name.Kind == TokenKind.StackPop && f.Args.Length > 0 => CollectionElementType(InferType(f.Args[0])),
         BuiltinFunctionCallExpr f when f.Name.Kind is TokenKind.Dequeue or TokenKind.First or TokenKind.Last && f.Args.Length == 1
             && NormalizeInferredType(InferType(f.Args[0])) is RingBufferType or CacheType or TreeType or AVLTreeType or RedBlackTreeType
                 or BinaryIndexedTreeType or TrieType or BPlusTreeType or GraphType or HashRingType or SparseSetType
-                or BinaryHeapType or BagType or TimelineType => new AnyType(),
+                or BinaryHeapType or BagType or TimelineType or QueueType => new AnyType(),
         BuiltinFunctionCallExpr f when f.Name.Kind is TokenKind.Dequeue or TokenKind.First or TokenKind.Last && f.Args.Length == 1 => CollectionElementType(InferType(f.Args[0])),
         BuiltinFunctionCallExpr f when f.Name.Kind is TokenKind.GetCursorPos or TokenKind.GetTextMetrics or TokenKind.GetPaletteColor => new ArrayType(new DoubleType()),
         BuiltinFunctionCallExpr f when f.Name.Kind == TokenKind.Count && f.Args.Length == 1 && TryGetNativeCollectionType(InferType(f.Args[0]), out _) => new DoubleType(),
@@ -833,6 +835,16 @@ public sealed partial class IlProgramCompiler
             if (f1Inst is ListType fl) { returnType = fl.ElementType; return true; }
             if (f1Inst is QueueType fq) { returnType = fq.ElementType; return true; }
             if (f1Inst is StackType fs) { returnType = fs.ElementType; return true; }
+        }
+        if (expr.Args.Length == 0 && (f1Inst is QueueType or StackType)
+            && (expr.MethodName.Lexeme.Equals("Dequeue", StringComparison.OrdinalIgnoreCase)
+                || expr.MethodName.Lexeme.Equals("Pop", StringComparison.OrdinalIgnoreCase)
+                || expr.MethodName.Lexeme.Equals("Peek", StringComparison.OrdinalIgnoreCase)))
+        {
+            /* Dequeue/Pop/Peek su coda/pila VUOTA → NIL (nessun valore): il risultato è
+             * dinamico, così PRINT stampa vuoto invece di 0 (canone PCode/VM/C). */
+            returnType = new AnyType();
+            return true;
         }
         if ((expr.Args.Length == 1 && CollMembers.Is(expr.MethodName, TokenKind.CollAddUnique))
             || (expr.Args.Length == 2 && (CollMembers.Is(expr.MethodName, TokenKind.CollAddAfter)
