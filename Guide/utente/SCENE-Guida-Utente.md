@@ -651,7 +651,8 @@ Le regole che contano:
   `w/2`) alti `h`, con la base a `y`. `SEES` parte dal **70%** dell'altezza del thing.
 * `SHOOT` sovrascrive lo stato dell'ultimo colpo a ogni chiamata; `USE` non lo tocca.
 * Con la scena vuota o fuori gittata le sentinelle sono `−1`/`0`/`−1000000`: due «niente»
-  diversi non si confondono con un id vero.
+  diversi non si confondono con un id vero. Una gittata nulla o negativa non è un errore:
+  torna `−1` come una scena vuota.
 
 ```
 IF SCENE.SHOOT(200) >= 0 THEN
@@ -664,7 +665,7 @@ IF SCENE.SEES(7) = 1 THEN PRINT "il thing 7 ti vede"
 
 Disponibili su **C99Native, IL, PCode e VM/C** con gli stessi valori (MiniTest
 `shared/minitests/3d/scene_rays.bas`; il gate `tools/sh/check_3d_oracle.sh` verifica
-`SHOOT`/`USE`/`SEES` con 21 controlli headless).
+`SHOOT`/`USE`/`SEES` con 22 controlli headless).
 
 ---
 

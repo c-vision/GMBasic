@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <time.h>          /* P5: banco della scena (tempo mediano per frame) */
+#include <math.h>          /* NAN: letture con argomento non finito */
 
 #include "gmb_3d.h"
 #include "gmb_c99gpm.h"              /* R3/R5 con due task veri (scheduler GPM) */
@@ -1630,11 +1631,13 @@ static int run_p5_rays(void)
               "SHOOT a vuoto = %lld kind=%g dist=%g x=%g (attesi -1/0/-1/-1000000)",
               (long long)gmb_scene_shoot(50.0), gmb_scene_shotkind(), gmb_scene_shotdist(), gmb_scene_shotx());
 
-    /* Argomenti non validi: errore esplicito, non un colpo inventato. */
-    P5R_CHECK(gmb_scene_shoot(0.0) != GMB_3D_OK && strstr(gmb_3d_last_error(), "gittata"),
-              "SHOOT con gittata 0 non è un errore esplicito");
-    P5R_CHECK(gmb_scene_use(-1.0) != GMB_3D_OK && strstr(gmb_3d_last_error(), "portata"),
-              "USE con portata negativa non è un errore esplicito");
+    /* Letture, non comandi: gittata non positiva o non finita = «niente in
+     * portata» (−1), mai un errore di superficie né un colpo inventato. */
+    P5R_CHECK(gmb_scene_shoot(0.0) == -1 && gmb_scene_shotkind() == 0.0 && gmb_scene_shotdist() == -1.0,
+              "SHOOT con gittata 0 non torna «nessun colpo»");
+    P5R_CHECK(gmb_scene_use(-1.0) == -1, "USE con portata negativa non torna «nessun colpo»");
+    P5R_CHECK(gmb_scene_shoot(NAN) == -1 && gmb_scene_use(NAN) == -1,
+              "gittata NaN non torna «nessun colpo»");
 
 #undef P5R_CHECK
     printf("P5-RAYS ok=%d fail=%d\n", ok, fail);
