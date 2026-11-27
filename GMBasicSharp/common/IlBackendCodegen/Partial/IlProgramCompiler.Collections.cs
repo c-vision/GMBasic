@@ -220,8 +220,14 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Newobj, typeof(CommonLib.Collections.ConsistentHash<object>).GetConstructor([typeof(IEnumerable<object>), typeof(int)])!);
                 return;
             case BPlusTreeType:
+                /* CTOR reale: BPlusTree(int order, IComparer<TKey>? comparer = null) — NON esiste
+                 * un costruttore a 1 parametro (l'opzionale è comunque 2 argomenti): con
+                 * `GetConstructor([int])` = null, `DIM bp AS BPLUSTREE<...>` senza NEW
+                 * lanciava ArgumentNullException('con') in ILGEN. */
                 _il.Emit(OpCodes.Ldc_I4_3);
-                _il.Emit(OpCodes.Newobj, typeof(CommonLib.Collections.BPlusTree<string, object?>).GetConstructor([typeof(int)])!);
+                _il.Emit(OpCodes.Ldnull);
+                _il.Emit(OpCodes.Newobj, typeof(CommonLib.Collections.BPlusTree<string, object?>)
+                    .GetConstructor([typeof(int), typeof(System.Collections.Generic.IComparer<string>)])!);
                 return;
             case TimelineType:
                 // Timeline<ValueType> dal tipo passato (es. TIMELINE<STRING> → Timeline<string>),

@@ -261,6 +261,15 @@ gmb_obj_string_t* gmb_vm_json_stringify(gmb_obj_t* obj)
         gmb_string_free(&s);
         return r;
     }
+    /* GRAPH (GMB_OBJ_GRAPH): {"NodeCount":N,"Nodes":[...]} — canone IL/PCode (CommonLib
+     * serializza NodeCount+Nodes). Prima il fallback dava "null". */
+    if (obj->kind == GMB_OBJ_GRAPH) {
+        gmb_obj_graph_t* g = (gmb_obj_graph_t*)obj;
+        gmb_string_t gj = gmb_graph_to_json(g->handle);
+        gmb_obj_string_t* rg = gmb_str_cstr(gj.data ? gj.data : "{}");
+        gmb_string_free(&gj);
+        return rg;
+    }
     /* Collezione (GMB_OBJ_COLLECTION): il serializer generico non conosce il tipo → "null"
      * (era il caso di `B.ToJson()` su un BAG, che il compilatore emette come JSON.STRINGIFY).
      * Il BAG è un MULTISET: il suo JSON è {"elemento":molteplicità,…} (parità P-Code, dove il
@@ -273,6 +282,20 @@ gmb_obj_string_t* gmb_vm_json_stringify(gmb_obj_t* obj)
             gmb_obj_string_t* rb = gmb_str_cstr(bj.data ? bj.data : "{}");
             gmb_string_free(&bj);
             return rb;
+        }
+        /* BITREE: {"Count":N} (canone IL/PCode, CommonLib BinaryIndexedTree). */
+        if (col->type_code == 10) {
+            gmb_string_t bj = gmb_coll_bitree_to_json(col->handle);
+            gmb_obj_string_t* rb2 = gmb_str_cstr(bj.data ? bj.data : "{}");
+            gmb_string_free(&bj);
+            return rb2;
+        }
+        /* GRAPH: {"NodeCount":N,"Nodes":[...]} (canone IL/PCode). */
+        if (col->type_code == 17) {
+            gmb_string_t gj = gmb_graph_to_json(col->handle);
+            gmb_obj_string_t* rg = gmb_str_cstr(gj.data ? gj.data : "{}");
+            gmb_string_free(&gj);
+            return rg;
         }
         /* TIMELINE: oggetto {ISO-8601: valore} (canone DATA come chiave) — prima "null". */
         if (col->type_code == 18) {

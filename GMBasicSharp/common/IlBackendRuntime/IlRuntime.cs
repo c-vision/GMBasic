@@ -2860,6 +2860,16 @@ public static partial class IlRuntime
             // HLL: nome BASIC (parità C99/VM-C, gmb_collection_type_name(30)).
             case CommonLib.Collections.HyperLogLog: return "HLL";
             default:
+                // Strutture avanzate materializzate come classi CommonLib ma con nome CANONICO
+                // di mappa (parità PCode/VM-C/C99, che le rappresentano come SortedDictionary):
+                // senza, TYPENAME dava "BPLUSTREE`2"/"BINARYINDEXEDTREE`1" solo su IL.
+                {
+                    var clrName = value.GetType().Name;
+                    if (clrName.StartsWith("BPlusTree", StringComparison.Ordinal)
+                        || clrName.StartsWith("BinaryIndexedTree", StringComparison.Ordinal)
+                        || clrName.StartsWith("RedBlackTree", StringComparison.Ordinal))
+                        return "SORTEDDICTIONARY`2";
+                }
                 // UDT: nome BASIC dal registro (parità PCode/VM-C) invece del nome CLR "UDT_540".
                 if (UdtTypeNames.TryGetValue(value.GetType().FullName ?? "", out var bn)) return bn;
                 return value.GetType().Name.ToUpperInvariant();

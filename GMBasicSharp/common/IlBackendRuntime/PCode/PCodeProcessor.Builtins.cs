@@ -647,8 +647,6 @@ if (args.Length > 0) { try { var sizes = new List<int>(); foreach (var a in args
                     {
                         case "RedBlackTree`2": case "BPlusTree`2": case "BinaryIndexedTree`1":
                             return "SORTEDDICTIONARY`2";
-                        case "BinaryHeap`1": case "MaxHeap`1":
-                            return "LIST`1";
                         case "HyperLogLog":
                             return "HLL";   /* parità C99/VM-C (gmb_collection_type_name(30)) */
                         case "Trie": return "TRIE";

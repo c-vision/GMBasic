@@ -52,7 +52,9 @@ internal sealed partial class MethodEmitter
                 return;
             case BPlusTreeType:
                 _il.Emit(OpCodes.Ldc_I4_3);
-                _il.Emit(OpCodes.Newobj, typeof(CommonLib.Collections.BPlusTree<string, object?>).GetConstructor([typeof(int)])!);
+                _il.Emit(OpCodes.Ldnull);
+                _il.Emit(OpCodes.Newobj, typeof(CommonLib.Collections.BPlusTree<string, object?>)
+                    .GetConstructor([typeof(int), typeof(IComparer<string>)])!);
                 return;
             case TrieType:
                 _il.Emit(OpCodes.Newobj, typeof(CommonLib.Collections.Trie).GetConstructor(Type.EmptyTypes)!);
@@ -247,6 +249,10 @@ internal sealed partial class MethodEmitter
             typeof(PCodeTask).GetMethod("set_SleepUntilMs")!;
         private static readonly MethodInfo SleepStepMethod =
             typeof(IlGpmRuntime).GetMethod(nameof(IlGpmRuntime.SleepStep))!;
+        private static readonly MethodInfo TickStepMethod =
+            typeof(IlGpmRuntime).GetMethod(nameof(IlGpmRuntime.TickStep))!;
+        private static readonly MethodInfo TickPresentMethod =
+            typeof(IlRuntime).GetMethod(nameof(IlRuntime.TickPresent), Type.EmptyTypes)!;
         private static readonly MethodInfo TryWaitKeyParkMethod =
             typeof(IlGpmRuntime).GetMethod(nameof(IlGpmRuntime.WaitKeyStep))!;
         private static readonly MethodInfo ReadNativeAddMethod =

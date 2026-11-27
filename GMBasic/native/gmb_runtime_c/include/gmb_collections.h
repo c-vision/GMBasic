@@ -203,6 +203,11 @@ int gmb_coll_bag_remove(int64_t h, gmb_val_t v);                /* rimuove UNA i
 gmb_list_t gmb_collection_bag_unique_list(int64_t h);           /* UniqueItems() come lista */
 gmb_dict_t* gmb_coll_bag_counts_dict(int64_t h);            /* chiamante: gmb_dict_free + free */
 gmb_string_t gmb_coll_bag_to_json(int64_t h);
+/* JSON canonici delle strutture non sequenza/mappa: BITree {"Count":N},
+ * GRAPH {"NodeCount":N,"Nodes":[...]} (parità IL/PCode). */
+gmb_string_t gmb_coll_bitree_count_to_json(int64_t n);
+gmb_string_t gmb_coll_bitree_to_json(int64_t h);
+gmb_string_t gmb_graph_to_json(int64_t h);
 /* Timeline.ToJson()/JSON.STRINGIFY(TIMELINE): oggetto {ISO-8601: valore} — stessa forma
  * delle chiavi-data nei DICT (gmb_dt_datetime_iso), non una lista di coppie. */
 gmb_string_t gmb_coll_timeline_to_json(int64_t h);

@@ -6,6 +6,7 @@
  * Gli elementi sono gmb_val_t (tipo unificato condiviso con il transpiler).
  * ============================================================================ */
 #include "gmb_collections.h"
+#include "gmb_graph.h"
 #include "gmb_hll.h"
 #include <stdlib.h>
 #include <string.h>
@@ -43,7 +44,7 @@ const char* gmb_collection_type_name(int type_code)
         case 11: return "TRIE";
         case 12: return "LINKEDLIST`1";
         case 13: return "LIST`1";
-        case 14: case 27: return "LIST`1";
+        case 14: case 27: return "BINARYHEAP`1";
         case 15: return "DICTIONARY`2";
         case 16: return "CACHE`2";
         case 17: return "GRAPH`1";
@@ -1935,6 +1936,41 @@ gmb_dict_t* gmb_coll_bag_counts_dict(int64_t h)
         gmb_dict_set(d, key, gmb_make_val_int(n + 1));
     }
     return d;
+}
+
+/* BITree (10): JSON `{"Count":N}` — canone IL/PCode (CommonLib BinaryIndexedTree
+ * serializza la proprietà Count). Prima VM/C dava `null` e C99 `[]`. */
+gmb_string_t gmb_coll_bitree_count_to_json(int64_t n)
+{
+    gmb_dict_t d = gmb_dict_new();
+    gmb_dict_set(&d, "Count", gmb_make_val_double((double)n));
+    gmb_string_t js = gmb_val_to_json(gmb_make_val_dict(d));
+    gmb_dict_free(&d);
+    return js;
+}
+
+gmb_string_t gmb_coll_bitree_to_json(int64_t h)
+{
+    gmb_collection_t* c = coll_get(h);
+    return gmb_coll_bitree_count_to_json(c ? c->count : 0);
+}
+
+/* GRAPH (17): JSON `{"NodeCount":N,"Nodes":[...]}` — canone IL/PCode (CommonLib.Graph
+ * serializza NodeCount + Nodes). Prima VM/C dava `null` e C99 non compilava. */
+gmb_string_t gmb_graph_to_json(int64_t h)
+{
+    int n = 0;
+    char** nodes = gmb_graph_nodes(h, &n);
+    gmb_list_t l = gmb_list_new();
+    for (int i = 0; i < n; i++)
+        gmb_list_add(&l, gmb_make_val_string(nodes[i] ? nodes[i] : ""));
+    free(nodes);   /* i nomi sono BORROWED dal grafo (gmb_graph_nodes non li duplica) */
+    gmb_dict_t d = gmb_dict_new();
+    gmb_dict_set(&d, "NodeCount", gmb_make_val_double((double)n));
+    gmb_dict_set(&d, "Nodes", gmb_make_val_list_take(&l));
+    gmb_string_t js = gmb_val_to_json(gmb_make_val_dict(d));
+    gmb_dict_free(&d);
+    return js;
 }
 
 /* Bag.ToJson(): JSON `{"elemento":molteplicità,…}` (dopo Remove("a"): {"a":2,"b":1,"c":1}). */

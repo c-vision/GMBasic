@@ -898,6 +898,21 @@ static const char* ctype_name(int ty) { return ty == TY_STR ? "gmb_string_t" : (
 int gmb_c99_emit_coll_json(ctx_t* c, const char* name) {
     var_t* av = lookup_var(c, name);
     if (!av || !av->gkind) return 0;
+    /* GRAPH: handle gmb_graph_* → {"NodeCount":N,"Nodes":[...]} (canone IL/PCode).
+     * Prima l'emissione generica produceva `gmb_make_val_string(gr.data)` → C invalido. */
+    if (av->gkind == GK_GRAPH) {
+        sb_put(&c->out, "gmb_graph_to_json(");
+        sb_ident(&c->out, av->name);
+        sb_put(&c->out, ")");
+        return 1;
+    }
+    /* BITREE: lista dei valori sorgente → {"Count":N} (canone IL/PCode). */
+    if (av->gkind == GK_LIST && av->coll_type_code == 10) {
+        sb_put(&c->out, "gmb_coll_bitree_count_to_json((int64_t)gmb_list_count(");
+        sb_ident(&c->out, av->name);
+        sb_put(&c->out, "))");
+        return 1;
+    }
     /* Contenitori a HANDLE (BAG/HEAP/MAXHEAP/TRIE): il valore boxato non è una lista
      * gmb_list_t → gmb_make_val_list(<handle>) non compila. JSON per TIPO, con le stesse
      * materializzazioni del resto dell'emitter (§0bis). */
@@ -12727,6 +12742,13 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             sb_ident(&c->out, cv->name); sb_put(&c->out, ")");
                             return;
                         }
+                        if (mk == GMB_TOK_ToJson) {
+                            /* GRAPH.ToJson() = {"NodeCount":N,"Nodes":[...]} (canone IL/PCode). */
+                            sb_put(&c->out, "gmb_make_val_string(gmb_graph_to_json(");
+                            sb_ident(&c->out, cv->name);
+                            sb_put(&c->out, ").data)");
+                            return;
+                        }
                         /* collezioni ritornate: BFS/DFS (stringhe), Neighbors (dict),
                          * Dijkstra ({node,dist}) — val runtime condiviso, Stringify li
                          * serializza con gmb_val_to_json (js_stringify, ramo graph). */
@@ -12989,6 +13011,14 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             return;
                         }
                         if (mk == GMB_TOK_ToJson) {
+                            /* BITREE: {"Count":N} (canone IL/PCode); per le altre liste il
+                             * TESTO JSON dei valori. */
+                            if (cv->coll_type_code == 10) {
+                                sb_put(&c->out, "gmb_make_val_string(gmb_coll_bitree_count_to_json((int64_t)gmb_list_count(");
+                                sb_ident(&c->out, cv->name);
+                                sb_put(&c->out, ")).data)");
+                                return;
+                            }
                             /* `.ToJson()` su una LISTA: TESTO JSON (gmb_string_t) — stesso
                              * contratto del ramo DICT e di IL/PCode/VM-C (TYPENAME STRING).
                              * Senza questo ramo il nome cadeva nel default `0`: PRINT
