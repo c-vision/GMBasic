@@ -275,6 +275,15 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
     }
 
+    /// <summary>SCENE.STATS(nome$): un argomento stringa, risultato double (P5/M-STATS).</summary>
+    private void EmitSceneReadOneString(BuiltinFunctionCallExpr expr, string methodName)
+    {
+        if (expr.Args.Length != 1)
+            throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento (nome).");
+        EmitStringArgument(expr.Args[0]);
+        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
+    }
+
     /// <summary>SCENE.SEES(n): un id intero, risultato double (1/0/−1).</summary>
     private void EmitSceneReadOneLong(BuiltinFunctionCallExpr expr, string methodName)
     {

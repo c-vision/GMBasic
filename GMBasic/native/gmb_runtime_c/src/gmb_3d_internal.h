@@ -91,6 +91,16 @@ const gmb_3d_scene_thing_rt* gmb_3d_scene_things(int* count);
  * Chiamata da SCENE RESET. */
 void gmb_3d_ray_reset(void);
 
+/* Statistiche della scena (gmb_3d_stats.c, P5/M-STATS) — `SCENE.STATS(name$)`.
+ * RESET azzera i contatori di frame; RENDER ne conta uno; PRESENT chiude il
+ * frame azzerandolo. Le allocazioni NON si azzerano: sono la prova di R4. */
+void gmb_3d_stats_reset(void);
+void gmb_3d_stats_note_render(void);
+void gmb_3d_stats_note_present(void);
+/* Contatori dell'ultimo pass di RENDER, sola lettura: STATS li espone senza
+ * duplicare la struct in un secondo file. */
+const gmb_3d_draw_stats_t* gmb_3d_scene_draw_stats(void);
+
 /* --- buffer della scena a capacità dinamica (gmb_3d_scene_buf.c, P5) -------
  * Il primo blocco di P5 aveva tetti statici (32768 vertici, 16384 triangoli,
  * 512 oggetti) che rendevano irraggiungibile l'accettazione dei 200k triangoli.

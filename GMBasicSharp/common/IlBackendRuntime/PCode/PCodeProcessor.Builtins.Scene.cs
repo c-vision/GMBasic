@@ -45,6 +45,8 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.SCENE_SHOTX,
         BuiltInFunction.SCENE_SHOTY,
         BuiltInFunction.SCENE_SHOTZ,
+        // P5/M-STATS: misure della scena per nome.
+        BuiltInFunction.SCENE_STATS,
     ];
 
     private object? ExecuteBuiltInScene(PCodeTask task, BuiltInFunction fn, object?[] args)
@@ -94,6 +96,8 @@ internal sealed partial class PCodeProcessor
             case BuiltInFunction.SCENE_SHOTX: return CommonLib.Scene3DNative.ShotX();
             case BuiltInFunction.SCENE_SHOTY: return CommonLib.Scene3DNative.ShotY();
             case BuiltInFunction.SCENE_SHOTZ: return CommonLib.Scene3DNative.ShotZ();
+            // STATS(nome$): una misura della scena (−1 = chiave sconosciuta).
+            case BuiltInFunction.SCENE_STATS: return CommonLib.Scene3DNative.Stats(args.Length > 0 ? args[0]?.ToString() ?? "" : "");
         }
         return null;
     }

@@ -667,6 +667,43 @@ Disponibili su **C99Native, IL, PCode e VM/C** con gli stessi valori (MiniTest
 `shared/minitests/3d/scene_rays.bas`; il gate `tools/sh/check_3d_oracle.sh` verifica
 `SHOOT`/`USE`/`SEES` con 22 controlli headless).
 
+### Statistiche per nome: `SCENE.STATS(nome$)`
+
+Le stesse misure delle letture qui sopra, più i contatori che servono a capire **come** gira il
+ciclo, con un nome invece che con una funzione per ognuna.
+
+| `SCENE.STATS(...)` | Risposta |
+|---|---|
+| `"tris"` | triangoli dichiarati (come `SCENE.TRIS()`) |
+| `"draw"` / `"culled"` / `"pixels"` | contatori dell'ultimo `RENDER` (come `DRAWN`/`CULLED`/`PIXELS`) |
+| `"objs"` | oggetti dichiarati |
+| `"bytes"` | memoria **riservata** dalla geometria (capacità, non uso): non scende con `RESET` |
+| `"allocs"` | allocazioni del motore 3D dall'avvio del programma: **deve restare fermo mentre si disegna** |
+| `"renders"` | quante volte hai chiamato `RENDER` nel frame in corso: `PRESENT` chiude il frame e lo azzera |
+| `"renders_max"` | il massimo di `renders` da `RESET` in poi |
+| altro | `−1`: nome sconosciuto (maiuscole e minuscole non contano) |
+
+```
+SCENE RENDER
+PRINT "triangoli disegnati: "; SCENE.STATS("draw")
+PRINT "allocazioni finora:   "; SCENE.STATS("allocs")
+IF SCENE.STATS("renders") > 1 THEN PRINT "RENDER chiamato piu' di una volta in un frame!"
+```
+
+**Perché contano `allocs` e `renders`.** Sono le due invarianti del motore che non si vedono a
+occhio: un frame che alloca (buffer nuovo, crescita) e un frame con più di un `RENDER` — tipico di
+chi renderizza dentro un handler — si leggono qui. `allocs` non si azzera mai: se cresce mentre
+disegni, c'è un'allocazione dentro il frame. `renders` si azzera a ogni `PRESENT` perché è il
+present che chiude il giro.
+
+**Il tempo di un frame non c'è.** Non è una dimenticanza: un orologio dentro `RENDER` misurerebbe
+la macchina, non il motore, e sotto contesa non vuol dire niente. I millisecondi li dà il banco
+(`tools/sh/bench_3d.sh`), che sta fuori e li stampa lui.
+
+Disponibile su **C99Native, IL, PCode e VM/C** con gli stessi valori (MiniTest
+`shared/minitests/3d/scene_stats.bas`; il gate `tools/sh/check_3d_oracle.sh` verifica le chiavi,
+`renders_max` e il `RESET` con 22 controlli headless).
+
 ---
 
 ## 4. Errori e diagnosi
@@ -791,8 +828,8 @@ superficie interattiva di P5). Mancano, e arriveranno con le fasi successive del
   corrente lo apre `OBJECT` e la texture è una sola per scena (PNG o scacchiera);
 * i comandi per-thing (`THING POS/TEX/OFF/LIGHT/TRANS/MOVE`): il BASIC ha solo
   `THING n, x, y, z, w, h`, con luce piena e la texture corrente;
-* le letture degli **oggetti** (`SCENE.OBJ*`) e `SCENE.STATS`; la camera e il corpo hanno già le
-  loro (`SCENE.X/Y/Z/EYE/YAW/PITCH/HIT`);
+* le letture degli **oggetti** (`SCENE.OBJ*`); la camera e il corpo hanno già le loro
+  (`SCENE.X/Y/Z/EYE/YAW/PITCH/HIT`) e le misure aggregate `SCENE.STATS`;
 * il present **a video** e il tetto dei frame: `SCENE PRESENT` porta il target nella pagina 2D
   (canvas o `SCREEN`), e la finestra la mostra il pump SDL al tick successivo; il controllo del
   frame rate resta fuori dal dominio.
@@ -802,6 +839,7 @@ MiniTest che bloccano i numeri: `shared/minitests/3d/scene_mesh.bas`,
 la P3, `scene_lamp_point_spot.bas`, `scene_fog.bas`, `scene_far.bas`, `scene_sky.bas`,
 `scene_colormap.bas`, `scene_thing.bas` per la P4, e `scene_move.bas` (corpo, `MOVE`/`TURN`/
 `LIFT`, `HIT`, letture camera), `scene_zones.bas` (zone, tag, `FLOORAT`/`CEILAT`, passabile) e
-`scene_rays.bas` (raggi, flag 8 contro flag 4, linea di vista) per
-la superficie interattiva — tutti con gli stessi valori su C99Native, IL, PCode e VM/C. Sample: `Samples3D/MeshBasics.bas`, `TextureFile.bas`, `LightFaces.bas`,
+`scene_rays.bas` (raggi, flag 8 contro flag 4, linea di vista) e `scene_stats.bas` (`SCENE.STATS`,
+`renders`/`renders_max`, `RESET`) per la superficie interattiva — tutti con gli stessi valori su
+C99Native, IL, PCode e VM/C. Sample: `Samples3D/MeshBasics.bas`, `TextureFile.bas`, `LightFaces.bas`,
 `MaterialFlags.bas`, `PresentLoop.bas`.

@@ -11498,6 +11498,15 @@ static void gmb_bf_scene_shoty(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, 
 { (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_shoty(); }
 static void gmb_bf_scene_shotz(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 { (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_shotz(); }
+/* P5/M-STATS: il nome della misura arriva come stringa BASIC, il valore e' un
+ * double; -1 = chiave sconosciuta. Nessuno stato qui (§0bis). */
+static void gmb_bf_scene_stats(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    const char* name = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
+                       ? ((gmb_obj_string_t*)args[0].ref)->data : "";
+    bout->result = gmb_scene_stats(name);
+}
 static void gmb_bf_scene_zonetag(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)func_code; (void)task;
@@ -17051,6 +17060,8 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3937, gmb_bf_scene_shotz },
     { 3938, gmb_bf_scene_use },
     { 3939, gmb_bf_scene_sees },
+    /* P5/M-STATS — misure della scena per nome (BuiltInFunction 3940). */
+    { 3940, gmb_bf_scene_stats },
     { 826, gmb_bf_796_c826 },
     { 827, gmb_bf_796_c827 },
     { 828, gmb_bf_796_c828 },

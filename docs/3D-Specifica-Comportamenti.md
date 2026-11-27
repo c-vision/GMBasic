@@ -203,6 +203,24 @@ A/B `cc`+`zcc` su `gmb_3d_ray.c`) e `shared/minitests/3d/scene_rays.bas` con gli
 su C99Native, IL, PCode e VM/C (flag 8 attraversato, flag 4 no, `USE` che prende il vetro,
 thing colpito a `z − w/2`, `SEES` 1/0/`−1`, argomento nullo o `NaN` = nessun colpo senza errori).
 
+#### Statistiche: `SCENE.STATS(nome$)` (P5, 2026-11-27)
+
+| ID | Superficie BASIC | Comportamento implementato |
+|---|---|---|
+| `M-STATS` | `SCENE.STATS(nome$)` | **una lettura, un nome**: il valore è il contatore già presente nel motore (`SCENE.TRIS/DRAWN/CULLED/PIXELS` restano le stesse letture, non una seconda copia). Chiavi: `"tris"`, `"draw"`, `"culled"`, `"pixels"`, `"objs"`, `"bytes"`, `"allocs"`, `"renders"`, `"renders_max"` |
+| `M-STATS-GEOM` | `"tris"`, `"objs"`, `"bytes"` | geometria **dichiarata**: triangoli e oggetti correnti; `bytes` = memoria **riservata** (capacità, non uso: 11 float per vertice, indici e luci per triangolo, oggetti e i tre scratch) e quindi **non** scende con `RESET`, che conserva la capacità (`M-CAP`) |
+| `M-STATS-PASS` | `"draw"`, `"culled"`, `"pixels"` | contatori dell'**ultimo `RENDER`**, gli stessi di `SCENE.DRAWN/CULLED/PIXELS`. Non sono una partizione della geometria: un triangolo tagliato dal frustum finisce in `CULLED` **e** in `DRAWN` (guida §3) |
+| `M-STATS-FRAME` | `"renders"`, `"renders_max"` | `renders` = `RENDER` chiamati nel **frame aperto**: `PRESENT` chiude il frame e lo azzera, `RESET` azzera tutto; un programma che non presenta mai legge il totale dall'ultimo `RESET`. `renders_max` = il massimo raggiunto dopo `RESET`: **> 1 = più `RENDER` nello stesso giro** (`R6` della nota tecnica) |
+| `M-STATS-ALLOC` | `"allocs"` | allocazioni del modulo 3D **dall'avvio del processo** (`gmb_3d_alloc_count`): non si azzera mai, `RESET` compreso — è la prova di `R4` («nessuna allocazione per frame»), non una statistica della scena |
+| `M-STATS-SENT` | chiave ignota o `NULL` | `−1` (`C-SENTINEL`): è una lettura, non alza errori di superficie e non inventa un valore. Le chiavi **non distinguono maiuscole** (`"TRIS"` = `"tris"`), come tutto il linguaggio |
+| `M-STATS-MS` | perché non c'è `frame_ms` | **divergenza dichiarata** da piano §4.3 (`"ms"`) e nota tecnica (`"frame_ms"`): un orologio dentro `RENDER` è esattamente ciò che §0septies vieta («il costo si legge dai contatori, non da un cronometro sotto contesa»). Il tempo di un frame lo misura fuori il banco (`tools/sh/bench_3d.sh`), che non entra nel motore; `renders`/`allocs` sono i due numeri che il motore può garantire deterministici |
+
+Verifica: `gmb_3d_oracle --statscheck` (**P5-STATS ok=22 fail=0**, dentro `check_3d_oracle.sh`, gate
+A/B `cc`+`zcc` su `gmb_3d_stats.c`) e `shared/minitests/3d/scene_stats.bas` con gli **stessi
+valori** su C99Native, IL, PCode e VM/C (geometria dichiarata, pass a zero prima del `RENDER`,
+due `RENDER` nello stesso frame con `renders_max = 2`, chiave ignota `−1`, `RESET` che azzera i
+contatori e conserva `bytes`).
+
 ### 3.3 Collisione, raggi, zone
 
 | ID | Comportamento |
@@ -210,6 +228,7 @@ thing colpito a `z − w/2`, `SEES` 1/0/`−1`, argomento nullo o `NaN` = nessun
 | `M-PLAYER` | Capsula verticale: default **raggio 14, altezza 56, occhio 46, step 24**; `PLAYER raggio, altezza, occhio, step` li cambia. `CAMERA x,y,z,yaw[,pitch]` posiziona l'**occhio** (P3: le golden restano `diff=0`), quindi i **piedi** stanno `EYE` sotto: `SCENE.X/Y/Z` leggono l'occhio e `SCENE.EYE` è l'altezza dell'occhio sui piedi. |
 | `M-COLLIDE` | Stessa semantica di `W-MOVE`, sul piano (x, z) e con `y` come altezza: scivola, sale gradini ≤ step, bloccato da soffitto basso. `MOVE avanti, destra` (unità del mondo), `TURN dyaw[, dpitch]` (gradi), `LIFT dy`. `HIT` è una maschera: **1** parete, **2** fermo (la richiesta non ha spostato nulla), **4** quota cambiata. |
 | `M-RAYS` | `SHOOT(range)` contro thing e oggetti (`SHOTKIND` 0/1 oggetto/2 thing, `SHOTOBJ`, `SHOTDIST`, `SHOTX/Y/Z`); `USE(reach)` l'oggetto davanti **qualunque siano i flag**; `SEES(n)` linea di vista del thing verso l'occhio. Passano solo i flag 8 (non 4) per vista/colpi. |
+| `M-STATS` | `STATS(nome$)` = una misura per nome: `tris`/`objs`/`bytes` (geometria dichiarata e memoria riservata), `draw`/`culled`/`pixels` (ultimo `RENDER`), `renders`/`renders_max` (`RENDER` per frame), `allocs` (allocazioni dall'avvio). Chiave ignota `−1`; il tempo di un frame si misura fuori dal motore. |
 | `M-FLOOR` | `FLOORAT(x,y,z)` = **superficie più alta a o sotto `y`**, sul punto (x, z); `CEILAT` l'analogo sopra. `−1000000` = nessuna superficie. È ciò che permette di stare su un mobile senza una fisica generale. |
 | `M-ZONE` | `ZONE id,x1,y1,x2,y2,z1,z2[,tag]` (`y` = altezza): `ZONE(x,y,z)` = id della **prima** zona che contiene il punto (`y` entro `y1−2 … y2`, `x` in `x1…x2` e `z` in `z1…z2`, estremi inclusi), `−1` se nessuna; `ZONETAG(id)` = il tag (`""` se l'id non esiste). **L'ordine di creazione conta**: le zone dei piani superiori e dei mobili calpestabili vanno create **prima** di quelle sotto. Il renderer non usa le zone. |
 | `M-PASSABLE` | Flag 4: nessuna collisione, nessun soffitto e nessun gradino (auto, oggetti decorativi). Sul pavimento ci si passa attraverso **visivamente**, ma `FLOORAT` continua a vederlo. |

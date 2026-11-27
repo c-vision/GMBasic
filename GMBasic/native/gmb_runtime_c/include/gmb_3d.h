@@ -525,6 +525,16 @@ int64_t gmb_scene_pick_enable(int64_t on);
  * -1 senza target o fuori dal target (la stessa sentinella di SCENE.PIXEL),
  * -2 buffer spento con un target che esiste (manca SCENE PICK on). */
 int64_t gmb_scene_pick(int64_t x, int64_t y);
+/* SCENE.STATS(nome$): una misura della scena (specifica `M-STATS`). Chiavi:
+ *   "tris"      triangoli dichiarati            "draw"  disegnati nell'ultimo RENDER
+ *   "culled"    scartati nell'ultimo RENDER     "pixels" pixel passati dal depth test
+ *   "objs"      oggetti dichiarati              "bytes" memoria RISERVATA dalla geometria
+ *   "allocs"    allocazioni del modulo 3D dall'avvio (prova di R4, non si azzera)
+ *   "renders"   RENDER nel frame aperto (PRESENT lo chiude, RESET lo azzera)
+ *   "renders_max" il massimo di "renders" dopo RESET (R6: > 1 = più RENDER in un giro)
+ * −1 = chiave sconosciuta (o NULL): è una lettura, non alza errori di superficie.
+ * Il tempo di un frame NON è qui: si misura fuori dal motore (piano §0septies). */
+double gmb_scene_stats(const char* name);
 
 /* --- P5: superficie interattiva (specifica §3.3, M-PLAYER/M-COLLIDE/M-FLOOR/M-ZONE) ---
  *

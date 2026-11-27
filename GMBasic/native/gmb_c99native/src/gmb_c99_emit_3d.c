@@ -461,6 +461,13 @@ int emit_bf_scene(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
             return 1;
         /* ZONETAG(id): stringa BASIC costruita dal runtime (gmb_string_alloc
          * copia il puntatore, che vale fino alla prossima chiamata). */
+        /* STATS(nome$): una misura della scena per nome (M-STATS); -1 = ignota. */
+        case GMB_TOK_SceneStats:
+            if (nargs < 1) return 0;
+            sb_put(&c->out, "gmb_scene_stats((");
+            emit_str_operand(c, args[0]);
+            sb_put(&c->out, ").data)");
+            return 1;
         case GMB_TOK_SceneZoneTag:
             if (nargs < 1) return 0;
             sb_put(&c->out, "gmb_string_alloc(gmb_scene_zonetag_text(");

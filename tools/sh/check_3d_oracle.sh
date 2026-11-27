@@ -47,8 +47,8 @@ gate() {   # $1 = sorgente: lo stesso file con cc e con tools/sh/zcc
   done
 }
 # gmb_3d_scene.c (P5): matrici e culling per oggetto, lo stesso file su tutte le gambe.
-for f in gmb_3d_frame.c gmb_3d_io.c gmb_3d_sector.c gmb_3d_move.c gmb_3d_time.c gmb_3d_scene.c gmb_3d_scene_actor.c gmb_3d_scene_buf.c gmb_3d_scene_tex.c gmb_3d_ray.c; do gate "$f"; done
-say "gate C: gmb_3d_{frame,io,sector,move,time,scene,scene_actor,scene_buf,scene_tex,ray}.c compilano con cc e tools/sh/zcc"
+for f in gmb_3d_frame.c gmb_3d_io.c gmb_3d_sector.c gmb_3d_move.c gmb_3d_time.c gmb_3d_scene.c gmb_3d_scene_actor.c gmb_3d_scene_buf.c gmb_3d_scene_tex.c gmb_3d_ray.c gmb_3d_stats.c; do gate "$f"; done
+say "gate C: gmb_3d_{frame,io,sector,move,time,scene,scene_actor,scene_buf,scene_tex,ray,stats}.c compilano con cc e tools/sh/zcc"
 
 # 2) Build dell'oracolo (target dedicato; il runtime statico è una sua dipendenza).
 if [ ! -f "$BUILD/CMakeCache.txt" ]; then
@@ -101,6 +101,14 @@ fi
 # -1000000: tutto headless, stessi numeri su tutte le gambe.
 if ! "$BIN" --raycheck; then
   echo "check_3d_oracle: raggi della scena FALLITI" >&2
+  exit 1
+fi
+
+# 3ter-quater) P5: statistiche della scena (M-STATS). I contatori del frame
+# sono la prova di R4 (allocs) e R6 (renders/renders_max); RESET azzera i
+# contatori e NON la memoria riservata. Tutto headless.
+if ! "$BIN" --statscheck; then
+  echo "check_3d_oracle: statistiche della scena FALLITE" >&2
   exit 1
 fi
 

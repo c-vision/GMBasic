@@ -242,6 +242,10 @@ public static class Scene3DNative
     [DllImport(Lib, EntryPoint = "gmb_scene_pixel", CallingConvention = CallingConvention.Cdecl)]
     public static extern long Pixel(long x, long y);
 
+    // SCENE.STATS(nome$): una misura della scena per nome (M-STATS).
+    [DllImport(Lib, EntryPoint = "gmb_scene_stats", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double Stats([MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+
     // ── P5: superficie interattiva (specifica §3.3) ─────────────────────────────────────────
     // Corpo, movimento, quote e zone vivono solo nel runtime C (gmb_3d_scene_actor.c):
     // qui si inoltra, come per gli altri verbi SCENE (§0bis).

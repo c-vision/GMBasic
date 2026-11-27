@@ -8101,6 +8101,7 @@ static const gmb_bf_row_t gmb_bf_composite[] = {
     { NULL, GMB_TOK_SceneShotZ,    emit_bf_scene },
     { NULL, GMB_TOK_SceneUse,      emit_bf_scene },
     { NULL, GMB_TOK_SceneSees,     emit_bf_scene },
+    { NULL, GMB_TOK_SceneStats,    emit_bf_scene },
     { NULL, GMB_TOK_SceneZoneTag, emit_bf_scene },
     { NULL, GMB_TOK_MatrixColumnCount, emit_bf_matrix },
     { NULL, GMB_TOK_MatrixIsLowerTriangular, emit_bf_matrix },

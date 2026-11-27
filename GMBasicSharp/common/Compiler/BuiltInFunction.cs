@@ -1625,4 +1625,7 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     SCENE_SHOTZ = 3937,
     SCENE_USE = 3938,       // (reach)     → gmb_scene_use
     SCENE_SEES = 3939,      // (thing)     → gmb_scene_sees (1/0/-1)
+    // P5/M-STATS — misure della scena per nome: "tris", "draw", "culled",
+    // "pixels", "objs", "bytes", "allocs", "renders", "renders_max"; −1 = ignota.
+    SCENE_STATS = 3940,     // (name$)     → gmb_scene_stats
 }

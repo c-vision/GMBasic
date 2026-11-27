@@ -4,11 +4,11 @@
 
 /* ==== GMB-STDLIB-AUDIT-BEGIN ====
  * FILE: Scene — namespace 'SCENE' (motore 3D, renderer mesh)
- * 28 funzioni | 1 comando | 0 tipi | 0 costanti
+ * 29 funzioni | 1 comando | 0 tipi | 0 costanti
  *
- * FUNZIONI (28): VERTS, TRIS, DRAWN, CULLED, PIXELS, HASH, PIXEL, PICK, X, Y, Z, EYE, YAW,
+ * FUNZIONI (29): VERTS, TRIS, DRAWN, CULLED, PIXELS, HASH, PIXEL, PICK, X, Y, Z, EYE, YAW,
  *                PITCH, HIT, FLOORAT, CEILAT, ZONE, ZONETAG, SHOOT, SHOTKIND, SHOTOBJ,
- *                SHOTDIST, SHOTX, SHOTY, SHOTZ, USE, SEES
+ *                SHOTDIST, SHOTX, SHOTY, SHOTZ, USE, SEES, STATS
  * COMANDO (1): SCENE (RESET | VIEW | TEXTURE | OBJECT | VERTEX | QUAD | BOX | OBJPOS | CAMERA |
  *                    PLAYER | MOVE | TURN | LIFT | ZONE | LIGHT | LAMP | FOG | FAR | SKY |
  *                    COLORMAP | THING | SMOOTH | ALPHA | TWOSIDED | PICK | RENDER | PRESENT | SAVE)
@@ -165,7 +165,15 @@ public sealed partial class StdLib
                 [
                     new Parameter(-1, T(TokenKind.Identifier, "n"), new LongType(), noFlags, null, false)
                 ],
-                new DoubleType(), TokenKind.SceneSees)
+                new DoubleType(), TokenKind.SceneSees),
+
+            // STATS(nome$): le misure della scena per nome (M-STATS). −1 = nome
+            // sconosciuto; il tempo di un frame non c'è (si misura fuori).
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SceneStats, "STATS"),
+                [
+                    new Parameter(-1, T(TokenKind.Identifier, "name"), new StringType(), noFlags, null, false)
+                ],
+                new DoubleType(), TokenKind.SceneStats)
         };
 
         var types = new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase);

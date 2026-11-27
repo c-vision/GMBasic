@@ -2565,4 +2565,7 @@ public enum TokenKind
     SceneShotZ,
     SceneUse,
     SceneSees,
+    // P5/M-STATS — `SCENE.STATS("tris" | "draw" | …)`: le misure della scena con
+    // un nome (triangoli, oggetti, byte riservati, allocazioni, RENDER per frame).
+    SceneStats,
   }

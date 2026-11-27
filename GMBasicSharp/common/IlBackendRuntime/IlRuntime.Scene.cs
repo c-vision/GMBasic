@@ -117,4 +117,7 @@ public static partial class IlRuntime
     public static double SceneShotX() => CommonLib.Scene3DNative.ShotX();
     public static double SceneShotY() => CommonLib.Scene3DNative.ShotY();
     public static double SceneShotZ() => CommonLib.Scene3DNative.ShotZ();
+
+    // P5/M-STATS: una misura della scena per nome (−1 = chiave sconosciuta).
+    public static double SceneStats(string name) => CommonLib.Scene3DNative.Stats(name);
 }

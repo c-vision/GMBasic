@@ -1644,6 +1644,89 @@ static int run_p5_rays(void)
     return fail == 0 ? 0 : 1;
 }
 
+/* P5 — statistiche della scena (`SCENE.STATS`, specifica M-STATS). Le chiavi
+ * danno gli stessi numeri delle letture già esistenti, più i contatori del frame
+ * che servono a DIMOSTRARE R4 (allocs) e R6 (renders/renders_max): un RENDER che
+ * allocasse, o un frame con più di un RENDER, si vede qui e non a occhio. */
+static int run_p5_stats(void)
+{
+    int ok = 0, fail = 0;
+#define P5S_CHECK(cond, ...) do { if (cond) ok++; else { fail++; printf("P5-STATS fail: "); printf(__VA_ARGS__); printf("\n"); } } while (0)
+
+    P5S_CHECK(gmb_scene_reset() == GMB_3D_OK, "RESET");
+    P5S_CHECK(gmb_scene_view(64, 32, 60.0) == GMB_3D_OK, "VIEW");
+    P5S_CHECK(gmb_scene_camera(0.0, 46.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "CAMERA");
+    /* Box INTERAMENTE dentro il frustum: così draw+culled è esattamente 12 e
+     * l'invariante non dipende da come il clip taglia i triangoli di bordo. */
+    P5S_CHECK(gmb_scene_object(200, 200, 200) == GMB_3D_OK
+              && gmb_scene_box(-10.0, 20.0, 60.0, 10.0, 70.0, 70.0) == GMB_3D_OK,
+              "dichiarazione della scena");
+
+    /* Prima di ogni RENDER: la geometria dichiarata si legge, il pass è a zero. */
+    P5S_CHECK(gmb_scene_stats("tris") == 12.0 && gmb_scene_stats("objs") == 1.0,
+              "tris/objs = %g/%g (attesi 12/1)", gmb_scene_stats("tris"), gmb_scene_stats("objs"));
+    P5S_CHECK(gmb_scene_stats("draw") == 0.0 && gmb_scene_stats("culled") == 0.0
+              && gmb_scene_stats("renders") == 0.0,
+              "draw/culled/renders prima del RENDER = %g/%g/%g (attesi 0/0/0)",
+              gmb_scene_stats("draw"), gmb_scene_stats("culled"), gmb_scene_stats("renders"));
+    P5S_CHECK(gmb_scene_stats("bytes") > 0.0, "bytes = %g (attesi > 0)", gmb_scene_stats("bytes"));
+
+    /* Chiave ignota o assente: -1, sentinella della specifica (lettura, non errore). */
+    P5S_CHECK(gmb_scene_stats("nonesiste") == -1.0 && gmb_scene_stats(NULL) == -1.0,
+              "chiave sconosciuta = %g / %g (attesi -1/-1)",
+              gmb_scene_stats("nonesiste"), gmb_scene_stats(NULL));
+    /* Le chiavi non distinguono maiuscole (BASIC non lo fa). */
+    P5S_CHECK(gmb_scene_stats("DRAW") == gmb_scene_stats("draw"),
+              "DRAW = %g, draw = %g (attesi uguali)", gmb_scene_stats("DRAW"), gmb_scene_stats("draw"));
+
+    /* Un RENDER: contatori del pass e conteggio per frame. */
+    unsigned long a0 = gmb_3d_alloc_count();
+    P5S_CHECK(gmb_scene_render() == GMB_3D_OK, "primo RENDER");
+    P5S_CHECK(gmb_scene_stats("draw") == (double)gmb_scene_drawn()
+              && gmb_scene_stats("culled") == (double)gmb_scene_culled(),
+              "draw/culled = %g/%g, letture %lld/%lld (attesi uguali)",
+              gmb_scene_stats("draw"), gmb_scene_stats("culled"),
+              (long long)gmb_scene_drawn(), (long long)gmb_scene_culled());
+    P5S_CHECK(gmb_scene_stats("draw") + gmb_scene_stats("culled") == 12.0,
+              "draw+culled = %g (attesi 12: nessun triangolo perso)",
+              gmb_scene_stats("draw") + gmb_scene_stats("culled"));
+    P5S_CHECK(gmb_scene_stats("pixels") == (double)gmb_scene_pixels() && gmb_scene_stats("pixels") > 0.0,
+              "pixels = %g (lettura %lld, attesi uguali e > 0)",
+              gmb_scene_stats("pixels"), (long long)gmb_scene_pixels());
+    P5S_CHECK(gmb_scene_stats("renders") == 1.0 && gmb_scene_stats("renders_max") == 1.0,
+              "renders/renders_max = %g/%g (attesi 1/1)",
+              gmb_scene_stats("renders"), gmb_scene_stats("renders_max"));
+
+    /* Secondo RENDER nello stesso frame: R6 si vede (max 2), e il frame non ha
+     * allocato nulla (R4). */
+    P5S_CHECK(gmb_scene_render() == GMB_3D_OK, "secondo RENDER");
+    P5S_CHECK(gmb_scene_stats("renders") == 2.0 && gmb_scene_stats("renders_max") == 2.0,
+              "renders/renders_max = %g/%g (attesi 2/2)",
+              gmb_scene_stats("renders"), gmb_scene_stats("renders_max"));
+    P5S_CHECK(gmb_3d_alloc_count() == a0, "i due RENDER hanno allocato %lu",
+              gmb_3d_alloc_count() - a0);
+    P5S_CHECK(gmb_scene_stats("allocs") == (double)gmb_3d_alloc_count(),
+              "allocs = %g (contatore del modulo %lu)",
+              gmb_scene_stats("allocs"), gmb_3d_alloc_count());
+
+    /* RESET: contatori di frame a zero e geometria vuota, memoria riservata
+     * CONSERVATA (un RESET non libera: il frame dopo non rialloca). */
+    double b0 = gmb_scene_stats("bytes");
+    P5S_CHECK(gmb_scene_reset() == GMB_3D_OK, "RESET finale");
+    P5S_CHECK(gmb_scene_stats("renders") == 0.0 && gmb_scene_stats("renders_max") == 0.0,
+              "RESET non azzera renders/renders_max = %g/%g",
+              gmb_scene_stats("renders"), gmb_scene_stats("renders_max"));
+    P5S_CHECK(gmb_scene_stats("tris") == 0.0 && gmb_scene_stats("objs") == 0.0,
+              "RESET non azzera tris/objs = %g/%g",
+              gmb_scene_stats("tris"), gmb_scene_stats("objs"));
+    P5S_CHECK(gmb_scene_stats("bytes") == b0 && b0 > 0.0,
+              "RESET ha liberato la memoria riservata (bytes %g -> %g)", b0, gmb_scene_stats("bytes"));
+
+#undef P5S_CHECK
+    printf("P5-STATS ok=%d fail=%d\n", ok, fail);
+    return fail == 0 ? 0 : 1;
+}
+
 static int cmp_double(const void* a, const void* b)
 {
     double x = *(const double*)a, y = *(const double*)b;
@@ -1754,6 +1837,7 @@ static void usage(void)
            "     gmb_3d_oracle --cullcheck\n"
            "     gmb_3d_oracle --interactcheck\n"
            "     gmb_3d_oracle --raycheck\n"
+           "     gmb_3d_oracle --statscheck\n"
            "     gmb_3d_oracle --bench-scene [--objects N | --tris N] [--size WxH] [--frames N]\n"
            "  DIR   = cartella delle golden (<scena>.<rid>.png)\n"
            "  --demo MAPPA = mappa demo (.gmbscene): scena `demo`, T-* e bench\n"
@@ -1761,6 +1845,7 @@ static void usage(void)
            "  --cullcheck = culling per oggetto sulla superficie SCENE (P5)\n"
            "  --interactcheck = corpo, MOVE, quote e zone della superficie SCENE (P5)\n"
            "  --raycheck = SHOOT/USE/SEES e stato dell'ultimo colpo (P5, M-RAYS)\n"
+           "  --statscheck = SCENE.STATS: contatori del frame e memoria riservata (P5)\n"
            "  --bench-scene = N oggetti (default 500) a --size (default 640x360)\n"
            "  --tris N = N triangoli dichiarati (12 per box) in griglia frontale\n");
 }
@@ -1773,7 +1858,7 @@ int main(int argc, char** argv)
     const char* demo = NULL;
     double tol = 0.0;
     int bench = 0, frames = 120;
-    int cullcheck = 0, interactcheck = 0, raycheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
+    int cullcheck = 0, interactcheck = 0, raycheck = 0, statscheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
     int tris_target = 0;   /* --tris N: 0 = griglia storica a oggetti */
 
     for (int i = 1; i < argc; i++)
@@ -1796,6 +1881,7 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "--cullcheck")) cullcheck = 1;
         else if (!strcmp(argv[i], "--interactcheck")) interactcheck = 1;
         else if (!strcmp(argv[i], "--raycheck")) raycheck = 1;
+        else if (!strcmp(argv[i], "--statscheck")) statscheck = 1;
         else if (!strcmp(argv[i], "--bench-scene")) bench_scene = 1;
         else if (!strcmp(argv[i], "--objects") && i + 1 < argc) objects = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--tris") && i + 1 < argc) tris_target = atoi(argv[++i]);
@@ -1811,6 +1897,7 @@ int main(int argc, char** argv)
     if (cullcheck) return run_p5_cull();
     if (interactcheck) return run_p5_interact();
     if (raycheck) return run_p5_rays();
+    if (statscheck) return run_p5_stats();
     if (bench_scene)
     {
         /* --tris N: 12 triangoli per box, griglia quadrata (vedi p5_scene_bench). */

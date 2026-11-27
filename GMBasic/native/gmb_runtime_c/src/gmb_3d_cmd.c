@@ -364,6 +364,7 @@ int64_t gmb_scene_reset(void)
     g_scene_colormap = 0;
     memset(g_scene_thing, 0, sizeof(g_scene_thing));
     gmb_3d_ray_reset();
+    gmb_3d_stats_reset();   /* renders/renders_max del frame (M-STATS) */
     free(g_scene_sky);
     g_scene_sky = NULL;
     g_scene_sky_w = g_scene_sky_h = 0;
@@ -1073,6 +1074,7 @@ int64_t gmb_scene_render(void)
         h *= 1099511628211ull;
     }
     g_scene_hash = h;
+    gmb_3d_stats_note_render();   /* RENDER nel frame aperto (M-STATS) */
     gmb_3d_set_error("");
     return GMB_3D_OK;
 }
@@ -1149,6 +1151,7 @@ int64_t gmb_scene_present(void)
         gmb_3d_set_error("SCENE PRESENT: nessuna pagina 2D attiva (SCREEN o CANVAS USE prima)");
         return GMB_3D_E_ARG;
     }
+    gmb_3d_stats_note_present();   /* il frame si chiude qui (M-STATS) */
     return GMB_3D_OK;
 }
 
@@ -1174,6 +1177,8 @@ int64_t gmb_scene_checked(int64_t rc, int64_t line)
 }
 
 gmb_3d_target_t* gmb_scene_target_ref(void) { return &g_scene_target; }
+
+const gmb_3d_draw_stats_t* gmb_3d_scene_draw_stats(void) { return &g_scene_stats; }
 
 int64_t gmb_scene_pixel(int64_t x, int64_t y)
 {

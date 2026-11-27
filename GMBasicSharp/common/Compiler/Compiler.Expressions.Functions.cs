@@ -950,6 +950,7 @@ public sealed partial class Compiler
         { TokenKind.SceneFloorAt, BuiltInFunction.SCENE_FLOORAT }, { TokenKind.SceneCeilAt, BuiltInFunction.SCENE_CEILAT },
         // P5/M-RAYS: raggi (SHOOT/USE/SEES) e stato dell'ultimo colpo.
         { TokenKind.SceneShoot, BuiltInFunction.SCENE_SHOOT }, { TokenKind.SceneUse, BuiltInFunction.SCENE_USE },
+        { TokenKind.SceneStats, BuiltInFunction.SCENE_STATS },
         { TokenKind.SceneSees, BuiltInFunction.SCENE_SEES },
         { TokenKind.SceneShotKind, BuiltInFunction.SCENE_SHOTKIND }, { TokenKind.SceneShotObj, BuiltInFunction.SCENE_SHOTOBJ },
         { TokenKind.SceneShotDist, BuiltInFunction.SCENE_SHOTDIST },
