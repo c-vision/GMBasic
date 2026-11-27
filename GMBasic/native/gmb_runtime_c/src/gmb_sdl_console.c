@@ -833,6 +833,21 @@ int gmb_sdl_console_pump(gmb_sdl_console_t* c)
         }
         if (e.type == SDL_TEXTINPUT) continue;   /* ignorato: i char arrivano da KEYDOWN */
         if (c->char_width <= 0 || c->char_height <= 0) continue;
+        /* Touch nella finestra TUI: stesso percorso del mouse (coordinate
+         * NORMALIZZATE 0..1 sul framebuffer -> punti della griglia). */
+        if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERUP || e.type == SDL_FINGERMOTION) {
+            if (e.tfinger.windowID != wid) continue;
+            int tx = (int)(e.tfinger.x * (float)winW);
+            int ty = (int)(e.tfinger.y * (float)winH);
+            if (e.type == SDL_FINGERMOTION) gmb_winstmt_handle_mouse_px(tx, ty, GMB_GFX_MOUSE_MOVE, 0, cwp, chp, gw, gh);
+            else {
+                int td = (e.type == SDL_FINGERDOWN);
+                gmb_winstmt_handle_mouse_px(tx, ty, td ? GMB_GFX_MOUSE_DOWN : GMB_GFX_MOUSE_UP, 1, cwp, chp, gw, gh);
+                { extern void gmb_tui_handle_mouse_cell(int, int, int);
+                  gmb_tui_handle_mouse_cell(tx / cwp, ty / chp, td ? 1 : 2); }
+            }
+            continue;
+        }
         int lx = (e.type == SDL_MOUSEMOTION) ? e.motion.x : e.button.x;   /* PUNTI */
         int ly = (e.type == SDL_MOUSEMOTION) ? e.motion.y : e.button.y;
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.windowID == wid) {

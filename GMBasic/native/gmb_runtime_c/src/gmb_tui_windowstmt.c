@@ -1164,7 +1164,13 @@ void gmb_winstmt_handle_mouse_events(void)
     int workW = gmb_gfx_width(), workH = gmb_gfx_height();
     int type, mx, my, button, wheel;
     while (gmb_gfx_input_poll_mouse(&type, &mx, &my, &button, &wheel))
-        gmb_winstmt_handle_mouse_px((int)(mx / sc), (int)(my / sc), type, button, cw, ch, workW, workH);
+    {
+        /* Touch: il window manager ragiona in vocaboli mouse (down/move/up per
+         * il trascinamento della barra titolo). LONGPRESS non serve qui. */
+        int mt = gmb_gfx_input_touch_to_mouse(type);
+        if (mt < 0) continue;
+        gmb_winstmt_handle_mouse_px((int)(mx / sc), (int)(my / sc), mt, button, cw, ch, workW, workH);
+    }
 #endif
 }
 

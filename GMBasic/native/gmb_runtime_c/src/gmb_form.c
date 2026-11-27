@@ -1488,6 +1488,15 @@ int gmb_form_poll_mouse(int* type, int* x, int* y, int* button, int* wheel)
     /* Le coordinate arrivano GIA' LOGICHE di finestra (map_mouse non le rimappa:
      * SDL con ALLOW_HIGHDPI riporta punti-finestra). Nessuna scala qui: dividere
      * per renderScale dimezzava i click su Retina (150,70 -> 75,35). */
+    /* Touch: il form pixel ragiona solo in vocaboli mouse. Un dito che tocca e
+     * alza e' un click. LONGPRESS non si inoltra: il controllo ha gia' ricevuto
+     * MOUSEDOWN dal TOUCH_DOWN, e mapparlo su MOVE segnerebbe un falso drag
+     * (g_dragging=1) facendo perdere il CLICK all'UP che chiude il gesto. Il
+     * long-press e' quindi assorbito qui: il gesto resta un click completo
+     * (l'evento long-press resta leggibile via gmb_gfx_input_take_longpress). */
+    *type = gmb_gfx_input_touch_to_mouse(*type);
+    if (*type < 0) return 0;   /* LONGPRESS: niente da inoltrare */
+    if (*type == GMB_GFX_MOUSE_DOWN || *type == GMB_GFX_MOUSE_UP) *button = 1;
     if (*type == GMB_GFX_MOUSE_DOWN) g_last_mouse_event = GMB_EV_MOUSEDOWN;
     else if (*type == GMB_GFX_MOUSE_UP) g_last_mouse_event = GMB_EV_MOUSEUP;
     else if (*type == GMB_GFX_MOUSE_MOVE) g_last_mouse_event = GMB_EV_MOUSEMOVE;
@@ -3310,6 +3319,12 @@ void gmb_form_set_last_handle(int h) { g_last_handle = h; }
  * consegnare l'evento al layer controlli C evento per evento. */
 void gmb_form_dispatch_mouse_px(int type, int x, int y, int button, int wheel)
 {
+    /* Touch: l'host puo' consegnare direttamente i tipi touch (drena lui la
+     * coda). Si normalizza QUI, cosi' modale/pulsanti/widget/TUI reagiscono al
+     * dito come al mouse. LONGPRESS (<0) e' gia' in pressione: si scarta. */
+    type = gmb_gfx_input_touch_to_mouse(type);
+    if (type < 0) return;
+    if (type == GMB_GFX_MOUSE_DOWN || type == GMB_GFX_MOUSE_UP) button = 1;
     /* ── MODALE: il mouse va SOLO al dialogo; il resto della UI è congelato. ── */
     if (g_modal)
     {

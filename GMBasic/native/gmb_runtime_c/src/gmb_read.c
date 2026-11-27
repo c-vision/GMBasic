@@ -371,9 +371,12 @@ int gmb_read_run(gmb_read_ctx_t* ctx)
         if (gfx) {
             /* Click del mouse: il campo sotto il puntatore prende il focus. */
             extern int gmb_gfx_input_poll_mouse(int*, int*, int*, int*, int*);
+            extern int gmb_gfx_input_touch_to_mouse(int);
             int mt, mx, my, mb, mw;
             while (gmb_gfx_input_poll_mouse(&mt, &mx, &my, &mb, &mw)) {
-                if (mt != GMB_GFX_MOUSE_DOWN) continue;
+                /* Touch: toccare un campo lo focusa (un dito e' un click). */
+                int mtm = gmb_gfx_input_touch_to_mouse(mt);
+                if (mtm != GMB_GFX_MOUSE_DOWN) continue;
                 /* Mouse = coordinate LOGICHE finestra; i rect widget sono FISICI. */
                 float msc = GMB_GFX_RENDER_SCALE(); if (msc <= 0.0f) msc = 1.0f;
                 int px = (int)(mx * msc + 0.5f), py = (int)(my * msc + 0.5f);

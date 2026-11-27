@@ -114,6 +114,27 @@ static void map_mouse(int wx, int wy, int* sx, int* sy)
     *sx = wx; *sy = wy;
 }
 
+/* Touch: SDL_FINGER* porta x/y NORMALIZZATI 0..1 sul framebuffer della finestra.
+ * Si riportano alla stessa metrica del mouse (punti logici) con la dimensione
+ * logica della finestra; senza finestra (headless/test) si usa la dimensione
+ * dello schermo logico e, in mancanza, 0 (l'evento resta iniettato a 0,0). */
+static void map_touch(float nx, float ny, int* sx, int* sy)
+{
+    int ww = 0, wh = 0;
+    if (g_window) SDL_GetWindowSize(g_window, &ww, &wh);
+    if (ww <= 0 || wh <= 0)
+    {
+        SDL_DisplayMode dm;
+        if (SDL_GetCurrentDisplayMode(0, &dm) == 0) { ww = dm.w; wh = dm.h; }
+    }
+    if (ww <= 0) ww = 1;
+    if (wh <= 0) wh = 1;
+    if (nx < 0.0f) nx = 0.0f; if (nx > 1.0f) nx = 1.0f;
+    if (ny < 0.0f) ny = 0.0f; if (ny > 1.0f) ny = 1.0f;
+    *sx = (int)(nx * (float)ww);
+    *sy = (int)(ny * (float)wh);
+}
+
 /* Tasti di controllo e (fallback driver senza TEXTINPUT) stampabili. */
 static void push_sdl_key(SDL_Keycode sym)
 {
@@ -224,6 +245,37 @@ static void process_input_event(const SDL_Event* ev)
             gmb_gfx_input_get_mouse(&mx, &my);
             if (ev->wheel.y != 0)
                 gmb_gfx_input_push_mouse(GMB_GFX_MOUSE_WHEEL, mx, my, 0, ev->wheel.y > 0 ? 1 : -1);
+            break;
+        }
+        /* Touch (tablet, touchscreen, iOS/Android): SDL_FINGER* porta coordinate
+         * NORMALIZZATE 0..1 sul framebuffer della finestra. Si convertono in punti
+         * logici (stessa metrica del mouse: SDL con ALLOW_HIGHDPI riporta
+         * punti-finestra) e si accodano come eventi touch. Un solo dito: il primo
+         * che tocca "possiede" il gesto, gli altri sono ignorati (i controlli non
+         * sono multi-touch). */
+        case SDL_FINGERDOWN:
+        {
+            int sx, sy;
+            map_touch(ev->tfinger.x, ev->tfinger.y, &sx, &sy);
+            gmb_gfx_input_push_touch(1, sx, sy, SDL_GetTicks());
+            break;
+        }
+        case SDL_FINGERMOTION:
+        {
+            int sx, sy;
+            map_touch(ev->tfinger.x, ev->tfinger.y, &sx, &sy);
+            /* TOUCH_MOVE (non MOUSE_MOVE): gmb_gfx_input_push_mouse aggiorna la
+             * posizione nota che decide slop e punto del long-press; accodare un
+             * MOUSE_MOVE lascerebbe l'origine del gesto ferma. */
+            gmb_gfx_input_touch_move(sx, sy);
+            break;
+        }
+        case SDL_FINGERUP:
+        {
+            int sx, sy;
+            if (!gmb_gfx_input_touch_down()) break;
+            map_touch(ev->tfinger.x, ev->tfinger.y, &sx, &sy);
+            gmb_gfx_input_push_touch(0, sx, sy, SDL_GetTicks());
             break;
         }
         default: break;
@@ -419,6 +471,9 @@ void gmb_gfx_present_tick(void)
             gmb_gfx_resize_screen(ev.window.data1, ev.window.data2);   /* desktop resizable */
         process_input_event(&ev);
     }
+    /* Long-press touch: il dito fermo oltre la soglia produce TOUCH_LONGPRESS
+     * (con il TOUCH_UP che chiude il gesto). Stessa lane del mouse. */
+    gmb_gfx_input_pump_touch(SDL_GetTicks());
     if (g_vis_req >= 0 && g_window) { if (g_vis_req) { SDL_ShowWindow(g_window); SDL_RaiseWindow(g_window); } else SDL_HideWindow(g_window); g_vis_req = -1; }
 
     int w = 0, h = 0;

@@ -55,6 +55,44 @@ int main(void)
     click(20, 20);
     if (g_dbl != 1) FAIL("dbl=%d", g_dbl);
 
+    /* TOUCH: un tap (TOUCH_DOWN + TOUCH_UP) e' un click completo sul controllo,
+     * senza long-press. Un tap su una checkbox cambia lo stato. */
+    gmb_form_reset();
+    double tchk = 0;
+    gmb_form_add_checkbox(10, 10, "ok", &tchk);
+    gmb_form_set_event(GMB_EV_CLICK, cb_click);
+    gmb_form_set_event(GMB_EV_CHANGE, cb_change);
+    g_click = 0; g_change = 0;
+    gmb_gfx_input_push_touch(1, 20, 20, 0); gmb_form_poll();
+    gmb_gfx_input_push_touch(0, 20, 20, 100); gmb_form_poll();
+    if (g_click != 1 || g_change != 1 || tchk != 1)
+        FAIL("touch tap click=%d change=%d chk=%.0f", g_click, g_change, tchk);
+
+    /* TOUCH + long-press: TOUCH_DOWN, LONGPRESS, TOUCH_UP. Il controllo deve
+     * ricevere UN solo click (il LONGPRESS non e' una seconda pressione). */
+    gmb_form_reset();
+    double tchk2 = 0;
+    gmb_form_add_checkbox(10, 10, "ok", &tchk2);
+    gmb_form_set_event(GMB_EV_CLICK, cb_click);
+    gmb_form_set_event(GMB_EV_CHANGE, cb_change);
+    g_click = 0; g_change = 0;
+    gmb_gfx_input_push_touch(1, 20, 20, 0); gmb_form_poll();
+    gmb_gfx_input_pump_touch(GMB_GFX_TOUCH_HOLD_MS + 1);   /* emette LONGPRESS + UP */
+    gmb_form_poll();   /* LONGPRESS (assorbito) */
+    gmb_form_poll();   /* TOUCH_UP -> click */
+    if (g_click != 1 || g_change != 1)
+        FAIL("touch longpress click=%d change=%d (attesi 1/1)", g_click, g_change);
+
+    /* TOUCH sulla corsia TUI (i bottoni in headless vivono nel registry TUI e sono
+     * guidati dal frame loop, non da gmb_form_poll: qui si verifica il percorso
+     * tocco->pressione->rilascio, che e' cio' che i controlli consumano). */
+    gmb_form_reset();
+    gmb_form_add_button(10, 10, 100, 30, "OK", NULL);
+    gmb_gfx_input_push_touch(1, 30, 20, 0); gmb_form_poll();
+    if (gmb_gfx_input_mouse_down() != 1) FAIL("touch button: pressione attiva");
+    gmb_gfx_input_push_touch(0, 30, 20, 100); gmb_form_poll();
+    if (gmb_gfx_input_mouse_down() != 0) FAIL("touch button: pressione rilasciata");
+
     /* SPINNER: UPCLICK/DOWNCLICK/CHANGE */
     gmb_form_reset();
     double sv = 10;

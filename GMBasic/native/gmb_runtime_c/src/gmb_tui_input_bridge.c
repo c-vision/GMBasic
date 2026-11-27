@@ -33,9 +33,19 @@ static void gmb_tui_mouse_kind(int type, int button, int wheel, gmb_mouse_action
     switch (type)
     {
         case GMB_GFX_MOUSE_DOWN:
+        case GMB_GFX_TOUCH_DOWN:          /* il dito equivale al tasto sinistro */
             ma->kind = button == 3 ? GMB_MA_RIGHTCLICK : (button == 2 ? GMB_MA_MIDDLECLICK : GMB_MA_CLICK);
             break;
-        case GMB_GFX_MOUSE_UP: ma->kind = GMB_MA_RELEASE; break;
+        case GMB_GFX_MOUSE_UP:
+        case GMB_GFX_TOUCH_UP:
+            ma->kind = GMB_MA_RELEASE;
+            break;
+        /* LONGPRESS: il controllo ha gia' ricevuto CLICK+RELEASE sul tap; qui non
+         * serve un secondo click (sarebbe un doppio scatto). La pressione lunga
+         * si usa nel form pixel; per la TUI resta un MOVE neutro. */
+        case GMB_GFX_TOUCH_LONGPRESS:
+            ma->kind = GMB_MA_MOVE;
+            break;
         case GMB_GFX_MOUSE_WHEEL: ma->kind = wheel > 0 ? GMB_MA_SCROLLUP : GMB_MA_SCROLLDOWN; break;
         default: ma->kind = GMB_MA_MOVE; break;
     }

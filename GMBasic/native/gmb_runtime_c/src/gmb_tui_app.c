@@ -1177,9 +1177,14 @@ void gmb_tui_dispatch_mouse_px(int type, int x, int y, int button, int wheel)
       } }
     if (cw < 1) cw = 8; if (ch < 1) ch = 16;
     gmb_mouse_action_t ma; memset(&ma, 0, sizeof(ma));
-    if (type == 2) ma.kind = GMB_MA_CLICK;
-    else if (type == 3) ma.kind = GMB_MA_RELEASE;
-    else if (type == 4) ma.kind = (wheel > 0) ? GMB_MA_SCROLLUP : GMB_MA_SCROLLDOWN;
+    /* Vocabolario per VALORE: un tipo touch (TOUCH_DOWN=5/TOUCH_UP=6) cadeva
+     * nel ramo finale e diventava un MOVE, quindi il dito non cliccava mai un
+     * controllo TUI. Si normalizza con la stessa regola dei form. */
+    type = gmb_gfx_input_touch_to_mouse(type);
+    if (type < 0) return;   /* LONGPRESS: gia' in pressione */
+    if (type == GMB_GFX_MOUSE_DOWN) ma.kind = GMB_MA_CLICK;
+    else if (type == GMB_GFX_MOUSE_UP) ma.kind = GMB_MA_RELEASE;
+    else if (type == GMB_GFX_MOUSE_WHEEL) ma.kind = (wheel > 0) ? GMB_MA_SCROLLUP : GMB_MA_SCROLLDOWN;
     else ma.kind = GMB_MA_MOVE;
     (void)cw; (void)ch;
     ma.x = x; ma.y = y;   /* PIXEL: il render dei controlli e in pixel (draw_px_fn) */
@@ -1207,9 +1212,12 @@ void gmb_tui_process_pending_mouse(void)
     while (gmb_form_poll_mouse(&mt, &mx, &my, &mb, &mw))
     {
         gmb_mouse_action_t ma; memset(&ma, 0, sizeof(ma));
-        if (mt == 2) ma.kind = GMB_MA_CLICK;
-        else if (mt == 3) ma.kind = GMB_MA_RELEASE;
-        else if (mt == 4) ma.kind = (mw > 0) ? GMB_MA_SCROLLUP : GMB_MA_SCROLLDOWN;
+        /* Stessa normalizzazione della corsia px (touch -> mouse). */
+        mt = gmb_gfx_input_touch_to_mouse(mt);
+        if (mt < 0) continue;
+        if (mt == GMB_GFX_MOUSE_DOWN) ma.kind = GMB_MA_CLICK;
+        else if (mt == GMB_GFX_MOUSE_UP) ma.kind = GMB_MA_RELEASE;
+        else if (mt == GMB_GFX_MOUSE_WHEEL) ma.kind = (mw > 0) ? GMB_MA_SCROLLUP : GMB_MA_SCROLLDOWN;
         else ma.kind = GMB_MA_MOVE;
         ma.x = mx; ma.y = my;
         tui_process_mouse(&ma);

@@ -51,9 +51,13 @@ void gmb_gfx_drop_shadow(int x, int y, int w, int h, int offset, unsigned int sh
 void gmb_gfx_fill_rounded_gradient(int x, int y, int w, int h, int radius, unsigned int c1, unsigned int c2) { (void)x; (void)y; (void)w; (void)h; (void)radius; (void)c1; (void)c2; gmb_ui_null_warn("gmb_gfx_fill_rounded_gradient"); }
 int  gmb_gfx_page_bg_color(void) { return 0; }
 int  gmb_gfx_text_height_logical(void) { return 1; }
-int  gmb_gfx_input_poll_key(char* out, int maxlen) { (void)out; (void)maxlen; return 0; }
-int  gmb_gfx_input_poll_mouse(int* type, int* x, int* y, int* button, int* wheel) { (void)type; (void)x; (void)y; (void)button; (void)wheel; return 0; }
-void gmb_gfx_input_push_key(const char* key) { (void)key; }
+/* RIMOSSO (2026-11-26): `gmb_gfx_input_poll_key`, `gmb_gfx_input_poll_mouse` e
+ * `gmb_gfx_input_push_key` non sono più stub UI. Vivono tutti e tre in gmb_gfx_input.c, che è
+ * CORE (CORE_SRCS) ed è quindi già nella variante minima. Tenendoli qui si avevano DUE
+ * definizioni FORTI nello stesso archivio (gmb_ui_null.c.o + gmb_gfx_input.c.o) e `ld` le
+ * rifiutava con "duplicate symbol '_gmb_gfx_input_push_key'": ogni eseguibile testuale
+ * (`gmb run`/`gmb build`) non linkava più. Non vanno ripristinati: sono input reali (coda
+ * FIFO), non API UI da simulare. */
 gmb_menu_item_t* gmb_menu_item_at(gmb_menu_t* m, int i) { (void)m; (void)i; return NULL; }
 void gmb_tui_bind_str(int handle, gmb_string_t* out) { (void)handle; if (out) { out->data = NULL; out->length = 0; } }
 void gmb_tui_draw_px_all_force(void) { }
