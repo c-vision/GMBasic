@@ -1106,6 +1106,12 @@ static const char* gmb_suffix_type(char sx) {
 }
 int gmb_var_declared_type(ctx_t* c, const char* name, char* out, int cap) {
     if (!c || !name || !out || cap <= 0) return 0;
+    /* SCOPE-AWARE: prima la variabile risolta nello scope corrente (lookup_var: locali del
+     * cur_fn, poi globali). Due funzioni possono dichiarare lo stesso nome con tipi diversi
+     * (es. __r LONG in multivariate.inc e __r DOUBLE in timeseries.inc): la mappa globale
+     * nominale sceglierebbe la prima e arrotonderebbe un risultato double. */
+    var_t* lv = lookup_var(c, name);
+    if (lv && lv->decl_type[0]) { snprintf(out, (size_t)cap, "%s", lv->decl_type); return 1; }
     char key[40];
     const char* k = gmb_name_no_suffix(name, key, sizeof key);
     for (int i = 0; i < c->n_var_type_text; i++)
@@ -4974,6 +4980,11 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                 int dup = 0;
                 for (int i = 0; i < c->n_var_type_text; i++)
                     if (strcasecmp(c->var_type_text[i][0], dkey) == 0) { dup = 1; break; }
+                /* Tipo dichiarato LEGATO ALLA VAR (scope-aware): la mappa globale per nome
+                 * resta per SIZEOF/suffissi, ma due `__r` in funzioni diverse non devono
+                 * sovrascriversi (bug: __r LONG di multivariate.inc faceva arrotondare
+                 * l'MSE di HOLTWINTERS in timeseries.inc). */
+                snprintf(v->decl_type, sizeof v->decl_type, "%s", dt);
                 if (!dup) {
                     snprintf(c->var_type_text[c->n_var_type_text][0], 32, "%s", dkey);
                     snprintf(c->var_type_text[c->n_var_type_text][1], 32, "%s", dt);
@@ -26356,15 +26367,11 @@ static void st_window(ctx_t* c, gmb_stmt_t* s) {
     case GMB_STMT_WINDOW_RESIZE:
         /* WINDOW RESIZE w, h — ridimensiona la pagina LOGICA (come il resize della
          * finestra) e riapplica il LAYOUT (EXPAND/ANCHOR/ALIGN) sui due percorsi:
-         * gfx = pixel, tui = celle. È il comando che rende il layout verificabile
-         * in modo deterministico e headless. */
-        sb_put(&c->out, "gmb_gfx_resize_screen((int)(");
+         * gfx = pixel, tui = celle. Un solo punto nel runtime (gmb_window_resize),
+         * lo stesso chiamato dalle gambe gestite via P/Invoke. */
+        sb_put(&c->out, "gmb_window_resize((int)(");
         emit_expr_dflt(c, s->win_coords[0], "0"); sb_put(&c->out, "), (int)(");
-        emit_expr_dflt(c, s->win_coords[1], "0"); sb_put(&c->out, ")); ");
-        sb_put(&c->out, "gmb_tui_resize_screen((int)(");
-        emit_expr_dflt(c, s->win_coords[0], "0"); sb_put(&c->out, "), (int)(");
-        emit_expr_dflt(c, s->win_coords[1], "0"); sb_put(&c->out, ")); ");
-        sb_put(&c->out, "gmb_form_layout_reflow();\n");
+        emit_expr_dflt(c, s->win_coords[1], "0"); sb_put(&c->out, "));\n");
         return;
     case GMB_STMT_WINDOW_THEME:
         if (s->channel && etype(c, s->channel) == TY_STR) {

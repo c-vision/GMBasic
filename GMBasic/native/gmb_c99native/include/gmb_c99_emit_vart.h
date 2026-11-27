@@ -40,6 +40,11 @@ typedef struct { char* name; int type; int is_array; int ndims; int byref; int g
                  int elem_boxed;/* LIST gkind i cui elementi sono gmb_val_t boxed (CONVERT
                                  * HEADINGS/LINKS/...): FOR EACH bind la var come gmb_val_t. */
                  int fixed_len; /* 2.8: STRING * N — lunghezza fissa (0 = non fissa) */
+                 char decl_type[32]; /* testo del tipo DICHIARATO nel DIM ("INTEGER", "LONG",
+                                     * "STRING * 10", UDT…): serve a gmb_var_declared_type per
+                                     * risolvere il tipo NELLO SCOPE giusto (due funzioni con
+                                     * lo stesso nome locale, es. __r LONG e __r DOUBLE, non
+                                     * devono contaminarsi). */
                  int arr_byref; /* 2.8: parametro array con REDIM nel body → ctype** + gmb_int_t* (parity _byRefArrayParams oracolo) */
                  char vclass[40]; /* 2.7: variabile istanza di classe (DIM x AS <Classe>) */
                  int func_arity;    /* GK_FUNCVAL: numero di parametri della firma (DIM v AS FUNCTION(...)) */
