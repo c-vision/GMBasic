@@ -57,20 +57,53 @@ void gmb_3d_key_reset(void)
     g_time = 0.0f;
 }
 
+/* Confini del run di `obj`: le chiavi sono ordinate per (oggetto, tempo), quindi
+ * quelle di un oggetto occupano un intervallo contiguo e si trovano con due
+ * ricerche binarie. Cosi' la dichiarazione di una chiave costa O(log n) più lo
+ * spostamento dell'inserimento, invece di ripercorrere tutte le chiavi della
+ * scena (con molte chiavi diventava quadratica). */
+static int key_run_start(int obj)
+{
+    int lo = 0, hi = g_nkeys;
+    while (lo < hi)
+    {
+        int mid = lo + (hi - lo) / 2;
+        if (g_keys[mid].obj < obj) lo = mid + 1; else hi = mid;
+    }
+    return lo;
+}
+
+static int key_run_end(int obj)
+{
+    int lo = 0, hi = g_nkeys;
+    while (lo < hi)
+    {
+        int mid = lo + (hi - lo) / 2;
+        if (g_keys[mid].obj <= obj) lo = mid + 1; else hi = mid;
+    }
+    return lo;
+}
+
 int gmb_3d_key_count(int obj)
 {
-    int n = 0;
-    for (int i = 0; i < g_nkeys; i++) if (g_keys[i].obj == obj) n++;
-    return n;
+    return key_run_end(obj) - key_run_start(obj);
 }
 
 /* Posizione della PRIMA chiave che va dopo (obj, t): l'array resta ordinato per
- * (oggetto, tempo), quindi il campionamento è una scansione sola per frame. */
+ * (oggetto, tempo), quindi il campionamento è una scansione sola per frame.
+ * Ricerca binaria sul confronto (oggetto, tempo), lo stesso ordine del memmove. */
 static int key_slot(int obj, float t)
 {
-    int i = 0;
-    while (i < g_nkeys && (g_keys[i].obj < obj || (g_keys[i].obj == obj && g_keys[i].t < t))) i++;
-    return i;
+    int lo = 0, hi = g_nkeys;
+    while (lo < hi)
+    {
+        int mid = lo + (hi - lo) / 2;
+        if (g_keys[mid].obj < obj || (g_keys[mid].obj == obj && g_keys[mid].t < t))
+            lo = mid + 1;
+        else
+            hi = mid;
+    }
+    return lo;
 }
 
 static int key_reserve(int need)
