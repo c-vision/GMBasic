@@ -1137,6 +1137,14 @@ int gmb_expr_is_datetime(ctx_t* c, gmb_expr_t* e) {
         char ty[32];
         if (gmb_var_declared_type(c, e->var, ty, sizeof ty) && strcasecmp(ty, "DATETIME") == 0) return 1;
     }
+    /* ELEMENTO di un array dichiarato `AS DATETIME` (`datef(0)`): il valore C è un
+     * gmb_double_t ma il tipo statico BASIC è DATETIME → PRINT/TYPENAME/VALTYPE devono
+     * renderlo come data (parità IL/PCode/VM-C). L'indice è un GMB_EXPR_CALL sul nome
+     * dell'array (stessa forma con cui l'emitter risolve l'accesso). */
+    if (e->kind == GMB_EXPR_CALL && e->var && e->nargs >= 1 && !strchr(e->var, '.')) {
+        var_t* av = lookup_var(c, e->var);
+        if (av && av->is_array && av->elem_datetime) return 1;
+    }
     return 0;
 }
 static void sb_var_ctype(sb_t* b, var_t* v) {
@@ -4101,6 +4109,11 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
              * data/ora (IL/PCode/VM-C lo fanno; il C99 stampava il seriale e LEN=17). */
             if (!s->array_size && s->dim_init && gmb_expr_is_datetime(c, s->dim_init))
                 v->is_datetime = 1;
+            /* `DIM a(...) AS DATETIME`: gli ELEMENTI sono date anche se la rappresentazione C
+             * è double* (il tipo statico non è nel valore): PRINT/TYPENAME/VALTYPE di a(i)
+             * devono comportarsi come IL/PCode/VM-C, non come un DOUBLE. */
+            if (s->dim_type && strcasecmp(s->dim_type, "DATETIME") == 0)
+                v->elem_datetime = 1;
             /* Il pre-pass di registrazione può ripassare sulla STESSA istruzione DIM
              * (registrazione idempotente): annotando l'istruzione che ha dichiarato la
              * variabile, il controllo di duplicato sotto distingue la ri-registrazione
@@ -8921,6 +8934,9 @@ static int emit_builtin(ctx_t* c, const char* name, const char* ns, gmb_tokenkin
      * Boxa l'argomento in gmb_val_t (stesso schema di TYPEINFO.HAS) e chiama il runtime
      * condiviso gmb_val_valtype. Prima non emesso → "simbolo non trovato". */
     if (tk == GMB_TOK_ValType && nargs >= 1) {
+        /* DATETIME (variabile dichiarata o ELEMENTO di array DATETIME): lettera "D"
+         * (parità ClipperStrings.ValType/IL/PCode/VM-C). */
+        if (gmb_expr_is_datetime(c, args[0])) { sb_put(&c->out, "gmb_string_alloc(\"D\")"); return 1; }
         /* UDT/CLASS: "O" (oggetto) — parità ClipperStrings.ValType / IL struct. */
         if (args[0]->kind == GMB_EXPR_VAR && args[0]->var) {
             char vtn[64];
@@ -12407,6 +12423,9 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
     /* TYPENAME(scalare/espressione): STRING per stringhe, DOUBLE per numerici
      * (parity IL/PCodeVM/VM-C; il VMC dava NUMBER/OBJECT per il fallthrough). */
     if (tk == GMB_TOK_TypeName && nargs >= 1 && args[0]) {
+        /* DATETIME (variabile dichiarata o ELEMENTO di array DATETIME): "DATETIME" come
+         * IL/PCode/VM-C. In C il valore è un gmb_double_t → senza questo ramo "DOUBLE". */
+        if (gmb_expr_is_datetime(c, args[0])) { sb_put(&c->out, "gmb_string_alloc(\"DATETIME\")"); return; }
         /* UDT/CLASS: nome BASIC del tipo (parità IL/PCode/VM-C), non "DOUBLE". */
         if (args[0]->kind == GMB_EXPR_VAR && args[0]->var) {
             char utn[64];
@@ -15756,11 +15775,12 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
                 || dtk0 == GMB_TOK_Hour || dtk0 == GMB_TOK_Minute || dtk0 == GMB_TOK_Second
                 || dtk0 == GMB_TOK_Weekday) {
                 var_t* dtv = lookup_var(c, e->var);
-                /* `is_dim_local`: la variabile è stata DICHIARATA (vince sulle letture nude). */
-                if (!(dtv && (dtv->is_dim_local || dtv->is_array || dtv->byref || dtv->vclass[0]
-                              || dtv->gkind || dtv->boxed_val || dtv->sb_builder || dtv->regex_obj
-                              || dtv->nullable || dtv->is_static))
-                    && !find_fn_arity(c, e->var, 0, NULL)) {
+                /* La VARIABILE (locale, parametro o globale) vince sempre sulle letture nude:
+                 * prima serviva `is_dim_local` e un PARAMETRO chiamato come un TokenKind data
+                 * (es. `month` in FINANCE.DB) non lo aveva → `month` dentro il corpo diventava
+                 * MONTH() = mese corrente. Sintomo: FINANCE.DB(...,12) dava 3382.5 invece di
+                 * 3690 (il mese vero, 11, al posto del parametro). */
+                if (!dtv && !find_fn_arity(c, e->var, 0, NULL)) {
                     if (emit_bf_datetime(c, e->var, NULL, dtk0, NULL, 0, e->line)) break;
                 }
             }

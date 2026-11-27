@@ -41,6 +41,11 @@ public sealed partial class Compiler
         {
             // RETURN da una FUNCTION: compila il valore di ritorno.
             VisitExpression(stmt.Value);
+            /* Il valore va COERCIZTO al tipo dichiarato di ritorno (parità IL): una
+             * FUNCTION ... AS DOUBLE che fa RETURN di una data deve rendere il seriale
+             * OADate, non un oggetto DateTime (FINN_OA di finance.inc: PCode lanciava
+             * Invalid cast from DateTime to Double nell'array double[] del chiamante). */
+            EmitCoerceForTarget(_currentFunctionReturnType, stmt.Value);
             // Apply STRING * N padding for function return type
             if (_currentFunctionReturnType is StringType { FixedLength: int rlen } && rlen > 0)
             {

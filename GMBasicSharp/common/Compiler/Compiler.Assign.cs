@@ -817,7 +817,21 @@ public sealed partial class Compiler
                 continue;
             }
 
-            VisitExpression(CoerceDateValueExpr(InferExpressionTypeFromTarget(assignment.Target), assignment.Value));
+            VisitExpression(CoerceDateValueExpr(letTargetType, assignment.Value));
+            /* DATA → NUMERICO su ELEMENTO di array (`DIM a(3) AS DOUBLE : a(0) = DATEVALUE(...)`
+             * o `a(1) = v` con v DATETIME): il valore deve diventare il seriale OADate, come
+             * per una variabile scalare (EmitCoerceForTarget). Senza, PCode/VM-C lasciavano un
+             * DateTime nell'array: PRINT/TYPENAME divergevano da IL/C99 e FINANCE.XIRR riceveva
+             * date non numeriche. La conversione va emessa ORA: AssignVariable carica poi
+             * array+indici e OP_STORE_ELEMENT consuma il valore già sullo stack. */
+            if (assignment.Target is ArrayElementTarget or IndexedTarget
+                && letTargetType is not (DateTimeType or DateType or AnyType)
+                && IsNumericTargetType(letTargetType)
+                && (IsDateProducingExpr(assignment.Value)
+                    || CompilerInferExpressionType(assignment.Value) is DateType or DateTimeType))
+            {
+                EmitOneArgBuiltin(BuiltInFunction.CDBL);
+            }
             // Macro &/EVAL che rende NIL su target NUMERICO: coercizione a 0 (parità IL, dove
             // il CLR converte null→0 nello store tipizzato). Senza, PCode lasciava null nello
             // slot → PRINT vuoto (bug ClipperMacroLocalVar local-eval-noleak: PCode stampava
@@ -1254,7 +1268,12 @@ public sealed partial class Compiler
         if (valueExpr is null) return;
         /* DATETIME dichiarato / ANY: la data resta una data (nessuna coercizione). */
         if (targetType is DateTimeType or DateType or AnyType) return;
-        if (IsDateProducingExpr(valueExpr))
+        /* Data da ESPRESSIONE (builtin data o variabile/elemento con tipo DATETIME): il target
+         * numerico riceve il seriale OADate (canone IL). Prima solo i builtin erano
+         * riconosciuti: `x = datef(0)` (elemento di array DATETIME) restava un DateTime
+         * oggetto su PCode e finiva in un double[] come InvalidCast. */
+        if (IsDateProducingExpr(valueExpr)
+            || CompilerInferExpressionType(valueExpr) is DateType or DateTimeType)
         {
             if (targetType is StringType) { EmitOneArgBuiltin(BuiltInFunction.CSTR); return; }
             if (!IsNumericTargetType(targetType)) return;

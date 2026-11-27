@@ -101,6 +101,12 @@ gmb_stack_entry_t gmb_adapter_val_to_stack(gmb_val_t v)
             /* Numerico con scala (campo DBF N/F): sullo stack è numerico; la scala è
              * trasportata sul campo `scale` dell'entry (STAGE B, resa "100.00"). */
             s.type = 1; s.num = v.v_double; s.basic_type = GMB_BT_CURRENCY; s.scale = (uint8_t)v.scale; break;
+        case GMB_TYPE_DATETIME:
+            /* DATETIME (DATEVALUE/NOW/campo data in un array o dict): l'entry deve restare
+             * NUMERICA con tag GMB_BT_DATE, altrimenti cadeva nel default e tornava NIL —
+             * `DIM a(3): a(0) = DATEVALUE("2023-01-01") : PRINT a(0)` stampava vuoto su VM/C
+             * (IL/PCode/C99 stampano la data formattata). */
+            s.type = 1; s.num = v.v_double; s.basic_type = GMB_BT_DATE; break;
         case GMB_TYPE_BOOL:
             s.type = 1; s.num = v.v_bool ? -1.0 : 0.0; s.basic_type = GMB_BT_BOOL; break;
         case GMB_TYPE_STRING:
@@ -285,6 +291,10 @@ double gmb_adapter_to_double(gmb_val_t v)
     {
         case GMB_TYPE_INT: return (double)v.v_int;
         case GMB_TYPE_DOUBLE: return v.v_double;
+        /* DATETIME = seriale OADate; CURRENCY = numerico con scala. Senza questi rami un
+         * valore data/vALuta letto da un contenitore si convertiva in 0.0. */
+        case GMB_TYPE_DATETIME: return v.v_double;
+        case GMB_TYPE_CURRENCY: return v.v_double;
         case GMB_TYPE_BOOL: return v.v_bool ? -1.0 : 0.0;
         default: return 0.0;
     }

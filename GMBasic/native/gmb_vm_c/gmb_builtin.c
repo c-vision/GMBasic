@@ -5719,7 +5719,8 @@ static void gmb_bf_648(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             char tnbuf[128]; tnbuf[0] = 0;
             if (args[0].type == 1)
                 tn = args[0].basic_type == GMB_BT_BOOL ? "BIT"
-                   : args[0].basic_type == GMB_BT_CURRENCY ? "CURRENCY" : "DOUBLE";
+                   : args[0].basic_type == GMB_BT_CURRENCY ? "CURRENCY"
+                   : args[0].basic_type == GMB_BT_DATE ? "DATETIME" : "DOUBLE";
             else if (args[0].type == 2 && args[0].ref)
             {
                 switch (args[0].ref->kind)
@@ -9746,7 +9747,8 @@ static void gmb_bf_649(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
         {
             const char* t = "U";
             if (argc >= 1 && args[0].type == 1)
-                t = args[0].basic_type == GMB_BT_BOOL ? "L" : "N";
+                t = args[0].basic_type == GMB_BT_BOOL ? "L"
+                  : args[0].basic_type == GMB_BT_DATE ? "D" : "N";
             else if (argc >= 1 && args[0].type == 2 && args[0].ref)
             {
                 if (args[0].ref->kind == GMB_OBJ_STRING) t = "C";

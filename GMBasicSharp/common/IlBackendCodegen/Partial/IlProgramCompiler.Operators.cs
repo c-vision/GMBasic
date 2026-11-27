@@ -1076,7 +1076,29 @@ public sealed partial class IlProgramCompiler
             _il.Emit(OpCodes.Call, IlRuntimeObjToStrMethod);
             return;
         }
+        /* NUMERICO → DATA: `DIM dd(3) AS DATETIME : dd(0) = 44927` (o `dd(0) = v` con v
+         * DOUBLE). Prima non si emetteva nulla e un double finiva su stelem DateTime →
+         * InvalidProgram/SIGSEGV. IlConversion sa convertire double→DateTime (FromOADate). */
+        if (targetType is DateTimeType or DateType or TimeType)
+        {
+            if (IlConversion.IsNumeric(valueType))
+            {
+                var fromClrDate = DataTypeMapper.Map(valueType, _types, _classTypes);
+                IlConversion.EmitConvert(_il, _types, valueType, fromClrDate, _types.DateTime);
+            }
+            return;
+        }
         if (!IlConversion.IsNumeric(targetType)) return;
+        /* DATA → NUMERICO: sullo stack c'è un DateTime CLR. Senza ToOADate il valore
+         * arrivava a stelem.r8/conv.r8 con la rappresentazione sbagliata: `DIM a(3) AS
+         * DOUBLE : a(0) = DATEVALUE("2023-01-01")` dava InvalidProgramException, e
+         * `a(1) = v` (v DATETIME) un valore spazzatura (~6.38E+17). Canone: seriale OADate
+         * come le gambe managed per le variabili scalari. */
+        if (valueType is DateTimeType or DateType or TimeType && IlConversion.IsNumeric(targetType))
+        {
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ToOADate), typeof(DateTime)));
+            valueType = new DoubleType();
+        }
         // Valore DINAMICO (AnyType — CHOOSE/IIF/letture da dict ritornano un object boxed):
         // per convertirlo a un target numerico va prima unbox-to-double (IlRuntime.ToDouble
         // gestisce qualunque boxed/stringa numerica). Prima: nessuna istruzione (IsNumeric

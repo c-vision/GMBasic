@@ -11,7 +11,7 @@
 #ifndef GMB_C99_EMIT_VART_H
 #define GMB_C99_EMIT_VART_H
 
-typedef struct { char* name; int type; int is_array; int ndims; int byref; int gkind; int elem_str; int is_bit; /* DIM AS BIT: NOT e AND/OR logici (canone -1/0) */ int is_datetime; /* variabile DATETIME (AS DATETIME o DIM = <espressione data>): PRINT/LEN/JSON la formattano come data, non come seriale */ char elem_class[40]; int captured; int cap_ref;
+typedef struct { char* name; int type; int is_array; int ndims; int byref; int gkind; int elem_str; int is_bit; /* DIM AS BIT: NOT e AND/OR logici (canone -1/0) */ int is_datetime; /* variabile DATETIME (AS DATETIME o DIM = <espressione data>): PRINT/LEN/JSON la formattano come data, non come seriale */ int elem_datetime; /* array DIM ... AS DATETIME: i suoi ELEMENTI sono date (PRINT/TYPENAME/VALTYPE) anche se la rappresentazione C è double* */ char elem_class[40]; int captured; int cap_ref;
                  int dyn_len;  /* (b4): lunghezza runtime compagna <ident>_len (array da builtin array-returning) */
                  int loop_new_counter; /* contatore FOR numerico creato dal loop (nessuna DIM
                                        * esterna): a NEXT resta visibile (parità IL). */
