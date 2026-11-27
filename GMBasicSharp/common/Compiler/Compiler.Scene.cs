@@ -53,6 +53,8 @@ public sealed partial class Compiler
         TokenKind.SceneBones => SysCall.SCENE_BONES,
         TokenKind.ScenePoseBone => argc == 7 ? SysCall.SCENE_POSEBONE_TRS : SysCall.SCENE_POSEBONE,
         TokenKind.SceneWeight => SysCall.SCENE_WEIGHT,
+        // P5/M-SKIN-KEY: chiave dell'osso (6 o 8 argomenti).
+        TokenKind.SceneAnim => argc == 8 ? SysCall.SCENE_ANIM_TRS : SysCall.SCENE_ANIM,
         _ => throw new NotImplementedException($"SCENE: verbo '{kind}' non supportato dalla PCodeVM.")
     };
 

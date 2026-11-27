@@ -288,6 +288,18 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
         wscene(c, "gmb_scene_weight", a, 4, s->line);
         return;
     }
+    if (tk == GMB_TOK_SceneAnim)
+    {
+        /* M-SKIN-KEY: osso e tempo, poi la TRS; forma corta senza pitch/roll,
+         * come POSEBONE. Le piste le campiona RENDER. */
+        if (n != 6 && n != 8)
+        {
+            c99_fail(c, s->line, "SCENE ANIM b, t, x, y, z, yaw [, pitch, roll]");
+            return;
+        }
+        wscene(c, n == 8 ? "gmb_scene_anim_trs" : "gmb_scene_anim", a, n, s->line);
+        return;
+    }
     if (tk == GMB_TOK_SceneCamera)
     {
         if (n != 5) { c99_fail(c, s->line, "SCENE CAMERA x, y, z, yaw, pitch"); return; }

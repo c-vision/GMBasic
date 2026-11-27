@@ -599,6 +599,10 @@ public enum SysCall : ushort
     SCENE_POSEBONE = 521,   // (b, x, y, z, yaw)                       → gmb_scene_posebone
     SCENE_POSEBONE_TRS = 522, // (b, x, y, z, yaw, pitch, roll)        → gmb_scene_posebone_trs
     SCENE_WEIGHT = 523,     // (o, v, bone, w)                         → gmb_scene_weight
+    // P5/M-SKIN-KEY — piste di chiavi degli ossi: chiave al tempo di scena,
+    // forma corta e forma con pitch/roll (le campiona RENDER).
+    SCENE_ANIM = 524,       // (b, t, x, y, z, yaw)                    → gmb_scene_anim
+    SCENE_ANIM_TRS = 525,   // (b, t, x, y, z, yaw, pitch, roll)       → gmb_scene_anim_trs
     // LAYOUT — WINDOW RESIZE w, h: ridimensiona la pagina LOGICA (percorso pixel e
     // percorso a celle) e riapplica il LAYOUT dei controlli (EXPAND/ANCHOR/ALIGN).
     // Unica implementazione nel runtime C (gmb_window_resize), condivisa da VM/C.

@@ -810,7 +810,7 @@ MiniTest: `shared/minitests/3d/scene_instance.bas` (geometria e materiale della 
 di `PICK`, un livello solo, `src = o`, `LOD`/`INSTANCE` last-wins, raggi, `RESET`). Oracolo:
 `gmb_3d_oracle --instcheck` (92 controlli headless, dentro `tools/sh/check_3d_oracle.sh`).
 
-### Skinning: `SCENE BONES`, `POSEBONE`, `WEIGHT`
+### Skinning: `SCENE BONES`, `POSEBONE`, `WEIGHT`, `ANIM`
 
 Un albero che ondeggia, una porta a cerniera, un braccio: la geometria è una, ma i vertici non si
 muovono tutti insieme. Lo skinning lega i vertici alle **ossa**, e ogni osso porta la sua
@@ -848,9 +848,33 @@ faccia sì, perché usa le posizioni skinnate.
 scena senza skinning non paga niente. `RENDER` non alloca. `SCENE BONES` azzera pose e pesi (cambiare
 scheletro non lascia legature appese) e `SCENE RESET` azzera tutto.
 
+**Animare senza scrivere la posa a ogni frame: `SCENE ANIM`.** È l'analogo di `SCENE KEY` per le
+ossa: `SCENE ANIM b, t, x, y, z, yaw` (e la forma lunga con `pitch, roll`) dichiara una chiave
+dell'osso `b` al tempo `t`, e `RENDER` le campiona al tempo di scena (`SCENE TIME`, lo stesso che
+muove gli oggetti). Le chiavi si ordinano da sole, quindi si possono dichiarare in qualunque ordine;
+prima della prima vale la prima, dopo l'ultima vale l'ultima; fra due si interpola linearmente su
+tutte e sei le componenti.
+
+```
+SCENE BONES 1
+SCENE WEIGHT 1, 0, 1, 1
+SCENE ANIM 1, 0.0, 0, 0, 0, 0       ' a 0 s: posa dritta
+SCENE ANIM 1, 1.0, 0, 0, 0, 30      ' a 1 s: ruotata di 30 gradi
+SCENE TIME 0.5                       ' a metà tempo: 15 gradi
+SCENE RENDER
+```
+
+La pista **scrive la posa dell'osso**, quindi `POSEBONE` e `ANIM` sono lo stesso stato: se ci sono
+chiavi, sono loro a decidere (vengono campionate per ultime). Tetti dichiarati: 32 chiavi per osso e
+65536 per scena; `SCENE BONES` svuota le piste insieme a pose e pesi (cambiare scheletro cambia il
+significato degli indici degli ossi) e `SCENE RESET` azzera tutto. Attenzione a non confonderlo con
+`WORLD ANIM`, che anima le picture dei settori: sono domini diversi.
+
 MiniTest: `shared/minitests/3d/scene_skin.bas` (peso 0 e posa identità che non muovono niente, posa
-che sposta il quad, fusione fra due ossa, peso singolo normalizzato, `RESET`). Oracolo:
-`gmb_3d_oracle --skincheck` (44 controlli headless, dentro `tools/sh/check_3d_oracle.sh`).
+che sposta il quad, fusione fra due ossa, peso singolo normalizzato, `RESET`) e
+`shared/minitests/3d/scene_anim.bas` (chiavi a metà tempo, clamp prima/dopo, pista che batte il
+`POSEBONE`). Oracolo: `gmb_3d_oracle --skincheck` (59 controlli headless, dentro
+`tools/sh/check_3d_oracle.sh`).
 
 ### Statistiche per nome: `SCENE.STATS(nome$)`
 

@@ -2333,7 +2333,55 @@ static int run_p5_skin(void)
                   "RENDER con skin ha allocato: %lu", gmb_3d_alloc_count() - a0);
     }
 
-    /* BONES azzera i pesi: cambiare scheletro non lascia legature appese. */
+    /* ---- P5/M-SKIN-KEY: piste di chiavi degli ossi (`SCENE ANIM`) ---------- */
+    P5S_SCENE();
+    P5S_CHECK(gmb_scene_bones(1) == GMB_3D_OK && p5s_quad_weight(1, 1.0),
+              "scena delle chiavi");
+    P5S_CHECK(gmb_scene_anim(0, 0.0, 0, 0, 0, 0) == GMB_3D_E_ARG
+              && gmb_scene_anim(2, 0.0, 0, 0, 0, 0) == GMB_3D_E_ARG,
+              "ANIM con osso 0 o 2 (esiste 1) non rifiutato");
+    P5S_CHECK(gmb_scene_anim(1, -1.0, 0, 0, 0, 0) == GMB_3D_E_ARG,
+              "ANIM con tempo negativo non rifiutato");
+    /* Identità a 0 s, +20 a 1 s: a metà tempo la posa è +10 (come la posa
+     * data a mano, perché la chiave SCRIVE la posa dell'osso). */
+    P5S_CHECK(gmb_scene_anim(1, 0.0, 0, 0, 0, 0) == GMB_3D_OK
+              && gmb_scene_anim_trs(1, 1.0, 20, 0, 0, 0, 0, 0) == GMB_3D_OK,
+              "dichiarazione delle due chiavi (forma corta e TRS)");
+    P5S_CHECK(gmb_scene_time(0.5) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_pixel(24, 32) == 0xFFFFFF && gmb_scene_pixel(45, 32) == P5S_BG,
+              "chiavi a meta' tempo: px24=%06llx px45=%06llx (atteso +10)",
+              (long long)(unsigned)gmb_scene_pixel(24, 32),
+              (long long)(unsigned)gmb_scene_pixel(45, 32));
+    /* Clamp: prima della prima chiave vale la prima, dopo l'ultima l'ultima. */
+    P5S_CHECK(gmb_scene_time(0.0) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK
+              && (long long)gmb_scene_hash() == base_hash,
+              "la chiave a 0 s non e' l'identita'");
+    P5S_CHECK(gmb_scene_time(2.0) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_pixel(10, 32) == 0xFFFFFF && gmb_scene_pixel(45, 32) == P5S_BG,
+              "clamp dopo l'ultima chiave: px10=%06llx px45=%06llx (atteso +20)",
+              (long long)(unsigned)gmb_scene_pixel(10, 32),
+              (long long)(unsigned)gmb_scene_pixel(45, 32));
+    /* La pista vince sul POSEBONE: stesso stato, campionato per ultimo. */
+    P5S_CHECK(gmb_scene_posebone(1, 0.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_pixel(10, 32) == 0xFFFFFF && gmb_scene_pixel(32, 32) == P5S_BG,
+              "POSEBONE ha battuto la pista dell'osso");
+    /* Una chiave al tempo dell'ultima la sostituisce: la forma lunga è la stessa. */
+    P5S_CHECK(gmb_scene_anim_trs(1, 2.0, 0, 0, 0, 0, 0, 0) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK && (long long)gmb_scene_hash() == base_hash,
+              "chiave TRS a 2 s non riporta la posa all'identita'");
+    /* Tetto dichiarato: 32 chiavi per osso, la trentatreesima è un errore.
+     * Da schema pulito: BONES svuota le tre chiavi appena dichiarate (e i pesi). */
+    {
+        int ok32 = (gmb_scene_bones(1) == GMB_3D_OK);
+        for (int i = 0; i < 32; i++)
+            if (gmb_scene_anim(1, 10.0 + (double)i, 0, 0, 0, 0) != GMB_3D_OK) ok32 = 0;
+        P5S_CHECK(ok32 && gmb_scene_anim(1, 99.0, 0, 0, 0, 0) == GMB_3D_E_ARG,
+                  "il tetto di 32 chiavi per osso non e' applicato");
+    }
+
+    /* BONES azzera i pesi (e le piste): cambiare scheletro non lascia appeso
+     * niente di riferito alle ossa precedenti. */
     P5S_CHECK(gmb_scene_bones(1) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK
               && (long long)gmb_scene_hash() == base_hash,
               "BONES non ha azzerato i pesi");
@@ -2546,7 +2594,7 @@ static void usage(void)
            "  --keycheck = SCENE KEY/TIME: piste TRS, clamp, tetto, pitch/roll (P5, M-KEY)\n"
            "  --lodcheck = SCENE LOD: soglie, mesh sostitutiva, identità, raggi (P5, M-LOD)\n"
            "  --instcheck = SCENE INSTANCE: geometria e materiale condivisi, identità (P5, M-INST)\n"
-           "  --skincheck = SCENE BONES/POSEBONE/WEIGHT: ossa, pesi, fusione, identità (P5, M-SKIN)\n"
+           "  --skincheck = SCENE BONES/POSEBONE/WEIGHT/ANIM: ossa, pesi, fusione, chiavi (P5, M-SKIN)\n"
            "  --bench-scene = N oggetti (default 500) a --size (default 640x360)\n"
            "  --tris N = N triangoli dichiarati (12 per box) in griglia frontale\n"
            "  --bench-key = tempo di dichiarazione di N oggetti x K chiavi (--keys, default 32)\n");

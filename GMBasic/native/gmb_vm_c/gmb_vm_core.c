@@ -6102,6 +6102,27 @@ static void vm_sys_scene_posebone(gmb_vm_t* vm, gmb_task_t* task, int code, int 
                                  vm_world_num(&a[2]), vm_world_num(&a[3]),
                                  vm_world_num(&a[4]));
 }
+/* SCENE ANIM b, t, x, y, z, yaw [, pitch, roll] (P5/M-SKIN-KEY): chiave dell'osso
+ * al tempo di scena; le due forme hanno codici distinti e RENDER le campiona. */
+static void vm_sys_scene_anim(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm;
+    gmb_stack_entry_t a[8];
+    int n = argc > 8 ? 8 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (code == GMB_SC_SCENE_ANIM_TRS)
+    {
+        if (n >= 8)
+            (void)gmb_scene_anim_trs((int64_t)vm_world_num(&a[0]), vm_world_num(&a[1]),
+                                     vm_world_num(&a[2]), vm_world_num(&a[3]),
+                                     vm_world_num(&a[4]), vm_world_num(&a[5]),
+                                     vm_world_num(&a[6]), vm_world_num(&a[7]));
+        return;
+    }
+    if (n >= 6)
+        (void)gmb_scene_anim((int64_t)vm_world_num(&a[0]), vm_world_num(&a[1]),
+                             vm_world_num(&a[2]), vm_world_num(&a[3]),
+                             vm_world_num(&a[4]), vm_world_num(&a[5]));
+}
 /* SCENE WEIGHT o, v, bone, w (P5/M-SKIN): lega il vertice all'osso col peso.
  * Range, massimo due influenze e normalizzazione li valida gmb_3d_skin.c. */
 static void vm_sys_scene_weight(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
@@ -7478,6 +7499,8 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_SCENE_POSEBONE, vm_sys_scene_posebone },
     { GMB_SC_SCENE_POSEBONE_TRS, vm_sys_scene_posebone },
     { GMB_SC_SCENE_WEIGHT, vm_sys_scene_weight },
+    { GMB_SC_SCENE_ANIM, vm_sys_scene_anim },
+    { GMB_SC_SCENE_ANIM_TRS, vm_sys_scene_anim },
     { GMB_SC_CLOCK_PAUSE, vm_sys_clock_pause },
     { GMB_SC_CLOCK_RESUME, vm_sys_clock_resume },
     { GMB_SC_CLOCK_SCALE, vm_sys_clock_scale },

@@ -504,6 +504,16 @@ int64_t gmb_scene_posebone_trs(int64_t b, double x, double y, double z,
  * (M-SKIN-VIS). E_ARG = oggetto/vertice/osso inesistente, peso non finito, terza
  * influenza. */
 int64_t gmb_scene_weight(int64_t o, int64_t v, int64_t bone, double w);
+/* SCENE ANIM b, t, x, y, z, yaw [, pitch, roll] — chiave dell'osso `b` (1..n) al
+ * tempo `t` in secondi, sullo stesso orologio di `SCENE TIME`. Stesse regole di
+ * `SCENE KEY` per gli oggetti: le chiavi si ordinano da sole per (osso, tempo),
+ * `RENDER` le campiona (clamp prima/dopo, interpolazione lineare su tutte e sei
+ * le componenti) e scrive la posa nell'osso; lì vale come un `POSEBONE`, quindi
+ * una posa data a mano e una pista sono lo stesso stato. Massimo 32 chiavi per
+ * osso, 65536 per scena; `BONES` e `RESET` svuotano le piste. */
+int64_t gmb_scene_anim(int64_t b, double t, double x, double y, double z, double yaw);
+int64_t gmb_scene_anim_trs(int64_t b, double t, double x, double y, double z,
+                           double yaw, double pitch, double roll);
 int64_t gmb_scene_camera(double x, double y, double z,
                          double yaw_deg, double pitch_deg);
 /* SCENE LIGHT dx, dy, dz, livello: luce direzionale per faccia. (dx,dy,dz) punta VERSO

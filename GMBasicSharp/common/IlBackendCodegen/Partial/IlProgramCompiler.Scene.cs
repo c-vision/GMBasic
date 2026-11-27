@@ -237,6 +237,22 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneWeight)));
                 return;
 
+            // P5/M-SKIN-KEY: osso e tempo interi, poi la TRS (6 o 8 argomenti).
+            case TokenKind.SceneAnim:
+                if (a.Length == 8)
+                {
+                    RequireSceneArgs(stmt, 8, "SCENE ANIM b, t, x, y, z, yaw, pitch, roll");
+                    EmitInt64Argument(a[0]);
+                    for (int i = 1; i < 8; i++) EmitDoubleArgument(a[i]);
+                    _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneAnimTrs)));
+                    return;
+                }
+                RequireSceneArgs(stmt, 6, "SCENE ANIM b, t, x, y, z, yaw");
+                EmitInt64Argument(a[0]);
+                for (int i = 1; i < 6; i++) EmitDoubleArgument(a[i]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneAnim)));
+                return;
+
             case TokenKind.ScenePresent:
                 RequireSceneArgs(stmt, 0, "SCENE PRESENT non accetta argomenti");
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ScenePresent)));

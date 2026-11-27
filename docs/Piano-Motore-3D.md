@@ -197,7 +197,7 @@ Funzioni: `SCENE.X/Y/Z/EYE/YAW/PITCH/LIFT/HIT/FLOORZ/FLOORAT/CEILAT/TON/TX/TY/TZ
 
 | Funzionalità | API | Perché |
 |---|---|---|
-| Skinning (64 ossa) | `SCENE BONES`, `WEIGHT o,v,bone,w`, `POSEBONE` (`ANIM skeleton` resta da fare) | assente là — **consegnato** 2026-11-27 (M-SKIN, `P5-SKIN ok=44`, `scene_skin.bas` su quattro gambe) |
+| Skinning (64 ossa) | `SCENE BONES`, `WEIGHT o,v,bone,w`, `POSEBONE`, `ANIM b,t,…` (piste di chiavi degli ossi) | assente là — **consegnato** 2026-11-27 (M-SKIN, `P5-SKIN ok=59`, `scene_skin.bas` + `scene_anim.bas` su quattro gambe) |
 | Keyframe TRS | `SCENE KEY o, t, x,y,z,yaw,pitch,roll` + `SCENE TIME t` | animazioni dichiarative — **consegnato** 2026-11-27 (M-KEY, `P5-KEY ok=49`, `scene_key.bas` su quattro gambe) |
 | LOD + culling spaziale | `SCENE LOD o, dist, mesh` (culling interno) | Engine1999: "no spatial culling" — **consegnato** 2026-11-27 (M-LOD, `P5-LOD ok=35`, `scene_lod.bas` su quattro gambe) |
 | Instancing per materiale | `SCENE INSTANCE o, src` | geometria e materiale (flag, luce base) dichiarati una volta e condivisi da N oggetti, trasformazione e tinta proprie — **consegnato** 2026-11-27 (M-INST, `P5-INST ok=92`, `scene_instance.bas` su quattro gambe) |
@@ -560,14 +560,15 @@ dichiarazione e riusato: `SCENE RESET` non libera e non rialloca.
 
 | Pezzo | Dove | Verifica |
 |---|---|---|
-| `SCENE BONES n` (0..64), `SCENE POSEBONE b, x,y,z,yaw[,pitch,roll]` (posa TRS nello spazio dell'oggetto, default identità), `SCENE WEIGHT o,v,bone,w` | `src/gmb_3d_skin.c` (nuovo), facciata in `include/gmb_3d.h` | `gmb_3d_oracle --skincheck`: **P5-SKIN ok=44 fail=0**, dentro `check_3d_oracle.sh` |
+| `SCENE BONES n` (0..64), `SCENE POSEBONE b, x,y,z,yaw[,pitch,roll]` (posa TRS nello spazio dell'oggetto, default identità), `SCENE WEIGHT o,v,bone,w` | `src/gmb_3d_skin.c` (nuovo), facciata in `include/gmb_3d.h` | `gmb_3d_oracle --skincheck`: **P5-SKIN ok=59 fail=0**, dentro `check_3d_oracle.sh` |
 | Vertice 0-based relativo all'oggetto, peso 0..1 clampato, **massimo due influenze** (la terza è `E_ARG`), fusione normalizzata alla somma; si skinano solo le posizioni | `gmb_3d_skin.c` + `gmb_3d_scene_buf.c` (buffer pigri) | stesso gate: identità e `w = 0` che non cambiano l'hash, `+10`/`+20` a 9,2/18,5 px, miscela 1:1 al punto medio, peso singolo normalizzato |
 | AABB/quote/raggi/collisione e **culling** sulla geometria dichiarata, `BONES` e `RESET` che azzerano pose e pesi, `allocs=0` per frame | `gmb_3d_cmd.c`, `gmb_3d_scene_buf.c` | stesso gate + `scene_skin.bas` identico su quattro gambe |
-| 3 TokenKind (2756 in C), 4 syscall (520–523: `POSEBONE` corto e con pitch/roll sono due funzioni, come OBJECT/LAMP) su 4 gambe | `TokenKind.cs`/`gmb_tokenkind.h`, `gmb_parser_stmt_domain.c`, `gmb_c99_emit_3d.c`, IL/PCode/VM-C | `check_enum_ids` verde (header rigenerato); gate A/B `cc`+`zcc` su `gmb_3d_skin.c` |
+| `SCENE ANIM b, t, x,y,z,yaw[,pitch,roll]`: chiavi degli ossi sul tempo di scena, ordinate per (osso, tempo), campionate da `RENDER` con clamp e interpolazione lineare; 32 chiavi per osso, 65536 per scena; pista batte `POSEBONE` | `gmb_3d_skin.c` (`bkey_*`, `gmb_3d_skin_pose_all`) | stesso gate + `scene_anim.bas` identico su quattro gambe |
+| 4 TokenKind (2757 in C), 6 syscall (520–525: `POSEBONE` e `ANIM` corto/con pitch-roll sono due funzioni, come OBJECT/LAMP) su 4 gambe | `TokenKind.cs`/`gmb_tokenkind.h`, `gmb_parser_stmt_domain.c`, `gmb_c99_emit_3d.c`, IL/PCode/VM-C | `check_enum_ids` verde (header rigenerato); gate A/B `cc`+`zcc` su `gmb_3d_skin.c` |
 
-**Non ancora fatto, dichiarato**: le **piste di chiavi degli ossi** (`ANIM skeleton` del piano). Oggi
-la posa si dà a mano con `POSEBONE`, che il programma aggiorna a ogni frame; `SCENE KEY` anima gli
-oggetti, non le ossa. Restano poi i blocchi P6+ (audio 3D e input).
+**P5 è completo sulla superficie `SCENE`**: skinning con pose a mano e con piste di chiavi degli ossi
+(`SCENE ANIM`), keyframe degli oggetti, LOD, instancing, raggi, zone, `SCENE.STATS`, culling. Restano
+i blocchi **P6+** (audio 3D posizionale e input).
 
 ### P6 — Audio 3D e input (5–7 gg)
 

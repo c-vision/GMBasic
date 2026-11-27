@@ -2802,9 +2802,12 @@ typedef enum gmb_tokenkind {
     GMB_TOK_SceneBones,
     GMB_TOK_ScenePoseBone,
     GMB_TOK_SceneWeight,
+    /* P5/M-SKIN-KEY — `SCENE ANIM b, t, x, y, z, yaw [, pitch, roll]`: chiave
+     * dell'osso b al tempo t (le piste le campiona RENDER). */
+    GMB_TOK_SceneAnim,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2756
+  #define GMB_TOK_COUNT 2757
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

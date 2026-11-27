@@ -139,7 +139,8 @@ fi
 # 3quinquies-quater) P5: skinning a 64 ossa (M-SKIN). Posa nello spazio
 # dell'oggetto, fusione normalizzata su due influenze al massimo, peso 0 e posa
 # identità che non cambiano un byte, raggi/AABB sulla geometria dichiarata,
-# zero allocazioni e RESET che azzera ossa e pesi.
+# zero allocazioni e RESET che azzera ossa e pesi; piste di chiavi degli ossi
+# (`SCENE ANIM`) campionate dal tempo di scena, con clamp e tetti.
 if ! "$BIN" --skincheck; then
   echo "check_3d_oracle: skinning FALLITO" >&2
   exit 1

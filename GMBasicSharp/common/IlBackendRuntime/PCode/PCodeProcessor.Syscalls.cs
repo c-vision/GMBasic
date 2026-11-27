@@ -1067,6 +1067,22 @@ internal sealed partial class PCodeProcessor
                 CommonLib.Scene3DNative.Weight(o, v, bone, w);
                 break;
             }
+            // P5/M-SKIN-KEY: chiave dell'osso al tempo di scena (stack al contrario).
+            case SysCall.SCENE_ANIM:
+            {
+                var yaw = PopNum(task); var z = PopNum(task); var y = PopNum(task);
+                var x = PopNum(task); var t = PopNum(task); var b = (long)PopNum(task);
+                CommonLib.Scene3DNative.Anim(b, t, x, y, z, yaw);
+                break;
+            }
+            case SysCall.SCENE_ANIM_TRS:
+            {
+                var roll = PopNum(task); var pitch = PopNum(task); var yaw = PopNum(task);
+                var z = PopNum(task); var y = PopNum(task); var x = PopNum(task);
+                var t = PopNum(task); var b = (long)PopNum(task);
+                CommonLib.Scene3DNative.AnimTrs(b, t, x, y, z, yaw, pitch, roll);
+                break;
+            }
             case SysCall.SCENE_FOG:
                 CommonLib.Scene3DNative.Fog(PopNum(task));
                 break;

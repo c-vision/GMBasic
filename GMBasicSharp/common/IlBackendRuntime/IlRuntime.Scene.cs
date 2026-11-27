@@ -87,6 +87,13 @@ public static partial class IlRuntime
     public static void SceneWeight(long o, long v, long bone, double w)
         => CommonLib.Scene3DNative.Weight(o, v, bone, w);
 
+    // P5/M-SKIN-KEY: chiave dell'osso al tempo di scena (le piste le campiona RENDER).
+    public static void SceneAnim(long b, double t, double x, double y, double z, double yaw)
+        => CommonLib.Scene3DNative.Anim(b, t, x, y, z, yaw);
+    public static void SceneAnimTrs(long b, double t, double x, double y, double z,
+                                    double yaw, double pitch, double roll)
+        => CommonLib.Scene3DNative.AnimTrs(b, t, x, y, z, yaw, pitch, roll);
+
     // SCENE PRESENT: target 3D → pagina 2D corrente (il present vero resta al main thread).
     public static void ScenePresent() => CommonLib.Scene3DNative.Present();
 

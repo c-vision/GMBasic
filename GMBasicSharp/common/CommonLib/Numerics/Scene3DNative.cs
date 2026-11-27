@@ -233,6 +233,20 @@ public static class Scene3DNative
     public static long Weight(long o, long v, long bone, double w)
     { var rc = WeightRaw(o, v, bone, w); Check(rc); return rc; }
 
+    // SCENE ANIM — chiave dell'osso al tempo di scena (P5/M-SKIN-KEY): le piste si
+    // ordinano da sole e RENDER le campiona su SCENE TIME.
+    [DllImport(Lib, EntryPoint = "gmb_scene_anim", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long AnimRaw(long b, double t, double x, double y, double z, double yaw);
+    public static long Anim(long b, double t, double x, double y, double z, double yaw)
+    { var rc = AnimRaw(b, t, x, y, z, yaw); Check(rc); return rc; }
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_anim_trs", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long AnimTrsRaw(long b, double t, double x, double y, double z,
+                                          double yaw, double pitch, double roll);
+    public static long AnimTrs(long b, double t, double x, double y, double z,
+                               double yaw, double pitch, double roll)
+    { var rc = AnimTrsRaw(b, t, x, y, z, yaw, pitch, roll); Check(rc); return rc; }
+
     // SCENE PRESENT, lato 3D: guardia GPM e frame corrente. La COPIA nella pagina vive in
     // `gmb_gfx` (`gmb_gfx_present_argb`), perché le pagine 2D appartengono a quel modulo:
     // qui e lì c'è una copia ciascuno del runtime, quindi si passa il puntatore del frame.

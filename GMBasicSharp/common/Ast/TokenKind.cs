@@ -2583,4 +2583,7 @@ public enum TokenKind
     SceneBones,
     ScenePoseBone,
     SceneWeight,
+    // P5/M-SKIN-KEY — `SCENE ANIM b, t, x, y, z, yaw [, pitch, roll]`: chiave
+    // dell'osso b al tempo t, campionata da RENDER. In coda.
+    SceneAnim,
   }

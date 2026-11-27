@@ -280,11 +280,11 @@ valori** su C99Native, IL, PCode e VM/C: geometria della sorgente con trasformaz
 (`0xFF0000`), un livello solo, `src = o`, culling sulla geometria disegnata, raggi e quote sulla
 dichiarata, `RESET`.
 
-#### Skinning a 64 ossa: `SCENE BONES`, `POSEBONE`, `WEIGHT` (P5, M-SKIN)
+#### Skinning a 64 ossa: `SCENE BONES`, `POSEBONE`, `WEIGHT`, `ANIM` (P5, M-SKIN)
 
 | codice | regola | comportamento |
 |---|---|---|
-| `M-SKIN` | i tre comandi | `SCENE BONES n` dichiara lo scheletro della scena (`0..64` ossa); `SCENE POSEBONE b, x, y, z, yaw [, pitch, roll]` dà la posa dell'osso `b` (`1..n`); `SCENE WEIGHT o, v, bone, w` lega il vertice `v` dell'oggetto `o` all'osso `bone` con peso `w`. Nessuno dei tre disegna: dichiarano |
+| `M-SKIN` | i quattro comandi | `SCENE BONES n` dichiara lo scheletro della scena (`0..64` ossa); `SCENE POSEBONE b, x, y, z, yaw [, pitch, roll]` dà la posa dell'osso `b` (`1..n`); `SCENE WEIGHT o, v, bone, w` lega il vertice `v` dell'oggetto `o` all'osso `bone` con peso `w`; `SCENE ANIM b, t, x, y, z, yaw [, pitch, roll]` dichiara una chiave dell'osso `b` al tempo `t`. Nessuno dei quattro disegna: dichiarano |
 | `M-SKIN-POSE` | che cos'è una posa | una **TRS nello spazio dell'oggetto**, la stessa convenzione di `OBJPOS`/`KEY` (posizione, `yaw`, `pitch`, `roll`; la forma corta ha `pitch = roll = 0`). La posa di default è l'**identità**: non esiste una bind pose separata — la matrice dell'osso È la trasformazione dei vertici che gli sono legati, quindi una scena senza `POSEBONE` dà gli stessi byte di sempre |
 | `M-SKIN-WEIGHT` | che cos'è un peso | il vertice `v` è **0-based e relativo all'oggetto** `o` (come gli indici di `QUAD`/`TRI`), il peso `w` è `0..1` e viene **clampato**. Massimo **due influenze** per vertice; la terza è un errore esplicito (`E_ARG`), non una caduta silenziosa. Ripetere `WEIGHT` con lo stesso osso aggiorna quel peso |
 | `M-SKIN-BLEND` | la fusione | lineare, **normalizzata alla somma**: `p' = (w0·M0·p + w1·M1·p) / (w0 + w1)`. Quindi `w = 0` non muove il vertice, due pesi uguali danno il punto medio, un peso solo (anche `0,25`) vale la matrice intera |
@@ -293,14 +293,17 @@ dichiarata, `RESET`.
 | `M-SKIN-BONES` | ridichiarare lo scheletro | `SCENE BONES` azzera pose **e pesi**: cambiare scheletro non lascia legature appese a ossa che non esistono più. `BONES 0` spegne tutto |
 | `M-SKIN-RESET` | `RESET` | azzera ossa, pose e pesi: la scena torna al percorso di sempre, senza buffer del skinning letti dal frame |
 | `M-SKIN-ALLOC` | costo | i pesi sono **4 byte per vertice** (due ossi da un byte, due pesi da un byte) e i loro buffer **esistono solo per le scene che usano `WEIGHT`**: le altre non pagano né memoria né un passaggio in più. `RENDER` non alloca; le 64 matrici TRS si calcolano una volta per frame |
-| `M-SKIN-ANIM` | cosa manca | le pose si danno **a mano** con `POSEBONE`, che è anche il modo più diretto: le aggiorna il programma a ogni frame. Le **piste di chiavi degli ossi** (`ANIM skeleton` del piano) non ci sono: `SCENE KEY` anima gli oggetti, non le ossa |
+| `M-SKIN-KEY` | piste di chiavi degli ossi | `SCENE ANIM b, t, …` è l'analogo di `SCENE KEY` per le ossa: le chiavi si **ordinano da sole** per (osso, tempo), `RENDER` le campiona al **tempo di scena** (`SCENE TIME`, lo stesso degli oggetti) e **scrive la posa nell'osso** — da lì in poi vale come un `POSEBONE`, quindi pista e posa a mano sono lo stesso stato e l'ultima scritta vince (la pista viene campionata per ultima, quindi batte il `POSEBONE`). Prima della prima chiave vale la prima, dopo l'ultima l'ultima (§clamp, nessuna estrapolazione); fra due chiavi si interpola linearmente su tutte e sei le componenti, gradi compresi e senza avvolgimento (350→10 passa per 180, come `M-KEY`). Tetti: **32 chiavi per osso, 65536 per scena**. `BONES` svuota le piste insieme a pose e pesi (cambiare scheletro cambia il significato di «osso 3»); `RESET` le azzera con tutto il resto. `ANIM` qui è dentro `SCENE`: il `WORLD ANIM` dei settori (picture animate) è un altro comando, di un altro dominio |
+| `M-SKIN-POSE-2` | chi decide la posa | in un frame la posa di un osso è **una sola**: il `POSEBONE` la scrive, la pista la scrive al campionamento di `RENDER`, e il risultato è quello che finisce nella matrice. Senza piste, `POSEBONE` resta l'unico modo e non c'è nessun costo in più |
 
-Verifica: `gmb_3d_oracle --skincheck` (**P5-SKIN ok=44 fail=0**, dentro `check_3d_oracle.sh`, gate
-A/B `cc`+`zcc` su `gmb_3d_skin.c`) e `shared/minitests/3d/scene_skin.bas` con gli **stessi valori**
-su C99Native, IL, PCode e VM/C: peso 0 e posa identità che non cambiano un byte (hash uguale), posa
-`+10`/`+20` che sposta il quad di 9,2/18,5 px, fusione 1:1 al punto medio, peso singolo
-normalizzato, terza influenza rifiutata, raggi e quote sulla geometria dichiarata, `BONES` e `RESET`
-che azzerano i pesi, zero allocazioni per frame.
+Verifica: `gmb_3d_oracle --skincheck` (**P5-SKIN ok=59 fail=0**, dentro `check_3d_oracle.sh`, gate
+A/B `cc`+`zcc` su `gmb_3d_skin.c`) e i MiniTest `shared/minitests/3d/scene_skin.bas` (pose e pesi) e
+`scene_anim.bas` (piste di chiavi) con gli **stessi valori** su C99Native, IL, PCode e VM/C: peso 0 e
+posa identità che non cambiano un byte (hash uguale), posa `+10`/`+20` che sposta il quad di
+9,2/18,5 px, fusione 1:1 al punto medio, peso singolo normalizzato, terza influenza rifiutata, raggi e
+quote sulla geometria dichiarata, `BONES` e `RESET` che azzerano pesi e piste, zero allocazioni per
+frame; chiavi a metà tempo (posa +10), clamp prima/dopo, pista che batte il `POSEBONE`, tetto di 32
+chiavi per osso.
 
 ### 3.3 Collisione, raggi, zone
 
