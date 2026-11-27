@@ -252,6 +252,16 @@ gmb_list_t gmb_dict_extreme(gmb_dict_t* d, int want_max, int remove) {
     return r;
 }
 
+/* Variante VAL di gmb_dict_extreme: mappa VUOTA → NIL (JSON null / PRINT vuoto, canone
+ * IL/PCode/VM-C), non una lista vuota (che il JSON renderebbe []). */
+gmb_val_t gmb_dict_extreme_val(gmb_dict_t* d, int want_max, int remove) {
+    gmb_list_t l = gmb_dict_extreme(d, want_max, remove);
+    if (l.count == 0) { gmb_list_free(&l); return gmb_val_nil(); }
+    gmb_val_t v = gmb_make_val_list(l);
+    gmb_list_free(&l);
+    return v;
+}
+
 /* ToArray delle mappe ordinate: lista di oggetti {"Key":<k>, "Value":<v>} ordinata. */
 gmb_list_t gmb_dict_to_kvp(gmb_dict_t d) {
     gmb_list_t r = gmb_list_new();

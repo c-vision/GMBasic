@@ -2728,7 +2728,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                          * gmb_print_string(<double>) e la leg C99 non compilava
                          * (collections/dict_values.bas, member_case, set_get_grafe, setkeyvalue). */
                         if (_bv->gkind && gk_is_dict(_bv->gkind) && !_bv->elem_str && !_bv->stats_val)
-                            return TY_NUM;
+                            return TY_VAL;   /* Get = gmb_val_t nudo (assente → NIL) */
                         return TY_STR;
                     }
                     if (e->nargs == 0 && strcasecmp(_dot + 1, "Headers") == 0) return TY_VAL;
@@ -2968,7 +2968,8 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         gmb_tokenkind_t _erxt = gmb_member_tok(_erxdot + 1);
                         if (_erxt == GMB_TOK_Count || _erxt == GMB_TOK_ContainsKey
                             || strcasecmp(_erxdot + 1, "ContainsValue") == 0) _erx_dict_scalar = 1;
-                        else if (_erxt == GMB_TOK_Get && !_erxv->elem_boxed) _erx_dict_scalar = 1;
+                        /* Get NON è scalare: emette il gmb_val_t nudo; chiave assente → NIL
+                         * (stampato vuoto, JSON null) come IL/PCode/VM/C, non 0. */
                         /* Remove(k) è un PREDICATO numerico (bool -1/0) su ogni dict: senza
                          * questo il ramo generico tornava TY_VAL e `IF d.Remove(k) THEN`
                          * emetteva gmb_val_to_double(...) — C non compilabile. */
@@ -3002,6 +3003,11 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                          * collections/stack_push_pop.bas). Il tipo è quello dell'elemento. */
                         return _erxv->elem_str ? TY_STR : TY_NUM;
                     if (!_erx_dict_scalar) {
+                        /* GET di chiave assente → NIL: emissione del gmb_val_t nudo. Per i dict
+                         * a VALORI STRINGA l'emissione resta una stringa (TY_STR). */
+                        if ((gmb_member_tok(_erxdot + 1) == GMB_TOK_Get || strcasecmp(_erxdot + 1, "Get") == 0)
+                            && _erxv->elem_str)
+                            return TY_STR;
                         /* req.Query/Params/Headers.Get("k") → STRINGA (typing gestito più sotto):
                          * NON forzare TY_VAL, altrimenti l'assegnazione a STRING ri-avvolgeva in
                          * gmb_val_to_string l'accessor (già stringa) → doppio wrap
@@ -3379,7 +3385,9 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                     if (dmv && dmv->gkind && gk_is_dict(dmv->gkind)) {
                         gmb_tokenkind_t dmt = gmb_member_tok(dmd + 1);
                         if (dmt == GMB_TOK_Get)
-                            return dmv->elem_boxed ? TY_VAL : (dmv->elem_str ? TY_STR : TY_NUM);
+                            /* GET: emissione gmb_val_t nudo (chiave assente → NIL) per i valori
+                             * non-stringa; stringa vera per elem_str. */
+                            return dmv->elem_str ? TY_STR : TY_VAL;
                         if (dmt == GMB_TOK_Count || dmt == GMB_TOK_ContainsKey) return TY_NUM;
                     }
                 }
@@ -12685,9 +12693,9 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             /* TIMELINE.First/Last = coppia {Key,Value} (parità IL/VM-C) */
                             sb_printf(&c->out, "gmb_dict_edge_pair_val(%s, %d)", cv->name, isLast ? 1 : 0);
                         } else {
-                            sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(gmb_dict_extreme(&");
+                            sb_put(&c->out, "gmb_val_to_json(gmb_dict_extreme_val(&");
                             sb_ident(&c->out, cv->name);
-                            sb_printf(&c->out, ", %d, 0)))", isLast ? 1 : 0);
+                            sb_printf(&c->out, ", %d, 0))", isLast ? 1 : 0);
                         }
                         return;
                     }
@@ -12877,17 +12885,17 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                              * (parità IL/PCode/VM-C: TREE/TIMELINE.First è un KeyValuePair).
                              * Prima non era gestito → emissione `0` (CollectionsModern §9). */
                             if (mk == GMB_TOK_CollFirst || mk == GMB_TOK_CollLast) {
-                                sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(gmb_dict_extreme(&");
+                                sb_put(&c->out, "gmb_val_to_json(gmb_dict_extreme_val(&");
                                 sb_ident(&c->out, cv->name);
-                                sb_printf(&c->out, ", %d, 0)))", mk == GMB_TOK_CollLast ? 1 : 0);
+                                sb_printf(&c->out, ", %d, 0))", mk == GMB_TOK_CollLast ? 1 : 0);
                                 return;
                             }
                             if (gmb_tk_in(mk, gmb_tk_dict_mme, (unsigned)(sizeof(gmb_tk_dict_mme)/sizeof(gmb_tk_dict_mme[0])))) {
                                 int ismax = mk == GMB_TOK_Max || mk == GMB_TOK_ExtractMax;
                                 int remove = mk == GMB_TOK_ExtractMin || mk == GMB_TOK_ExtractMax;
-                                sb_put(&c->out, "gmb_make_val_list(gmb_dict_extreme(&");
+                                sb_put(&c->out, "gmb_dict_extreme_val(&");
                                 sb_ident(&c->out, cv->name);
-                                sb_printf(&c->out, ", %d, %d))", ismax ? 1 : 0, remove ? 1 : 0);
+                                sb_printf(&c->out, ", %d, %d)", ismax ? 1 : 0, remove ? 1 : 0);
                                 return;
                             }
                             if (mk == GMB_TOK_ToArray) {
@@ -12973,13 +12981,21 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 sb_put(&c->out, ")");
                                 return;
                                 }
-                                sb_put(&c->out, cv->elem_str ? "gmb_string_alloc(gmb_dict_get(" : "gmb_dict_get(");
-                                sb_ident(&c->out, cv->name);
-                                sb_put(&c->out, ", ");
-                                emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, cv->name));
-            sb_put(&c->out, ")");
-                                if (cv->elem_str) sb_put(&c->out, ".v_string.data)");
-                                else sb_put(&c->out, ".v_double");
+                                if (cv->elem_str) {
+                                    sb_put(&c->out, "gmb_string_alloc(gmb_dict_get(");
+                                    sb_ident(&c->out, cv->name);
+                                    sb_put(&c->out, ", ");
+                                    emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, cv->name));
+                                    sb_put(&c->out, ").v_string.data)");
+                                } else {
+                                    /* gmb_val_t nudo: chiave assente → NIL (PRINT vuoto /
+                                     * JSON null, canone IL/PCode/VM/C). */
+                                    sb_put(&c->out, "gmb_dict_get(");
+                                    sb_ident(&c->out, cv->name);
+                                    sb_put(&c->out, ", ");
+                                    emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, cv->name));
+                                    sb_put(&c->out, ")");
+                                }
                                 return;
                             }
                         }

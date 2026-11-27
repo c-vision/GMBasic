@@ -1482,9 +1482,10 @@ int js_stringify(ctx_t* c, gmb_expr_t** a, int n) {   /* §0quater: usata anche 
                          * gmb_val_to_json(gmb_string_t) = C non compilabile. */
                         int ismax = mk == GMB_TOK_Max || mk == GMB_TOK_ExtractMax || mk == GMB_TOK_Last;
                         int rmv = mk == GMB_TOK_ExtractMin || mk == GMB_TOK_ExtractMax;
-                        sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(gmb_dict_extreme(&");
+                        /* Mappa VUOTA → NIL (JSON null, canone IL/PCode/VM-C). */
+                        sb_printf(&c->out, "gmb_val_to_json(gmb_dict_extreme_val(&");
                         emit_ident(c, kv->name);
-                        sb_printf(&c->out, ", %d, %d)))", ismax ? 1 : 0, rmv ? 1 : 0);
+                        sb_printf(&c->out, ", %d, %d))", ismax ? 1 : 0, rmv ? 1 : 0);
                         return 1;
                     }
                 }

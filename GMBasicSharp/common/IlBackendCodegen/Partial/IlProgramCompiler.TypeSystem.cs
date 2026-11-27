@@ -807,7 +807,11 @@ public sealed partial class IlProgramCompiler
             }
             if (expr.Args.Length == 1 && CollMembers.Is(expr.MethodName, TokenKind.CollGet))
             {
-                returnType = setGetInst is DictType sgv ? sgv.ValueType : ((SortedDictType)setGetInst).ValueType;
+                /* GET di una chiave ASSENTE → NIL: il risultato resta object (dinamico),
+                 * così PRINT stampa vuoto e JSON.STRINGIFY dà null, invece di unboxare
+                 * null a double (NullReferenceException su dict vuoto). Il valore presente
+                 * è comunque stampato come numero/stringa dal percorso dinamico. */
+                returnType = new AnyType();
                 return true;
             }
             // F1: MaxPair/MinPair — restituiscono la CHIAVE (stringa).
