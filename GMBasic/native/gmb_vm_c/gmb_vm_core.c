@@ -6049,6 +6049,17 @@ static void vm_sys_scene_time(gmb_vm_t* vm, gmb_task_t* task, int code, int argc
     if (n < 1) return;
     (void)gmb_scene_time(vm_world_num(&a[0]));
 }
+/* SCENE LOD o, dist, mesh (P5/M-LOD): oltre `dist` l'oggetto disegna la geometria
+ * di `mesh`. Indici e distanza li valida la facciata C (gmb_3d_lod.c). */
+static void vm_sys_scene_lod(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[3];
+    int n = argc > 3 ? 3 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n < 3) return;
+    (void)gmb_scene_lod((int64_t)vm_world_num(&a[0]), vm_world_num(&a[1]),
+                        (int64_t)vm_world_num(&a[2]));
+}
 /* SCENE SMOOTH|ALPHA|TWOSIDED on|off (idea #5): un argomento 0/1, nessuna logica qui —
  * lo stato e il significato stanno nella facciata C. */
 static void vm_sys_scene_flag(gmb_vm_t* vm, gmb_task_t* task, int code, int argc, int which) {
@@ -7408,6 +7419,7 @@ static const vm_sys_row VM_SYS_TBL[] = {
     /* P5/M-KEY: keyframe TRS e tempo di scena. */
     { GMB_SC_SCENE_KEY, vm_sys_scene_key },
     { GMB_SC_SCENE_TIME, vm_sys_scene_time },
+    { GMB_SC_SCENE_LOD, vm_sys_scene_lod },
     { GMB_SC_CLOCK_PAUSE, vm_sys_clock_pause },
     { GMB_SC_CLOCK_RESUME, vm_sys_clock_resume },
     { GMB_SC_CLOCK_SCALE, vm_sys_clock_scale },
@@ -13244,6 +13256,12 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         int back = strcasecmp(fieldName, "Last") == 0;
                         if (tc == 18)
                         {
+                            if (gmb_coll_count(ch) == 0) {
+                                /* Timeline VUOTA: First/Last = NIL (canone IL/PCode). */
+                                push_nil(task);
+                                gmb_obj_release(objE.ref);
+                                break;
+                            }
                             gmb_val_t k = back ? gmb_coll_kv_max_key(ch) : gmb_coll_kv_min_key(ch);
                             gmb_val_t val = back ? gmb_coll_kv_max_value(ch) : gmb_coll_kv_min_value(ch);
                             gmb_obj_shared_val_t* pair = gmb_shared_dict_new();
@@ -14908,6 +14926,9 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     {
                         if (tc == 18)
                         {
+                            /* Timeline.First/Last VUOTA → NIL (canone IL/PCode). */
+                            if (gmb_coll_count(ch) == 0) { push_nil(task); }
+                            else {
                             /* Timeline.First: coppia {Key, Value} (CommonLib KeyValuePair) */
                             gmb_val_t k = gmb_coll_kv_min_key(ch);
                             gmb_val_t val = gmb_coll_kv_min_value(ch);
@@ -14919,6 +14940,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 push_ref_new(task, (gmb_obj_t*)pair, GMB_BT_OBJECT);
                             }
                             else push_nil(task);
+                            }
                         }
                         else if (tc == 16)
                             push_val_entry(task, gmb_coll_cache_entry(ch, 0));
@@ -14933,6 +14955,9 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                     {
                         if (tc == 18)
                         {
+                            /* Timeline.Last VUOTA → NIL (canone IL/PCode). */
+                            if (gmb_coll_count(ch) == 0) { push_nil(task); }
+                            else {
                             /* Timeline.Last: coppia {Key, Value} — parità con First (prima
                              * rendeva il solo VALORE, mentre IL/PCode/C99 davano la coppia). */
                             gmb_val_t k = gmb_coll_kv_max_key(ch);
@@ -14945,6 +14970,7 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                                 push_ref_new(task, (gmb_obj_t*)pair, GMB_BT_OBJECT);
                             }
                             else push_nil(task);
+                            }
                         }
                         else if (tc == 16)
                             push_val_entry(task, gmb_coll_cache_entry(ch, 1));

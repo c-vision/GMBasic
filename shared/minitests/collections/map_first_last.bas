@@ -7,7 +7,7 @@
 ' e First/Last fuori schema); VM/C rendeva null (OP_LOAD_FIELD su collezione non gestiva
 ' First/Last, e l'element-load a 0 indici scartava la coppia); Cache.Last sbagliato su IL/PCode
 ' (Entries non ordinate).
-' EXPECT: tree.first=["a",10]|tree.last=["c",30]|avl.first=[1,"a"]|avl.last=[3,"c"]|cache.first=["x",1]|cache.last=["z",3]|list.first= 10|list.last= 30
+' EXPECT: tree.first=["a",10]|tree.last=["c",30]|avl.first=[1,"a"]|avl.last=[3,"c"]|cache.first=["x",1]|cache.last=["z",3]|list.first= 10|list.last= 30|tl.empty=null/null
 IMPORT JSON
 IMPORT COLLECTIONS
 SUB Main()
@@ -27,4 +27,6 @@ SUB Main()
   l.Add(10) : l.Add(20) : l.Add(30)
   PRINT "list.first="; l.First()
   PRINT "list.last="; l.Last()
+  DIM te AS TIMELINE<STRING>
+  PRINT "tl.empty="; JSON.STRINGIFY(te.First()); "/"; JSON.STRINGIFY(te.Last())
 END SUB

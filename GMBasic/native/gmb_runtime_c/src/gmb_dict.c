@@ -280,7 +280,9 @@ gmb_list_t gmb_dict_to_kvp(gmb_dict_t d) {
  * TIMELINE.First()/Last() in tutte le gambe (Key numerica per le date seriali). */
 gmb_val_t gmb_dict_edge_pair_val(gmb_dict_t d, int want_max) {
     gmb_list_t r = gmb_dict_extreme(&d, want_max, 0);
-    gmb_val_t k = r.count > 0 ? r.items[0] : gmb_val_nil();
+    /* Mappa/Timeline VUOTA → NIL (canone IL/PCode/VM-C), non {Key:null,Value:null}. */
+    if (r.count == 0) { gmb_list_free(&r); return gmb_val_nil(); }
+    gmb_val_t k = r.items[0];
     gmb_val_t v = r.count > 1 ? r.items[1] : gmb_val_nil();
     gmb_dict_t o = gmb_dict_new();
     gmb_dict_set(&o, "Key", k);
