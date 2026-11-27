@@ -15358,9 +15358,11 @@ public static double TextWidth(string s)
              * dell'eccezione CLR "Queue empty"/"Stack empty" (IL/PCode divergevano).
              * Il tipo reale è Queue<T>/Stack<T> con T = elemento BASIC (double/string/...),
              * non solo object: si riconosce dal nome generico. */
-            case "DEQUEUE" when args.Length == 0 && instance.GetType().Name.StartsWith("Queue`1", StringComparison.Ordinal):
+            case "DEQUEUE" when args.Length == 0 && (instance.GetType().Name.StartsWith("Queue`1", StringComparison.Ordinal)
+                || instance.GetType().Name.StartsWith("CircularQueue`1", StringComparison.Ordinal)):
                 return QueueSafe(instance, extract: true);
-            case "PEEK" when args.Length == 0 && instance.GetType().Name.StartsWith("Queue`1", StringComparison.Ordinal):
+            case "PEEK" when args.Length == 0 && (instance.GetType().Name.StartsWith("Queue`1", StringComparison.Ordinal)
+                || instance.GetType().Name.StartsWith("CircularQueue`1", StringComparison.Ordinal)):
                 return QueueSafe(instance, extract: false);
             case "POP" when args.Length == 0 && instance.GetType().Name.StartsWith("Stack`1", StringComparison.Ordinal):
                 return StackSafe(instance, extract: true);

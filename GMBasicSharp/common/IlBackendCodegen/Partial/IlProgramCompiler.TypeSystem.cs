@@ -840,7 +840,7 @@ public sealed partial class IlProgramCompiler
             if (f1Inst is QueueType fq) { returnType = fq.ElementType; return true; }
             if (f1Inst is StackType fs) { returnType = fs.ElementType; return true; }
         }
-        if (expr.Args.Length == 0 && (f1Inst is QueueType or StackType)
+        if (expr.Args.Length == 0 && (f1Inst is QueueType or StackType or RingBufferType)
             && (expr.MethodName.Lexeme.Equals("Dequeue", StringComparison.OrdinalIgnoreCase)
                 || expr.MethodName.Lexeme.Equals("Pop", StringComparison.OrdinalIgnoreCase)
                 || expr.MethodName.Lexeme.Equals("Peek", StringComparison.OrdinalIgnoreCase)))

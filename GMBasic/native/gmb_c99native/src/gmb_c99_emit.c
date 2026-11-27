@@ -2805,7 +2805,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         || !strcasecmp(_m, "Pop"))
                     {
                         /* QUEUE/STACK: l'emissione rende il gmb_val_t (vuota → NIL) → TY_VAL. */
-                        if ((_rv->coll_type_code == 4 || _rv->coll_type_code == 5)
+                        if ((_rv->coll_type_code == 4 || _rv->coll_type_code == 5 || _rv->coll_type_code == 20)
                             && (!strcasecmp(_m, "Dequeue") || !strcasecmp(_m, "Pop")
                                 || !strcasecmp(_m, "Peek")))
                             return TY_VAL;
@@ -2985,7 +2985,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         return TY_NUM;
                     else if (_erxv->gkind && gk_is_list(_erxv->gkind) && !strchr(_erxdot + 1, '.')
                              && !_erxv->elem_boxed
-                             && (_erxv->coll_type_code == 4 || _erxv->coll_type_code == 5)
+                             && (_erxv->coll_type_code == 4 || _erxv->coll_type_code == 5 || _erxv->coll_type_code == 20)
                              && (gmb_member_tok(_erxdot + 1) == GMB_TOK_Dequeue
                                  || gmb_member_tok(_erxdot + 1) == GMB_TOK_Pop
                                  || gmb_member_tok(_erxdot + 1) == GMB_TOK_Peek))
@@ -3125,7 +3125,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                     memcpy(cpp, e->var, cpl); cpp[cpl] = 0;
                     var_t* cv = lookup_var(c, cpp);
                     if (cv && cv->gkind && gk_is_list(cv->gkind)) {
-                        if ((cv->coll_type_code == 4 || cv->coll_type_code == 5)
+                        if ((cv->coll_type_code == 4 || cv->coll_type_code == 5 || cv->coll_type_code == 20)
                             && (gmb_member_tok(cdot + 1) == GMB_TOK_Dequeue
                                 || gmb_member_tok(cdot + 1) == GMB_TOK_Pop
                                 || gmb_member_tok(cdot + 1) == GMB_TOK_Peek))
@@ -3641,7 +3641,7 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                         if (cv->coll_type_code == 1 && gmb_member_tok(mdot + 1) == GMB_TOK_Count) return TY_NUM;
                         /* QUEUE/STACK: Dequeue/Pop/Peek su collezione VUOTA → NIL (stampato
                          * vuoto, canone IL/PCode/VM/C), non 0. */
-                        if ((cv->coll_type_code == 4 || cv->coll_type_code == 5)
+                        if ((cv->coll_type_code == 4 || cv->coll_type_code == 5 || cv->coll_type_code == 20)
                             && (gmb_member_tok(mdot + 1) == GMB_TOK_Dequeue
                                 || gmb_member_tok(mdot + 1) == GMB_TOK_Pop
                                 || gmb_member_tok(mdot + 1) == GMB_TOK_Peek))
@@ -13129,7 +13129,7 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             return;
                         }
                         if (mk == GMB_TOK_Peek) {
-                            if (cv->coll_type_code == 4 || cv->coll_type_code == 5) {
+                            if (cv->coll_type_code == 4 || cv->coll_type_code == 5 || cv->coll_type_code == 20) {
                                 /* QUEUE/STACK: gmb_val_t (vuota → NIL, stampato vuoto). */
                                 sb_put(&c->out, "gmb_list_first(");
                                 sb_ident(&c->out, cv->name);
@@ -13176,8 +13176,8 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                             return;
                         }
                         if (mk == GMB_TOK_Dequeue) {
-                            if (cv->coll_type_code == 4) {
-                                /* QUEUE: gmb_val_t (vuota → NIL, stampato vuoto). */
+                            if (cv->coll_type_code == 4 || cv->coll_type_code == 20) {
+                                /* QUEUE/RINGBUFFER: gmb_val_t (vuota → NIL, stampato vuoto). */
                                 sb_put(&c->out, "gmb_list_dequeue(&");
                                 sb_ident(&c->out, cv->name);
                                 sb_put(&c->out, ")");

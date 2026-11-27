@@ -1344,6 +1344,18 @@ public sealed partial class IlProgramCompiler
         }
         if (!TryGetNativeCollectionType(instanceType, out var collectionType)) return false;
 
+        /* RINGBUFFER: Dequeue/Peek su buffer VUOTO → NIL (canone PCode/VM/C), non
+         * l'eccezione CLR "La coda è vuota". Dispatch runtime sicuro (CollectionPop*). */
+        if (instanceType is RingBufferType && expr.Args.Length == 0
+            && (expr.MethodName.Lexeme.Equals("Dequeue", StringComparison.OrdinalIgnoreCase)
+                || expr.MethodName.Lexeme.Equals("Peek", StringComparison.OrdinalIgnoreCase)))
+        {
+            EmitExpression(expr.Instance);
+            _il.Emit(OpCodes.Ldstr, expr.MethodName.Lexeme);
+            _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionPopObj), typeof(object), typeof(string)));
+            return true;
+        }
+
         // BASIC espone Add in modo uniforme; LinkedList CLR lo chiama AddLast.
         // L'alias conserva la semantica di append del resto delle collection native.
         // .Keys()/.Values() su un DICT: non sono metodi CLR (Dictionary ha property
