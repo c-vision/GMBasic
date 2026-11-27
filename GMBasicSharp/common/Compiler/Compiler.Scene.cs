@@ -45,6 +45,8 @@ public sealed partial class Compiler
         // P5/M-KEY: keyframe TRS e tempo di scena.
         TokenKind.SceneKey => SysCall.SCENE_KEY,
         TokenKind.SceneTime => SysCall.SCENE_TIME,
+        // P5/M-LOD: livello di dettaglio per oggetto.
+        TokenKind.SceneLod => SysCall.SCENE_LOD,
         _ => throw new NotImplementedException($"SCENE: verbo '{kind}' non supportato dalla PCodeVM.")
     };
 

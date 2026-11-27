@@ -2790,9 +2790,12 @@ typedef enum gmb_tokenkind {
      * che RENDER campiona. Stessi TokenKind del lato C#, nello stesso ordine. */
     GMB_TOK_SceneKey,
     GMB_TOK_SceneTime,
+    /* P5/M-LOD — livello di dettaglio per oggetto: oltre una distanza l'oggetto
+     * disegna la geometria di un altro. Stesso TokenKind del lato C#. */
+    GMB_TOK_SceneLod,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2751
+  #define GMB_TOK_COUNT 2752
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

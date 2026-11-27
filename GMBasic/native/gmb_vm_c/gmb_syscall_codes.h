@@ -504,6 +504,7 @@
 #define GMB_SC_SCENE_LIFT 514
 #define GMB_SC_SCENE_KEY 515
 #define GMB_SC_SCENE_TIME 516
+#define GMB_SC_SCENE_LOD 517
 #define GMB_SC_Default 0
 #define GMB_SC_Json 1
 

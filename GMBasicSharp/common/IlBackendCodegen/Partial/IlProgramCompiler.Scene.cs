@@ -186,6 +186,16 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneTime)));
                 return;
 
+            // P5/M-LOD: oggetto, distanza in unità mondo, mesh sostitutiva (primo e
+            // terzo argomento sono indici oggetto, il secondo è un numero).
+            case TokenKind.SceneLod:
+                RequireSceneArgs(stmt, 3, "SCENE LOD o, dist, mesh");
+                EmitInt64Argument(a[0]);
+                EmitDoubleArgument(a[1]);
+                EmitInt64Argument(a[2]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneLod)));
+                return;
+
             case TokenKind.ScenePresent:
                 RequireSceneArgs(stmt, 0, "SCENE PRESENT non accetta argomenti");
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ScenePresent)));

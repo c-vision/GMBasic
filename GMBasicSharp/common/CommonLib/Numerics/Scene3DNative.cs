@@ -196,6 +196,13 @@ public static class Scene3DNative
     private static extern long SceneTimeRaw(double t);
     public static long SceneTime(double t) { var rc = SceneTimeRaw(t); Check(rc); return rc; }
 
+    // SCENE LOD o, dist, mesh — livello di dettaglio dell'oggetto (P5/M-LOD): oltre
+    // `dist` RENDER disegna la geometria di `mesh` con trasformazione e tinta di `o`.
+    [DllImport(Lib, EntryPoint = "gmb_scene_lod", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long LodRaw(long o, double dist, long mesh);
+    public static long Lod(long o, double dist, long mesh)
+    { var rc = LodRaw(o, dist, mesh); Check(rc); return rc; }
+
     // SCENE PRESENT, lato 3D: guardia GPM e frame corrente. La COPIA nella pagina vive in
     // `gmb_gfx` (`gmb_gfx_present_argb`), perché le pagine 2D appartengono a quel modulo:
     // qui e lì c'è una copia ciascuno del runtime, quindi si passa il puntatore del frame.

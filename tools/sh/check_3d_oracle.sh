@@ -120,6 +120,14 @@ if ! "$BIN" --keycheck; then
   exit 1
 fi
 
+# 3quinquies-bis) P5: livello di dettaglio (M-LOD). Soglia stretta, geometria
+# sostitutiva disegnata con l'identità dell'oggetto, un livello solo, raggi che
+# restano quelli dichiarati, nessuna allocazione e RESET che azzera il LOD.
+if ! "$BIN" --lodcheck; then
+  echo "check_3d_oracle: livello di dettaglio FALLITO" >&2
+  exit 1
+fi
+
 # 3quater) P5: banco della scena. 500 oggetti a 640x360, accettazione >= 30 fps
 # (mediana <= 33,3 ms). Il numero stampato e' quello misurato, non una stima.
 if ! P5_OUT="$("$BIN" --bench-scene --objects 500 --size 640x360 --frames 60)"; then

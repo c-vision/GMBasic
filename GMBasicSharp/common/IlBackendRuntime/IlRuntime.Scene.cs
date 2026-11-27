@@ -69,6 +69,10 @@ public static partial class IlRuntime
         => CommonLib.Scene3DNative.Key(o, t, x, y, z, yaw, pitch, roll);
     public static void SceneTime(double t) => CommonLib.Scene3DNative.SceneTime(t);
 
+    // P5/M-LOD: oltre `dist` l'oggetto `o` disegna la geometria dell'oggetto `mesh`.
+    public static void SceneLod(long o, double dist, long mesh)
+        => CommonLib.Scene3DNative.Lod(o, dist, mesh);
+
     // SCENE PRESENT: target 3D → pagina 2D corrente (il present vero resta al main thread).
     public static void ScenePresent() => CommonLib.Scene3DNative.Present();
 

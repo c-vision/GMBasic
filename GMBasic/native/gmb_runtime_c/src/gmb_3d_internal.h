@@ -110,6 +110,14 @@ void gmb_3d_key_sample(void);
 int  gmb_3d_key_count(int obj);            /* chiavi dichiarate per un oggetto */
 double gmb_scene_time_now(void);           /* tempo di scena corrente */
 
+/* Livello di dettaglio per oggetto (gmb_3d_lod.c, M-LOD) — `SCENE LOD o, dist, mesh`.
+ * `gmb_3d_lod_source` restituisce l'indice (0-based) della GEOMETRIA da disegnare
+ * per l'oggetto `oi`: lui stesso, oppure la mesh sostitutiva quando l'occhio è
+ * oltre la distanza dichiarata. Un livello solo; trasformazione e tinta restano
+ * quelle dell'oggetto.
+ */
+int  gmb_3d_lod_source(int oi, const float eye[3]);
+
 /* --- buffer della scena a capacità dinamica (gmb_3d_scene_buf.c, P5) -------
  * Il primo blocco di P5 aveva tetti statici (32768 vertici, 16384 triangoli,
  * 512 oggetti) che rendevano irraggiungibile l'accettazione dei 200k triangoli.
@@ -130,6 +138,8 @@ typedef struct gmb_scene_obj {
     int first_vert, nvert, first_tri, ntri;
     float x, y, z, yaw;
     float pitch, roll;     /* M-KEY: 0 = solo yaw (percorso di sempre, bit-identico) */
+    int   lod_mesh;        /* M-LOD: 0 = nessun LOD, altrimenti 1..nobj (geometria sostitutiva) */
+    float lod_dist;        /* M-LOD: oltre questa distanza si disegna la mesh */
     unsigned char r, g, b;
     unsigned char flags;   /* M-FLAGS: 1 masked, 2 traslucido, 4 passabile, 8 see-through, 16 due lati */
     unsigned char light;   /* luce base dell'oggetto 0..255 */

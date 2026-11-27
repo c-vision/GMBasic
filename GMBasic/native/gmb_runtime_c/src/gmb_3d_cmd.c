@@ -660,6 +660,8 @@ int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b)
     o->x = o->y = o->z = 0.0f;
     o->yaw = 0.0f;
     o->pitch = o->roll = 0.0f;
+    o->lod_mesh = 0;               /* M-LOD: nessun livello di dettaglio */
+    o->lod_dist = 0.0f;
     o->r = (unsigned char)g_scene_clampi(r);
     o->g = (unsigned char)g_scene_clampi(g);
     o->b = (unsigned char)g_scene_clampi(b);
@@ -800,7 +802,10 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
                              const gmb_3d_env_t* env)
 {
     const gmb_scene_obj_t* o = &g_scene.obj[oi];
-    if (o->ntri <= 0 || o->nvert <= 0) return GMB_3D_OK;
+    /* M-LOD: oltre la distanza dichiarata la GEOMETRIA viene da un altro oggetto,
+     * trasformata e tinta con questa: l'identità (PICK, id) resta quella di `o`. */
+    const gmb_scene_obj_t* g = &g_scene.obj[gmb_3d_lod_source(oi, g_scene_eye)];
+    if (g->ntri <= 0 || g->nvert <= 0) return GMB_3D_OK;
 
     float model[16], mvp[16];
     gmb_3d_m4_model_trs(model, o->x, o->y, o->z, o->yaw, o->pitch, o->roll);
@@ -809,9 +814,9 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
      * rasterizzatore. I suoi triangoli finiscono in CULLED esattamente come li avrebbe
      * contati il clip per triangolo, quindi DRAWN, PIXELS e l'hash del frame non
      * cambiano: si risparmia solo il lavoro di preparazione. */
-    if (gmb_3d_object_outside(planes, model, o->bmin, o->bmax))
+    if (gmb_3d_object_outside(planes, model, g->bmin, g->bmax))
     {
-        g_scene_stats.tris_culled += (unsigned long)o->ntri;
+        g_scene_stats.tris_culled += (unsigned long)g->ntri;
         return GMB_3D_OK;
     }
 
@@ -822,11 +827,11 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
      * un cubo dà 6 run: il batching sotto resta quello di prima. */
     if (g_scene_lit)
     {
-        for (int t = 0; t < o->ntri; t++)
+        for (int t = 0; t < g->ntri; t++)
         {
-            const float* pa = g_scene.pos + (size_t)(o->first_vert + g_scene.idx[(size_t)(o->first_tri + t) * 3 + 0]) * 3;
-            const float* pb = g_scene.pos + (size_t)(o->first_vert + g_scene.idx[(size_t)(o->first_tri + t) * 3 + 1]) * 3;
-            const float* pc = g_scene.pos + (size_t)(o->first_vert + g_scene.idx[(size_t)(o->first_tri + t) * 3 + 2]) * 3;
+            const float* pa = g_scene.pos + (size_t)(g->first_vert + g_scene.idx[(size_t)(g->first_tri + t) * 3 + 0]) * 3;
+            const float* pb = g_scene.pos + (size_t)(g->first_vert + g_scene.idx[(size_t)(g->first_tri + t) * 3 + 1]) * 3;
+            const float* pc = g_scene.pos + (size_t)(g->first_vert + g_scene.idx[(size_t)(g->first_tri + t) * 3 + 2]) * 3;
             double ax = (double)model[0] * pa[0] + (double)model[4] * pa[1] + (double)model[8]  * pa[2] + (double)model[12];
             double ay = (double)model[1] * pa[0] + (double)model[5] * pa[1] + (double)model[9]  * pa[2] + (double)model[13];
             double az = (double)model[2] * pa[0] + (double)model[6] * pa[1] + (double)model[10] * pa[2] + (double)model[14];
@@ -860,17 +865,17 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
     }
 
     gmb_3d_mesh_t m;
-    m.pos = g_scene.pos + (size_t)o->first_vert * 3;
-    m.uv = g_scene.uv + (size_t)o->first_vert * 2;
-    m.nv = o->nvert;
+    m.pos = g_scene.pos + (size_t)g->first_vert * 3;
+    m.uv = g_scene.uv + (size_t)g->first_vert * 2;
+    m.nv = g->nvert;
     /* Normali: dichiarate nello spazio dell'oggetto, quindi girano con lui. Il
      * modello e' traslazione + rotazione su y, quindi basta la sua 3x3 (niente
      * traslazione, niente scala); la normalizzazione la fa il nucleo della luce. */
-    if (o->has_nrm)
+    if (g->has_nrm)
     {
-        const float* src = g_scene.nrm + (size_t)o->first_vert * 3;
-        float* dst = g_scene.nrm_w + (size_t)o->first_vert * 3;
-        for (int i = 0; i < o->nvert; i++)
+        const float* src = g_scene.nrm + (size_t)g->first_vert * 3;
+        float* dst = g_scene.nrm_w + (size_t)g->first_vert * 3;
+        for (int i = 0; i < g->nvert; i++)
         {
             float x = src[i * 3 + 0], y = src[i * 3 + 1], z = src[i * 3 + 2];
             dst[i * 3 + 0] = model[0] * x + model[4] * y + model[8]  * z;
@@ -909,14 +914,14 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
      * cambiano byte). */
     const unsigned char* lights = g_scene_lit ? g_scene.lit_tri : NULL;
     int start = 0;
-    while (start < o->ntri)
+    while (start < g->ntri)
     {
         unsigned char light = lights ? lights[start] : o->light;
         int n = 1;
-        while (start + n < o->ntri && (lights ? lights[start + n] : o->light) == light) n++;
+        while (start + n < g->ntri && (lights ? lights[start + n] : o->light) == light) n++;
 
         mat.light = light;
-        m.idx = g_scene.idx + (size_t)(o->first_tri + start) * 3;
+        m.idx = g_scene.idx + (size_t)(g->first_tri + start) * 3;
         m.nt = n;
 
         gmb_3d_draw_stats_t s;

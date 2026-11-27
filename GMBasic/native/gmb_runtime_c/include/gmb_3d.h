@@ -461,6 +461,17 @@ int64_t gmb_scene_key(int64_t o, double t, double x, double y, double z,
  * campionare le chiavi. Non avanza da sé: lo muove il programma, così lo stesso
  * programma dà sempre gli stessi frame. RESET lo riporta a 0. */
 int64_t gmb_scene_time(double t);
+/* SCENE LOD o, dist, mesh — livello di dettaglio dell'oggetto `o` (1..nobj):
+ * quando la distanza fra l'occhio della camera e l'origine di `o` SUPERA `dist`
+ * unità mondo, RENDER disegna la geometria dell'oggetto `mesh` con la
+ * trasformazione (posizione, yaw, pitch, roll) e la tinta di `o`. La mesh
+ * sostitutiva è un oggetto come gli altri (continua a disegnarsi) e non
+ * riapplica il proprio LOD: un livello solo, quindi nessuna catena e nessun
+ * ciclo. È SOLO una scelta di disegno: PICK, AABB mondo, quote, raggi e
+ * collisione restano quelli della geometria dichiarata di `o` (M-LOD-VIS).
+ * L'ultima dichiarazione vince. E_ARG = oggetto o mesh inesistente, distanza
+ * negativa o non finita. */
+int64_t gmb_scene_lod(int64_t o, double dist, int64_t mesh);
 int64_t gmb_scene_camera(double x, double y, double z,
                          double yaw_deg, double pitch_deg);
 /* SCENE LIGHT dx, dy, dz, livello: luce direzionale per faccia. (dx,dy,dz) punta VERSO

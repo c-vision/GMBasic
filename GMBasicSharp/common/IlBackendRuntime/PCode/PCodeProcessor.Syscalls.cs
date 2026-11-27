@@ -1024,6 +1024,15 @@ internal sealed partial class PCodeProcessor
             case SysCall.SCENE_TIME:
                 CommonLib.Scene3DNative.SceneTime(PopNum(task));
                 break;
+            // P5/M-LOD: livello di dettaglio (ordine di stack: mesh, dist, oggetto).
+            case SysCall.SCENE_LOD:
+            {
+                var mesh = (long)PopNum(task);
+                var dist = PopNum(task);
+                var o = (long)PopNum(task);
+                CommonLib.Scene3DNative.Lod(o, dist, mesh);
+                break;
+            }
             case SysCall.SCENE_FOG:
                 CommonLib.Scene3DNative.Fog(PopNum(task));
                 break;

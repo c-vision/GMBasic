@@ -2572,4 +2572,7 @@ public enum TokenKind
     // scena (`SCENE TIME t`) che RENDER usa per campionare le piste. In coda.
     SceneKey,
     SceneTime,
+    // P5/M-LOD — `SCENE LOD o, dist, mesh`: oltre `dist` l'oggetto `o` disegna la
+    // geometria dell'oggetto `mesh`, con la trasformazione e la tinta di `o`.
+    SceneLod,
   }

@@ -587,6 +587,9 @@ public enum SysCall : ushort
     // P5/M-KEY — keyframe TRS degli oggetti e tempo di scena. In coda (codici canonici).
     SCENE_KEY = 515,        // (o, t, x, y, z, yaw, pitch, roll)       → gmb_scene_key
     SCENE_TIME = 516,       // (t)                                     → gmb_scene_time
+    // P5/M-LOD — livello di dettaglio per oggetto: oltre `dist` si disegna la
+    // geometria dell'oggetto `mesh`. In coda (codici canonici).
+    SCENE_LOD = 517,        // (o, dist, mesh)                         → gmb_scene_lod
 }
 
 /// <summary>

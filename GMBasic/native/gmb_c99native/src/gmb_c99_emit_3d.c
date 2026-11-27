@@ -245,6 +245,14 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
         wscene(c, "gmb_scene_time", a, 1, s->line);
         return;
     }
+    if (tk == GMB_TOK_SceneLod)
+    {
+        /* M-LOD: oggetto, distanza in unità mondo e mesh sostitutiva. Indici e
+         * distanza li valida la facciata C (gmb_3d_lod.c): qui solo l'arità. */
+        if (n != 3) { c99_fail(c, s->line, "SCENE LOD o, dist, mesh"); return; }
+        wscene(c, "gmb_scene_lod", a, 3, s->line);
+        return;
+    }
     if (tk == GMB_TOK_SceneCamera)
     {
         if (n != 5) { c99_fail(c, s->line, "SCENE CAMERA x, y, z, yaw, pitch"); return; }

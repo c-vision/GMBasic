@@ -238,6 +238,24 @@ A/B `cc`+`zcc` su `gmb_3d_key.c`) e `shared/minitests/3d/scene_key.bas` con gli 
 su C99Native, IL, PCode e VM/C: posizione interpolata e clamp letti dal buffer di `PICK`, yaw e
 pitch a 90° che mettono il quad di taglio, roll che cambia il frame, `RESET` che azzera le piste.
 
+#### Livello di dettaglio: `SCENE LOD` (P5, M-LOD)
+
+| codice | regola | comportamento |
+|---|---|---|
+| `M-LOD` | `SCENE LOD o, dist, mesh` | dichiara il livello di dettaglio dell'oggetto `o` (`1..nobj`, ordine di dichiarazione come `SCENE.PICK`): quando la distanza fra l'**occhio** e l'**origine** di `o` supera `dist` (unità mondo, `>= 0`), `RENDER` disegna la geometria dell'oggetto `mesh` — stessa trasformazione (posizione, `yaw`, `pitch`, `roll`) e stessa tinta di `o`. Il comando non disegna: dice **quale** geometria disegnare |
+| `M-LOD-SWITCH` | la soglia | confronto **stretto** (`>`, non `>=`): alla distanza esatta vince ancora la geometria piena. `dist = 0` = sempre la mesh (l'occhio non sta nell'origine dell'oggetto) |
+| `M-LOD-MESH` | che cos'è `mesh` | un oggetto **come gli altri**: continua a disegnarsi per conto suo (di norma lo si tiene lontano o fuori dal frustum) e non riapplica il proprio LOD — **un livello solo**, quindi nessuna catena e nessun ciclo. `mesh = o` è un no-op dichiarato, non un errore |
+| `M-LOD-IDENTITY` | identità | la geometria sostituita mantiene l'identità di `o`: `SCENE.PICK` e il buffer di id restituiscono **`o`**, non `mesh`; la tinta è quella di `o` |
+| `M-LOD-VIS` | cosa **non** cambia | è solo una scelta di disegno: AABB mondo, `FLOORAT`/`CEILAT`, `SHOOT`/`USE`/`SEES` e collisione restano quelli della geometria **dichiarata** di `o`. Un cambio di dettaglio non sposta il mondo sotto i piedi del giocatore, e golden e raggi delle scene senza LOD non cambiano |
+| `M-LOD-RESET` | `RESET` e ri-dichiarazione | `SCENE RESET` azzera il LOD insieme alla geometria; l'ultima `SCENE LOD` su un oggetto vince (è un setter, non una pista) |
+| `M-LOD-ALLOC` | costo per frame | **zero allocazioni**: due campi nell'oggetto, letti dal frame (`P5-LOD` tiene `allocs` fermo) |
+
+Verifica: `gmb_3d_oracle --lodcheck` (**P5-LOD ok=35 fail=0**, dentro `check_3d_oracle.sh`, gate
+A/B `cc`+`zcc` su `gmb_3d_lod.c`) e `shared/minitests/3d/scene_lod.bas` con gli **stessi valori**
+su C99Native, IL, PCode e VM/C: soglia stretta, geometria sostitutiva visibile solo quando il LOD
+la disegna (le mesh stanno oltre il far plane), identità di `PICK`, un livello solo, raggi che
+restano quelli dichiarati, `RESET` che azzera il LOD.
+
 ### 3.3 Collisione, raggi, zone
 
 | ID | Comportamento |
@@ -246,6 +264,7 @@ pitch a 90° che mettono il quad di taglio, roll che cambia il frame, `RESET` ch
 | `M-COLLIDE` | Stessa semantica di `W-MOVE`, sul piano (x, z) e con `y` come altezza: scivola, sale gradini ≤ step, bloccato da soffitto basso. `MOVE avanti, destra` (unità del mondo), `TURN dyaw[, dpitch]` (gradi), `LIFT dy`. `HIT` è una maschera: **1** parete, **2** fermo (la richiesta non ha spostato nulla), **4** quota cambiata. |
 | `M-RAYS` | `SHOOT(range)` contro thing e oggetti (`SHOTKIND` 0/1 oggetto/2 thing, `SHOTOBJ`, `SHOTDIST`, `SHOTX/Y/Z`); `USE(reach)` l'oggetto davanti **qualunque siano i flag**; `SEES(n)` linea di vista del thing verso l'occhio. Passano solo i flag 8 (non 4) per vista/colpi. |
 | `M-KEY` | `KEY o, t, …` dichiara una chiave TRS e `TIME t` fissa il tempo di scena; `RENDER` campiona (lineare, clamp fuori intervallo, pitch/roll applicati, zero allocazioni per frame); `RESET` azzera piste e tempo. |
+| `M-LOD` | `LOD o, dist, mesh` oltre `dist` (stretto) disegna la geometria di `mesh` con trasformazione e tinta di `o`; un livello solo, identità di `o` in `PICK`, raggi e AABB quelli dichiarati, zero allocazioni; `RESET` azzera. |
 | `M-STATS` | `STATS(nome$)` = una misura per nome: `tris`/`objs`/`bytes` (geometria dichiarata e memoria riservata), `draw`/`culled`/`pixels` (ultimo `RENDER`), `renders`/`renders_max` (`RENDER` per frame), `allocs` (allocazioni dall'avvio). Chiave ignota `−1`; il tempo di un frame si misura fuori dal motore. |
 | `M-FLOOR` | `FLOORAT(x,y,z)` = **superficie più alta a o sotto `y`**, sul punto (x, z); `CEILAT` l'analogo sopra. `−1000000` = nessuna superficie. È ciò che permette di stare su un mobile senza una fisica generale. |
 | `M-ZONE` | `ZONE id,x1,y1,x2,y2,z1,z2[,tag]` (`y` = altezza): `ZONE(x,y,z)` = id della **prima** zona che contiene il punto (`y` entro `y1−2 … y2`, `x` in `x1…x2` e `z` in `z1…z2`, estremi inclusi), `−1` se nessuna; `ZONETAG(id)` = il tag (`""` se l'id non esiste). **L'ordine di creazione conta**: le zone dei piani superiori e dei mobili calpestabili vanno create **prima** di quelle sotto. Il renderer non usa le zone. |

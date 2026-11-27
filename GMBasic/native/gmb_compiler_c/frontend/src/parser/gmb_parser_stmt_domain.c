@@ -233,6 +233,8 @@ static int gmb_p_scene_verb_tk(const char* v)
         { "LIFT", GMB_TOK_SceneLift },
         /* P5/M-KEY: keyframe TRS e tempo di scena. */
         { "KEY", GMB_TOK_SceneKey }, { "TIME", GMB_TOK_SceneTime },
+        /* P5/M-LOD: livello di dettaglio per oggetto (o, dist, mesh). */
+        { "LOD", GMB_TOK_SceneLod },
     };
     for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
         if (strcasecmp(v, map[i].word) == 0) return (int)map[i].tk;

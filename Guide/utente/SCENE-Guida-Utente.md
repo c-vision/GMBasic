@@ -46,6 +46,7 @@ Il dominio segue la regola del linguaggio: **il comando scrive, la funzione legg
 | Comando | `SCENE PICK on\|off` | buffer di id per pixel per `SCENE.PICK` (additivo, default off) |
 | Comando | `SCENE KEY o, t, x, y, z, yaw, pitch, roll` | keyframe TRS dell'oggetto al tempo `t` (secondi) |
 | Comando | `SCENE TIME t` | tempo di scena: quello che `RENDER` usa per campionare le chiavi |
+| Comando | `SCENE LOD o, dist, mesh` | oltre `dist` l'oggetto `o` disegna la geometria dell'oggetto `mesh` |
 | Comando | `SCENE RENDER` | rasterizza la scena nel target |
 | Comando | `SCENE PRESENT` | copia il target 3D nella pagina 2D corrente |
 | Comando | `SCENE SAVE path$` | salva il frame corrente in PNG |
@@ -717,6 +718,41 @@ alloca: le piste crescono quando le dichiari, non mentre disegni.
 MiniTest: `shared/minitests/3d/scene_key.bas` (posizione e clamp letti dal buffer di `PICK`, yaw e
 pitch a 90° che mettono il quad di taglio, roll che cambia il frame). Oracolo:
 `gmb_3d_oracle --keycheck` (49 controlli headless, dentro `tools/sh/check_3d_oracle.sh`).
+
+### Livello di dettaglio: `SCENE LOD`
+
+Un oggetto lontano non ha bisogno di tutti i suoi triangoli. `SCENE LOD o, dist, mesh` dice:
+**oltre `dist`** unità di distanza dall'occhio, disegna la geometria dell'oggetto `mesh` al posto di
+quella di `o`, con la posizione, la rotazione e il colore di `o`.
+
+```
+SCENE OBJECT 255, 0, 0
+SCENE BOX -10, -10, -10, 10, 10, 10   ' oggetto 1: la versione dettagliata
+SCENE OBJPOS 0, 0, 60, 0
+SCENE OBJECT 120, 120, 120
+SCENE BOX -2, -2, -2, 2, 2, 2         ' oggetto 2: la versione povera
+SCENE OBJPOS 0, 0, 0, 0
+SCENE LOD 1, 80, 2                    ' oltre 80 unità, l'oggetto 1 usa la mesh 2
+```
+
+**La soglia è stretta**: alla distanza esatta vince ancora la geometria piena, la mesh entra solo
+**oltre**. Con `dist = 0` la mesh vale sempre (a meno che l'occhio non stia proprio nell'origine
+dell'oggetto). La distanza si misura fra l'**occhio** della camera e l'**origine** dell'oggetto.
+
+**Un livello solo.** La mesh è un oggetto come gli altri e continua a disegnarsi per conto suo: di
+solito la si tiene lontana o fuori dal frustum. Se anche lei ha un suo `SCENE LOD`, non lo applica
+quando fa da sostituta — niente catene e niente cicli. `SCENE LOD 1, 80, 1` (mesh uguale
+all'oggetto) non fa niente e non è un errore.
+
+**Identità e mondo non cambiano.** La geometria è quella della mesh, ma l'oggetto resta `o`:
+`SCENE.PICK` risponde `o`, il colore è di `o`, e **quote, raggi e collisione** continuano a usare la
+geometria dichiarata di `o` (il LOD è una scelta di disegno, non un cambio di collisione). Così un
+cambio di dettaglio non sposta il pavimento sotto i piedi e le golden non cambiano. L'ultima
+`SCENE LOD` su un oggetto vince; `SCENE RESET` la cancella con il resto della scena.
+
+MiniTest: `shared/minitests/3d/scene_lod.bas` (soglia, identità di `PICK`, copertura dello schermo,
+un livello solo, `SHOOT` che usa la geometria dichiarata, `RESET`). Oracolo:
+`gmb_3d_oracle --lodcheck` (35 controlli headless, dentro `tools/sh/check_3d_oracle.sh`).
 
 ### Statistiche per nome: `SCENE.STATS(nome$)`
 

@@ -1852,6 +1852,141 @@ static int run_p5_key(void)
     return fail == 0 ? 0 : 1;
 }
 
+static int run_p5_lod(void)
+{
+    int ok = 0, fail = 0;
+#define P5L_CHECK(cond, ...) do { if (cond) ok++; else { fail++; printf("P5-LOD fail: "); printf(__VA_ARGS__); printf("\n"); } } while (0)
+
+    /* Oggetto 1: due quad 10×20 affiancati a z=60 (quattro triangoli) — il pixel
+     * 16 è il centro, il 12 cade a ~+8,6 unità e sta nel quad di destra. Le
+     * geometrie sostitutive stanno a z=400, OLTRE il far plane (300): fuori dal
+     * frustum, invisibili per conto loro — l'unico modo di vederle è che il LOD
+     * le disegni al posto dell'oggetto 1. Conteggi distinti: 4 triangoli la
+     * piena, 2 la mesh, 4 quella della catena (per smascherare un secondo
+     * livello applicato). */
+#define P5L_SCENE() do { \
+        P5L_CHECK(gmb_scene_reset() == GMB_3D_OK, "RESET"); \
+        P5L_CHECK(gmb_scene_view(32, 32, 60.0) == GMB_3D_OK, "VIEW"); \
+        P5L_CHECK(gmb_scene_camera(0.0, 0.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "CAMERA"); \
+        P5L_CHECK(gmb_scene_pick_enable(1) == GMB_3D_OK, "PICK on"); \
+        P5L_CHECK(gmb_scene_object(255, 0, 0) == GMB_3D_OK \
+                  && gmb_scene_vertex(-10.0, -10.0, 0.0, 0.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(0.0, -10.0, 0.0, 0.5, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(0.0, 10.0, 0.0, 0.5, 0.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(-10.0, 10.0, 0.0, 0.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_quad(0, 3, 2, 1) == GMB_3D_OK \
+                  && gmb_scene_vertex(0.0, -10.0, 0.0, 0.5, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(10.0, -10.0, 0.0, 1.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(10.0, 10.0, 0.0, 1.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(0.0, 10.0, 0.0, 0.5, 0.0) == GMB_3D_OK \
+                  && gmb_scene_quad(4, 7, 6, 5) == GMB_3D_OK \
+                  && gmb_scene_objpos(0.0, 0.0, 60.0, 0.0) == GMB_3D_OK, "oggetto 1 (due quad a z=60)"); \
+        P5L_CHECK(gmb_scene_object(0, 255, 0) == GMB_3D_OK \
+                  && gmb_scene_vertex(-6.0, -6.0, 0.0, 0.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(6.0, -6.0, 0.0, 1.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(6.0, 6.0, 0.0, 1.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(-6.0, 6.0, 0.0, 0.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_quad(0, 3, 2, 1) == GMB_3D_OK \
+                  && gmb_scene_objpos(0.0, 0.0, 400.0, 0.0) == GMB_3D_OK, "oggetto 2 (quad piccolo)"); \
+        P5L_CHECK(gmb_scene_object(0, 0, 255) == GMB_3D_OK \
+                  && gmb_scene_vertex(-10.0, -10.0, 0.0, 0.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(10.0, -10.0, 0.0, 1.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(10.0, 10.0, 0.0, 1.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(-10.0, 10.0, 0.0, 0.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_quad(0, 3, 2, 1) == GMB_3D_OK \
+                  && gmb_scene_vertex(-6.0, -6.0, 0.0, 0.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(6.0, -6.0, 0.0, 1.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(6.0, 6.0, 0.0, 1.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(-6.0, 6.0, 0.0, 0.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_quad(4, 7, 6, 5) == GMB_3D_OK \
+                  && gmb_scene_objpos(0.0, 0.0, 400.0, 0.0) == GMB_3D_OK, "oggetto 3 (due quad)"); \
+    } while (0)
+
+    /* Argomenti: indici in 1..nobj, distanza >= 0 e finita. */
+    P5L_SCENE();
+    P5L_CHECK(gmb_scene_lod(0, 10.0, 2) == GMB_3D_E_ARG
+              && gmb_scene_lod(4, 10.0, 2) == GMB_3D_E_ARG,
+              "LOD su oggetto 0 o 4 (esistono 1..3) non rifiutato");
+    P5L_CHECK(gmb_scene_lod(1, 10.0, 0) == GMB_3D_E_ARG
+              && gmb_scene_lod(1, 10.0, 4) == GMB_3D_E_ARG,
+              "LOD con mesh 0 o 4 non rifiutato");
+    P5L_CHECK(gmb_scene_lod(1, -1.0, 2) == GMB_3D_E_ARG
+              && gmb_scene_lod(1, 2.0e9, 2) == GMB_3D_E_ARG,
+              "LOD con distanza negativa o fuori scala non rifiutato");
+    P5L_CHECK(gmb_3d_last_error()[0] != 0, "errore di LOD senza messaggio");
+
+    /* Senza LOD vale la geometria dichiarata: quattro triangoli, pixel 16 e 12
+     * coperti dall'oggetto 1. */
+    P5L_SCENE();
+    P5L_CHECK(gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_drawn() == 4 && gmb_scene_pick(16, 16) == 1
+              && gmb_scene_pick(12, 16) == 1,
+              "senza LOD: draw=%lld pick16=%lld pick12=%lld (attesi 4/1/1)",
+              (long long)gmb_scene_drawn(), (long long)gmb_scene_pick(16, 16),
+              (long long)gmb_scene_pick(12, 16));
+
+    /* Sotto la soglia (distanza 60 < 100) resta la geometria piena. */
+    P5L_CHECK(gmb_scene_lod(1, 100.0, 2) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK && gmb_scene_drawn() == 4,
+              "LOD sotto soglia: draw=%lld (atteso 4)", (long long)gmb_scene_drawn());
+    /* «Oltre» è stretto: alla distanza esatta (60) vince ancora la piena. */
+    P5L_CHECK(gmb_scene_lod(1, 60.0, 2) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK && gmb_scene_drawn() == 4,
+              "soglia esatta: draw=%lld (atteso 4)", (long long)gmb_scene_drawn());
+
+    /* Sopra la soglia si disegna la geometria della mesh, con l'identità di 1:
+     * due triangoli, il pixel 16 resta coperto dall'oggetto 1, il 12 no. */
+    P5L_CHECK(gmb_scene_lod(1, 30.0, 2) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_drawn() == 2 && gmb_scene_pick(16, 16) == 1
+              && gmb_scene_pick(12, 16) == 0,
+              "sopra soglia: draw=%lld pick16=%lld pick12=%lld (attesi 2/1/0)",
+              (long long)gmb_scene_drawn(), (long long)gmb_scene_pick(16, 16),
+              (long long)gmb_scene_pick(12, 16));
+    /* dist = 0: sempre la mesh (l'occhio non sta nell'origine dell'oggetto). */
+    P5L_CHECK(gmb_scene_lod(1, 0.0, 2) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK && gmb_scene_drawn() == 2,
+              "dist=0: draw=%lld (atteso 2)", (long long)gmb_scene_drawn());
+    /* mesh == o: nessuna sostituzione e nessun errore. */
+    P5L_CHECK(gmb_scene_lod(1, 100.0, 1) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK && gmb_scene_drawn() == 4,
+              "mesh == o: draw=%lld (atteso 4)", (long long)gmb_scene_drawn());
+
+    /* UN livello: la mesh 2 ha il suo LOD verso 3, ma quando fa da sostituta non
+     * lo applica — altrimenti si vedrebbero i due quad di 3 (quattro triangoli). */
+    P5L_CHECK(gmb_scene_lod(2, 0.0, 3) == GMB_3D_OK
+              && gmb_scene_lod(1, 0.0, 2) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK && gmb_scene_drawn() == 2,
+              "catena di LOD applicata: draw=%lld (atteso 2, un livello solo)",
+              (long long)gmb_scene_drawn());
+
+    /* I raggi usano la geometria DICHIARATA di 1: il quad è un piano a z=60. */
+    {
+        long long hit = (long long)gmb_scene_shoot(300.0);
+        double dist = gmb_scene_shotdist();
+        P5L_CHECK(hit == 1 && dist == 60.0,
+                  "SHOOT con LOD attivo: obj=%lld dist=%g (attesi 1/60)", hit, dist);
+    }
+
+    /* Zero allocazioni: il LOD sono due campi nell'oggetto, letti dal frame. */
+    {
+        unsigned long a0 = gmb_3d_alloc_count();
+        P5L_CHECK(gmb_scene_render() == GMB_3D_OK && gmb_3d_alloc_count() == a0,
+                  "RENDER con LOD ha allocato: %lu", gmb_3d_alloc_count() - a0);
+    }
+
+    /* RESET azzera anche il LOD: la stessa scena, senza SCENE LOD, torna piena. */
+    P5L_SCENE();
+    P5L_CHECK(gmb_scene_render() == GMB_3D_OK && gmb_scene_drawn() == 4,
+              "dopo RESET il LOD è rimasto attivo: draw=%lld (atteso 4)",
+              (long long)gmb_scene_drawn());
+
+#undef P5L_SCENE
+#undef P5L_CHECK
+    printf("P5-LOD ok=%d fail=%d\n", ok, fail);
+    return fail == 0 ? 0 : 1;
+}
+
 static int cmp_double(const void* a, const void* b)
 {
     double x = *(const double*)a, y = *(const double*)b;
@@ -1951,6 +2086,65 @@ static int p5_scene_bench(int n, int w, int h, int frames, int grid)
     return 0;
 }
 
+/* Banco della DICHIARAZIONE di chiavi (M-KEY, metodo §0septies): `--objects N`
+ * oggetti con `--keys K` chiavi ciascuno, dichiarate in ordine di oggetto e poi
+ * di tempo — il caso normale di una timeline. Il numero da guardare è il costo
+ * PER CHIAVE: se cresce con le chiavi già presenti, la dichiarazione è
+ * quadratica. La scena si ricostruisce a ogni giro FUORI dal cronometro: si
+ * misura solo il ciclo di SCENE KEY. Nessuna semantica nuova, solo misure. */
+static int p5_key_bench(int nobj, int nkeys, int rounds)
+{
+    if (nobj <= 0 || nobj > 4096 || nkeys <= 0 || nkeys > 32 || rounds < 1 || rounds > 100
+        || (long)nobj * nkeys > 65536)
+    {
+        printf("BENCH-KEY uso: --objects 1..4096, --keys 1..32 (objects*keys <= 65536), --rounds 1..100\n");
+        return 2;
+    }
+    double* ms = (double*)malloc((size_t)rounds * sizeof(double));
+    if (ms == NULL) return 2;
+
+    for (int r = 0; r < rounds; r++)
+    {
+        /* Scena e oggetti fuori dal cronometro: RESET azzera anche le piste. */
+        if (gmb_scene_reset() != GMB_3D_OK || gmb_scene_view(320, 180, 60.0) != GMB_3D_OK)
+        { free(ms); printf("BENCH-KEY scena: %s\n", gmb_3d_last_error()); return 2; }
+        for (int i = 0; i < nobj; i++)
+        {
+            double x = ((double)(i % 25) - 12.0) * 1.2;
+            double y = ((double)(i / 25) - 4.0) * 1.2;
+            if (gmb_scene_object(180, 190, 210) != GMB_3D_OK
+                || gmb_scene_box(-0.45, -0.45, -0.45, 0.45, 0.45, 0.45) != GMB_3D_OK
+                || gmb_scene_objpos(x, y, 4.0, 0.0) != GMB_3D_OK)
+            { free(ms); printf("BENCH-KEY scena: %s\n", gmb_3d_last_error()); return 2; }
+        }
+
+        struct timespec a, b;
+        clock_gettime(CLOCK_MONOTONIC, &a);
+        for (int i = 0; i < nobj; i++)
+        {
+            for (int k = 0; k < nkeys; k++)
+            {
+                if (gmb_scene_key(i + 1, (double)k * 0.1, 0.0, 1.0, 0.0, 5.0, 0.0, 0.0) != GMB_3D_OK)
+                { free(ms); printf("BENCH-KEY chiave: %s\n", gmb_3d_last_error()); return 2; }
+            }
+        }
+        clock_gettime(CLOCK_MONOTONIC, &b);
+        ms[r] = (double)(b.tv_sec - a.tv_sec) * 1000.0 + (double)(b.tv_nsec - a.tv_nsec) / 1e6;
+    }
+
+    double sum = 0.0;
+    for (int r = 0; r < rounds; r++) sum += ms[r];
+    qsort(ms, (size_t)rounds, sizeof(double), cmp_double);
+    double med = ms[rounds / 2];
+    double keys = (double)nobj * (double)nkeys;
+    printf("BENCH-KEY objects=%d keys=%d total=%.0f rounds=%d min=%.3f med=%.3f mean=%.3f "
+           "us_per_key=%.4f\n",
+           nobj, nkeys, keys, rounds, ms[0], med, sum / (double)rounds,
+           med * 1000.0 / keys);
+    free(ms);
+    return 0;
+}
+
 /* --- main ---------------------------------------------------------------- */
 
 static void usage(void)
@@ -1964,7 +2158,9 @@ static void usage(void)
            "     gmb_3d_oracle --raycheck\n"
            "     gmb_3d_oracle --statscheck\n"
            "     gmb_3d_oracle --keycheck\n"
+           "     gmb_3d_oracle --lodcheck\n"
            "     gmb_3d_oracle --bench-scene [--objects N | --tris N] [--size WxH] [--frames N]\n"
+           "     gmb_3d_oracle --bench-key [--objects N] [--keys K] [--rounds R]\n"
            "  DIR   = cartella delle golden (<scena>.<rid>.png)\n"
            "  --demo MAPPA = mappa demo (.gmbscene): scena `demo`, T-* e bench\n"
            "  --bench = frame time della demo a 640x300 (limite 4 ms)\n"
@@ -1973,8 +2169,10 @@ static void usage(void)
            "  --raycheck = SHOOT/USE/SEES e stato dell'ultimo colpo (P5, M-RAYS)\n"
            "  --statscheck = SCENE.STATS: contatori del frame e memoria riservata (P5)\n"
            "  --keycheck = SCENE KEY/TIME: piste TRS, clamp, tetto, pitch/roll (P5, M-KEY)\n"
+           "  --lodcheck = SCENE LOD: soglie, mesh sostitutiva, identità, raggi (P5, M-LOD)\n"
            "  --bench-scene = N oggetti (default 500) a --size (default 640x360)\n"
-           "  --tris N = N triangoli dichiarati (12 per box) in griglia frontale\n");
+           "  --tris N = N triangoli dichiarati (12 per box) in griglia frontale\n"
+           "  --bench-key = tempo di dichiarazione di N oggetti x K chiavi (--keys, default 32)\n");
 }
 
 int main(int argc, char** argv)
@@ -1985,7 +2183,8 @@ int main(int argc, char** argv)
     const char* demo = NULL;
     double tol = 0.0;
     int bench = 0, frames = 120;
-    int cullcheck = 0, interactcheck = 0, raycheck = 0, statscheck = 0, keycheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
+    int cullcheck = 0, interactcheck = 0, raycheck = 0, statscheck = 0, keycheck = 0, lodcheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
+    int bench_key = 0, keys = 32, rounds = 5;
     int tris_target = 0;   /* --tris N: 0 = griglia storica a oggetti */
 
     for (int i = 1; i < argc; i++)
@@ -2010,7 +2209,11 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "--raycheck")) raycheck = 1;
         else if (!strcmp(argv[i], "--statscheck")) statscheck = 1;
         else if (!strcmp(argv[i], "--keycheck")) keycheck = 1;
+        else if (!strcmp(argv[i], "--lodcheck")) lodcheck = 1;
         else if (!strcmp(argv[i], "--bench-scene")) bench_scene = 1;
+        else if (!strcmp(argv[i], "--bench-key")) bench_key = 1;
+        else if (!strcmp(argv[i], "--keys") && i + 1 < argc) keys = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--rounds") && i + 1 < argc) rounds = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--objects") && i + 1 < argc) objects = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--tris") && i + 1 < argc) tris_target = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--size") && i + 1 < argc)
@@ -2027,6 +2230,8 @@ int main(int argc, char** argv)
     if (raycheck) return run_p5_rays();
     if (statscheck) return run_p5_stats();
     if (keycheck) return run_p5_key();
+    if (lodcheck) return run_p5_lod();
+    if (bench_key) return p5_key_bench(objects, keys, rounds);
     if (bench_scene)
     {
         /* --tris N: 12 triangoli per box, griglia quadrata (vedi p5_scene_bench). */
