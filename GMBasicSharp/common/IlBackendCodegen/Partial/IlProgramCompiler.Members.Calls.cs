@@ -255,6 +255,28 @@ public sealed partial class IlProgramCompiler
         var isDynamicMethodCallOnVar = expr.Base is FieldAccessExpr faeDyn
             && faeDyn.Structure is VariableExpr ivDyn
             && NormalizeInferredType(InferType(ivDyn)) is AnyType;
+        // `coll.Membro()` con ZERO argomenti arriva come IndexedAccessExpr(Base=FieldAccess,
+        // Indices vuoto): es. `t.First()` su TREE/AVL/... → dispatch runtime
+        // CollectionInvoke(instance, "First", []). Prima: "accesso a indice dinamico con 0
+        // indici non supportato".
+        if (expr.Indices.Length == 0 && expr.Base is FieldAccessExpr mzAcc && mzAcc.Structure is not null)
+        {
+            var mzType = NormalizeInferredType(InferType(mzAcc.Structure));
+            if (mzType is TreeType or AVLTreeType or RedBlackTreeType or BinaryIndexedTreeType
+                or TrieType or BPlusTreeType or GraphType or HashRingType or SparseSetType
+                or BinaryHeapType or BagType or CacheType or TimelineType or RingBufferType)
+            {
+                EmitExpression(mzAcc.Structure);
+                var mzClr = DataTypeMapper.Map(mzType, _types, _classTypes);
+                if (mzClr.IsValueType) _il.Emit(OpCodes.Box, mzClr);
+                _il.Emit(OpCodes.Ldstr, mzAcc.Field.Lexeme);
+                _il.Emit(OpCodes.Ldc_I4_0);
+                _il.Emit(OpCodes.Newarr, _types.Object);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.CollectionInvoke), typeof(object), typeof(string), typeof(object[])));
+                return;
+            }
+        }
+
         if (!isDynamicMethodCallOnVar
             && NormalizeInferredType(InferType(expr.Base)) is Basic.JsonType or AnyType
             or HttpRequestType or HttpResponseType)

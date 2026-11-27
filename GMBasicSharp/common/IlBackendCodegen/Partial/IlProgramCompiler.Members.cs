@@ -23,6 +23,27 @@ public sealed partial class IlProgramCompiler
 
     private bool TryEmitNativeCollectionFieldAccess(FieldAccessExpr expr)
     {
+        // Strutture AVANZATE (Tree/AVL/RedBlack/BIT/BPlus/Heap/Bag/Cache/Timeline/...):
+        // First/Last come FIELD (il parser normalizza `t.First()` in FieldAccess CollFirst) →
+        // dispatch runtime. Mappe → [chiave,valore], sequenze → elemento di testa/coda
+        // (canone VM/C/C99). Prima: "campo/proprietà 'First' non risolvibile".
+        var faName = expr.Field.Lexeme ?? "";
+        bool faIsFirst = faName.Equals("First", StringComparison.OrdinalIgnoreCase);
+        bool faIsLast = faName.Equals("Last", StringComparison.OrdinalIgnoreCase);
+        if (faIsFirst || faIsLast)
+        {
+            var faAdv = NormalizeInferredType(InferType(expr.Structure));
+            if (faAdv is TreeType or AVLTreeType or RedBlackTreeType or BinaryIndexedTreeType
+                or TrieType or BPlusTreeType or GraphType or HashRingType or SparseSetType
+                or BinaryHeapType or BagType or CacheType or TimelineType or RingBufferType)
+            {
+                EmitExpression(expr.Structure);
+                var faClr = DataTypeMapper.Map(faAdv, _types, _classTypes);
+                if (faClr.IsValueType) _il.Emit(OpCodes.Box, faClr);
+                _il.Emit(OpCodes.Call, RuntimeMethod(faIsLast ? nameof(IlRuntime.CollectionLast) : nameof(IlRuntime.CollectionFirst), typeof(object)));
+                return true;
+            }
+        }
         if (!TryGetNativeCollectionType(InferType(expr.Structure), out var collectionType)) return false;
 
         // dict.Keys / dict.Values (senza parentesi): Dictionary.Keys/Values → array via
@@ -44,6 +65,20 @@ public sealed partial class IlProgramCompiler
             EmitExpression(expr.Structure);
             _il.Emit(OpCodes.Callvirt, propGetter);
             _il.Emit(OpCodes.Call, EnumerableToArrayMethod.MakeGenericMethod(elemClr));
+            return true;
+        }
+
+        if (CollMembers.Is(expr.Field, TokenKind.CollFirst) ||
+            CollMembers.Is(expr.Field, TokenKind.CollLast))
+        {
+            /* First/Last come FIELD (senza parentesi o con `()` normalizzato dal parser):
+             * dispatch runtime. Mappe → [chiave,valore], sequenze → elemento di testa/coda
+             * (canone VM/C/C99). Prima: "campo/proprietà 'First' non risolvibile". */
+            bool last = CollMembers.Is(expr.Field, TokenKind.CollLast);
+            EmitExpression(expr.Structure);
+            var collClrF = DataTypeMapper.Map(NormalizeInferredType(InferType(expr.Structure)), _types, _classTypes);
+            if (collClrF.IsValueType) _il.Emit(OpCodes.Box, collClrF);
+            _il.Emit(OpCodes.Call, RuntimeMethod(last ? nameof(IlRuntime.CollectionLast) : nameof(IlRuntime.CollectionFirst), typeof(object)));
             return true;
         }
 

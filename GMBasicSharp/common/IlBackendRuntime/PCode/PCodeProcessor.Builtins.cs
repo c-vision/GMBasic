@@ -1979,6 +1979,13 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
                     return Basic.IlBackend.IlRuntime.Min(vals);
                 }
         },
+        /* COLLFIRST/COLLLAST (token canonici First/Last delle collezioni): mappe →
+         * [chiave,valore], sequenze → elemento; stessa implementazione di IL/VM/C/C99.
+         * Prima non c'era handler → null su PCode. */
+        [BuiltInFunction.COLLFIRST] = (task, args) =>
+            args.Length > 0 ? Basic.IlBackend.IlRuntime.CollectionFirst(args[0]) : null,
+        [BuiltInFunction.COLLLAST] = (task, args) =>
+            args.Length > 0 ? Basic.IlBackend.IlRuntime.CollectionLast(args[0]) : null,
         [BuiltInFunction.MAX] = (task, args) =>
         {
                 // Runtime comune (IlRuntime): appiattisce array/valori multipli — unica impl.
@@ -2450,6 +2457,10 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         {
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.
                 if (args.Length >= 1 && args[0] is System.Collections.IList fl && fl.Count > 0) return Basic.IlBackend.IlRuntime.First(fl);
+                /* FIRST(<mappa>) (Tree/AVL/RedBlack/BPlus/Cache) = [chiave,valore]: prima
+                 * solo IList → null (il compilatore emette FIRST(t), non COLLFIRST). */
+                if (args.Length >= 1 && args[0] is System.Collections.IDictionary or CommonLib.Collections.IKeyValueIndexable)
+                    return Basic.IlBackend.IlRuntime.CollectionFirst(args[0]);
                 return null;
         },
         [BuiltInFunction.CLEAR] = (task, args) =>
@@ -2468,6 +2479,9 @@ if (args.Length >= 3) { var file = args[0]?.ToString() ?? ""; var section = args
         {
                 // Runtime comune (IlRuntime): stessa logica — unica implementazione.
                 if (args.Length >= 1 && args[0] is System.Collections.IList lst && lst.Count > 0) return Basic.IlBackend.IlRuntime.Last(lst);
+                /* LAST(<mappa>) = [chiave,valore] (canone IL/VM-C/C99). */
+                if (args.Length >= 1 && args[0] is System.Collections.IDictionary or CommonLib.Collections.IKeyValueIndexable)
+                    return Basic.IlBackend.IlRuntime.CollectionLast(args[0]);
                 return null;
         },
         [BuiltInFunction.INDEXOF] = (task, args) =>

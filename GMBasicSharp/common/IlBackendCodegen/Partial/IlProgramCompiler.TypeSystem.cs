@@ -1016,10 +1016,19 @@ private bool TryInferNativeCollectionIndexType(IndexedAccessExpr expr, out DataT
         // "impossibile risolvere il campo/proprietà 'Count'".
         if (NormalizeInferredType(InferType(fa.Structure)) is HyperLogLogType)
             return new DoubleType();
+        // First/Last su collezioni AVANZATE (Tree/AVL/RedBlack/BIT/BPlus/Heap/Bag/Cache/
+        // Timeline/RingBuffer/...): FIELD normalizzato dal parser (CollFirst/CollLast) → il
+        // valore è dinamico (mappa: [chiave,valore]; sequenza: elemento). Senza, la
+        // risoluzione del campo lanciava "impossibile risolvere il campo/proprietà 'First'".
+        if (NormalizeInferredType(InferType(fa.Structure)) is TreeType or AVLTreeType or RedBlackTreeType
+                or BinaryIndexedTreeType or TrieType or BPlusTreeType or GraphType or HashRingType
+                or SparseSetType or BinaryHeapType or BagType or CacheType or TimelineType or RingBufferType
+            && ((fa.Field.Lexeme ?? "").Equals("First", StringComparison.OrdinalIgnoreCase)
+                || (fa.Field.Lexeme ?? "").Equals("Last", StringComparison.OrdinalIgnoreCase)))
+            return new AnyType();
         // Campo su oggetto DINAMICO (AnyType/Http/WebSocket...): il valore resta object —
         // i metodi (Remove/Add/First) passano dal dispatch runtime CollectionInvoke.
-        if (NormalizeInferredType(InferType(fa.Structure)) is AnyType or HttpRequestType or HttpResponseType
-            or HttpOptionsType or HttpHeadersType or HttpConfigType or HttpPostedDataType
+        if (NormalizeInferredType(InferType(fa.Structure)) is AnyType or HttpRequestType or HttpResponseType            or HttpOptionsType or HttpHeadersType or HttpConfigType or HttpPostedDataType
             or SqlResultSetType or WebSocketType or PortfolioResultType or FetchResultType
             or RebalanceStrategyType or BacktestResultType
             or AnovaResultType or RegressionResultType or PcaResultType or KMeansResultType

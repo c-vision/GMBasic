@@ -661,6 +661,10 @@ internal sealed partial class PCodeProcessor
                     keys[i] = task.Sp > 0 ? task.PopRef() : null;
                 var arr = task.Sp > 0 ? task.PopRef() : null;
                 if (arr is RefToVar rvL) arr = rvL.Array[rvL.Index];
+                /* ZERO indici (`t.First()` normalizzato dal parser in IndexedAccess con
+                 * indici vuoti): il valore è la BASE stessa (il risultato del LOAD_FIELD),
+                 * non null. Prima il ramo finale scartava la coppia e PRINT dava null. */
+                if (numIndices == 0) { task.PushRef(arr); return true; }
                 // Stage C: valore matrice = descrittore CommonLib.MatrixValue (risultati
                 // MATRIX.*). Due indici → elemento (Get, 0 fuori range come il runtime IL);
                 // un indice su una matrice → RIGA come double[] (FOR EACH).

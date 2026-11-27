@@ -192,6 +192,7 @@ public sealed partial class StdLib
         {
             { "Add", voidType }, { "Clear", voidType },
             { "Min", new KeyValuePairType(inferred, inferred) }, { "Max", new KeyValuePairType(inferred, inferred) },
+            { "First", new KeyValuePairType(inferred, inferred) }, { "Last", new KeyValuePairType(inferred, inferred) },
             { "ExtractMin", new KeyValuePairType(inferred, inferred) },
             { "ExtractMax", new KeyValuePairType(inferred, inferred) },
             { "Get", inferred },
@@ -274,6 +275,8 @@ public sealed partial class StdLib
         var cacheMethods = new Dictionary<string, DataType>(keyValueCollectionMethods, StringComparer.OrdinalIgnoreCase)
         {
             { "Set", voidType }, { "Clear", voidType },
+            { "Min", new KeyValuePairType(inferred, inferred) }, { "Max", new KeyValuePairType(inferred, inferred) },
+            { "First", new KeyValuePairType(inferred, inferred) }, { "Last", new KeyValuePairType(inferred, inferred) },
             { "Get", inferred }, { "TryGetValue", bitType }, { "TryGet", bitType }, { "Remove", bitType }, { "ContainsKey", bitType }
         };
         RegisterTypeSchema(typeof(CacheType),

@@ -1794,6 +1794,27 @@ gmb_val_t gmb_coll_kv_entry_max(int64_t h)
     return kv_entry_val(c, c->tail->key, c->tail->v);
 }
 
+/* CACHE (16): prima/ultima voce in ordine CANONICO di chiave (lo storage è hash, quindi
+ * va ordinato come Keys/JSON). Coppia [chiave, valore] come Min/Max delle mappe. */
+gmb_val_t gmb_coll_cache_entry(int64_t h, int last)
+{
+    int n = 0;
+    char** ks = gmb_coll_cache_keys(h, &n);
+    gmb_val_t out = gmb_val_nil();
+    if (ks && n > 0)
+    {
+        int idx = last ? n - 1 : 0;
+        gmb_list_t l = gmb_list_new();
+        gmb_list_add(&l, gmb_make_val_string(ks[idx] ? ks[idx] : ""));
+        gmb_list_add(&l, gmb_coll_cache_get(h, ks[idx] ? ks[idx] : ""));
+        out = gmb_make_val_list(l);
+        gmb_list_free(&l);
+    }
+    for (int i = 0; ks && i < n; i++) free(ks[i]);
+    free(ks);
+    return out;
+}
+
 gmb_val_t gmb_coll_kv_entry_extract_min(int64_t h)
 {
     gmb_collection_t* c = coll_get(h);

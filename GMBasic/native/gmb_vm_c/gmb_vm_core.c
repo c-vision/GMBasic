@@ -11703,6 +11703,16 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                 }
                 gmb_stack_entry_t arrE = task->sp > 0 ? gmb_task_pop(task) : (gmb_stack_entry_t){0};
                 gmb_obj_t* arrO = arrE.ref;
+                /* ZERO indici (`t.First()` normalizzato in FieldAccess + indici vuoti):
+                 * il valore è la BASE (risultato del LOAD_FIELD), non nil. Prima il ramo
+                 * finale scartava la coppia [chiave,valore] e il PRINT dava null. */
+                if (numIndices == 0)
+                {
+                    if (arrE.type == 2 && arrE.ref) push_ref_entry(task, arrE.ref, arrE.basic_type);
+                    else if (arrE.type == 1) push_num_entry(task, arrE.num, arrE.basic_type);
+                    else push_nil(task);
+                    break;
+                }
                 if (arrO && arrO->kind == GMB_OBJ_LIST && ((gmb_obj_shared_val_t*)arrO)->list && numIndices >= 1)
                 {
                     /* Indice SINGOLO su matrice 2D+ (ndims>=2): ritorna la RIGA come lista
@@ -13196,6 +13206,35 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                         else if (tc == 14 || tc == 27) r = gmb_coll_heap_peek(ch);
                         else r = gmb_coll_peek(ch);
                         push_val_entry(task, r);
+                        gmb_obj_release(objE.ref);
+                        break;
+                    }
+                    else if (strcasecmp(fieldName, "First") == 0 || strcasecmp(fieldName, "Last") == 0)
+                    {
+                        /* First/Last come PROPRIETÀ su collezioni a handle: mappe →
+                         * [chiave,valore] (canone IL/PCode/C99), Timeline → {Key,Value},
+                         * sequenze → elemento di testa/coda. Prima push_nil. */
+                        int tc = col->type_code;
+                        int back = strcasecmp(fieldName, "Last") == 0;
+                        if (tc == 18)
+                        {
+                            gmb_val_t k = back ? gmb_coll_kv_max_key(ch) : gmb_coll_kv_min_key(ch);
+                            gmb_val_t val = back ? gmb_coll_kv_max_value(ch) : gmb_coll_kv_min_value(ch);
+                            gmb_obj_shared_val_t* pair = gmb_shared_dict_new();
+                            if (pair)
+                            {
+                                gmb_dict_set(pair->dict, "Key", k);
+                                gmb_dict_set(pair->dict, "Value", val);
+                                push_ref_new(task, (gmb_obj_t*)pair, GMB_BT_OBJECT);
+                            }
+                            else push_nil(task);
+                        }
+                        else if (tc == 16)
+                            push_val_entry(task, gmb_coll_cache_entry(ch, back));
+                        else if (tc == 6 || tc == 7 || tc == 8 || tc == 9 || tc == 26)
+                            push_val_entry(task, back ? gmb_coll_kv_entry_max(ch) : gmb_coll_kv_entry_min(ch));
+                        else
+                            push_val_entry(task, back ? gmb_coll_last(ch) : gmb_coll_first(ch));
                         gmb_obj_release(objE.ref);
                         break;
                     }
@@ -14855,6 +14894,12 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             }
                             else push_nil(task);
                         }
+                        else if (tc == 16)
+                            push_val_entry(task, gmb_coll_cache_entry(ch, 0));
+                        else if (isMap)
+                            /* Map.First() = coppia [chiave,valore] ≡ Min() (canone IL/PCode/C99);
+                             * prima usciva il solo VALORE. */
+                            push_val_entry(task, gmb_coll_kv_entry_min(ch));
                         else
                             push_val_entry(task, gmb_coll_first(ch));
                     }
@@ -14875,6 +14920,10 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             }
                             else push_nil(task);
                         }
+                        else if (tc == 16)
+                            push_val_entry(task, gmb_coll_cache_entry(ch, 1));
+                        else if (isMap)
+                            push_val_entry(task, gmb_coll_kv_entry_max(ch));
                         else
                             push_val_entry(task, gmb_coll_last(ch));
                     }

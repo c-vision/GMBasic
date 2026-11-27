@@ -2197,6 +2197,16 @@ internal sealed partial class PCodeProcessor
                         foreach (var vv in dict.Values) vl.Add(vv);
                         task.PushRef(vl); return true;
                     }
+                    if (string.Equals(fieldName, "First", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(fieldName, "Last", StringComparison.OrdinalIgnoreCase))
+                    {
+                        /* First/Last su mappa = [chiave,valore] (canone IL/VM-C/C99) —
+                         * prima l'accesso-proprietà dava null. */
+                        task.PushRef(string.Equals(fieldName, "First", StringComparison.OrdinalIgnoreCase)
+                            ? Basic.IlBackend.IlRuntime.CollectionFirst(dict)
+                            : Basic.IlBackend.IlRuntime.CollectionLast(dict));
+                        return true;
+                    }
                     var val = dict.Contains(fieldName ?? "") ? dict[fieldName ?? ""] : null;
                     if (val == null && dict.Contains("__class__") && dict["__class__"] is System.Collections.IDictionary cd &&
                         cd.Contains("PropertyGetters") && cd["PropertyGetters"] is System.Collections.IDictionary pgs)
@@ -2219,6 +2229,13 @@ internal sealed partial class PCodeProcessor
                     task.PushRef((double)list.Count);
                 else if (obj is System.Collections.ICollection col && fieldName == "Count")
                     task.PushRef((double)col.Count);
+                /* First/Last su mappe IKeyValueIndexable (RedBlack/BPlus/Cache): [chiave,valore]. */
+                else if (obj is CommonLib.Collections.IKeyValueIndexable kviField
+                         && (string.Equals(fieldName, "First", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(fieldName, "Last", StringComparison.OrdinalIgnoreCase)))
+                    task.PushRef(string.Equals(fieldName, "First", StringComparison.OrdinalIgnoreCase)
+                        ? Basic.IlBackend.IlRuntime.CollectionFirst(obj)
+                        : Basic.IlBackend.IlRuntime.CollectionLast(obj));
                 // Collection methods accessed as properties: Peek, Dequeue, Pop
                 else if (obj is System.Collections.Generic.Queue<object?> qq)
                 {
@@ -2744,6 +2761,14 @@ internal sealed partial class PCodeProcessor
                 {
                     if (PCodeFieldNameFromOffset(dict, offset) is string fieldName)
                     {
+                        if (string.Equals(fieldName, "First", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(fieldName, "Last", StringComparison.OrdinalIgnoreCase))
+                        {
+                            task.PushRef(string.Equals(fieldName, "First", StringComparison.OrdinalIgnoreCase)
+                                ? Basic.IlBackend.IlRuntime.CollectionFirst(dict)
+                                : Basic.IlBackend.IlRuntime.CollectionLast(dict));
+                            return true;
+                        }
                         // Check if this field has a property getter (higher priority than field access)
                         if (dict["__class__"] is System.Collections.IDictionary classDescG
                             && classDescG.Contains("PropertyGetters") && classDescG["PropertyGetters"] is System.Collections.IDictionary pgs
@@ -3525,14 +3550,24 @@ internal sealed partial class PCodeProcessor
                      task.PushRef(null); return true;
                  }
 
-                 // BPLUSTREE/RedBlackTree: Min/Max/Extract/Get via interfaccia non generica.
+                 // BPLUSTREE/RedBlackTree/Cache: Min/Max/Extract/Get/First/Last via interfaccia.
                  if (instance is CommonLib.Collections.IKeyValueIndexable kvi2 &&
-                     upName is "MIN" or "MAX" or "EXTRACTMAX" or "EXTRACTMIN" or "GET")
+                     upName is "MIN" or "MAX" or "EXTRACTMAX" or "EXTRACTMIN" or "GET" or "FIRST" or "LAST")
                  {
+                     if (upName is "FIRST" or "LAST")
+                     {
+                         /* First/Last = prima/ultima voce in ordine canonico di chiave
+                          * (Cache compresa, che non ha TryGetMin/Max). */
+                         task.PushRef(upName == "FIRST"
+                             ? Basic.IlBackend.IlRuntime.CollectionFirst(instance)
+                             : Basic.IlBackend.IlRuntime.CollectionLast(instance));
+                         return true;
+                     }
                      if (upName is "MIN" or "MAX" or "EXTRACTMIN" or "EXTRACTMAX")
                      {
                          object? mink = null, minv = null, maxk = null, maxv = null;
-                         var ok = upName is "MIN" or "EXTRACTMIN"
+                         bool minSide = upName is "MIN" or "EXTRACTMIN" or "FIRST";
+                         var ok = minSide
                              ? kvi2.TryGetMin(out mink, out minv)
                              : kvi2.TryGetMax(out maxk, out maxv);
                          if (ok)
@@ -3552,7 +3587,7 @@ internal sealed partial class PCodeProcessor
                                  var kvx = new System.Collections.Generic.List<object?> { upName == "EXTRACTMIN" ? mink : maxk, upName == "EXTRACTMIN" ? minv : maxv };
                                  task.PushRef(kvx); return true;
                              }
-                             var kv = new System.Collections.Generic.List<object?> { upName is "MIN" or "EXTRACTMIN" ? mink : maxk, upName is "MIN" or "EXTRACTMIN" ? minv : maxv };
+                             var kv = new System.Collections.Generic.List<object?> { minSide ? mink : maxk, minSide ? minv : maxv };
                              task.PushRef(kv); return true;
                          }
                          task.PushRef(null); return true;

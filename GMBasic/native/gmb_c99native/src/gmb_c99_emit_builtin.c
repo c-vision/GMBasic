@@ -1459,8 +1459,14 @@ int js_stringify(ctx_t* c, gmb_expr_t** a, int n) {   /* §0quater: usata anche 
                         return 1;
                     }
                     if (ck == 2 && (mk == GMB_TOK_Min || mk == GMB_TOK_Max
-                                    || mk == GMB_TOK_ExtractMin || mk == GMB_TOK_ExtractMax)) {
-                        int ismax = mk == GMB_TOK_Max || mk == GMB_TOK_ExtractMax;
+                                    || mk == GMB_TOK_ExtractMin || mk == GMB_TOK_ExtractMax
+                                    || ((mk == GMB_TOK_First || mk == GMB_TOK_Last)
+                                        && kv->coll_type_code != 18))) {
+                        /* First/Last su una mappa = PRIMA/ULTIMA coppia {Key,Value} in ordine
+                         * di chiave (≡ Min/Max; canone IL/PCode/VM-C). Senza, l'emissione del
+                         * membro produceva già il TESTO JSON e questo ramo lo ri-avvolgeva in
+                         * gmb_val_to_json(gmb_string_t) = C non compilabile. */
+                        int ismax = mk == GMB_TOK_Max || mk == GMB_TOK_ExtractMax || mk == GMB_TOK_Last;
                         int rmv = mk == GMB_TOK_ExtractMin || mk == GMB_TOK_ExtractMax;
                         sb_put(&c->out, "gmb_val_to_json(gmb_make_val_list(gmb_dict_extreme(&");
                         emit_ident(c, kv->name);

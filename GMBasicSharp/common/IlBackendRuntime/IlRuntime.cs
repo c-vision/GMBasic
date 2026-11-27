@@ -14392,9 +14392,50 @@ public static double TextWidth(string s)
     /// Convert.ToDateTime(double) lancia InvalidCast su .NET Core → FromOADate.</summary>
     public static DateTime FromOADate(double oa) => DateTime.FromOADate(oa);
 
-    /// <summary>Min()/Max() su una collection boxed (Tree/Bag/...) — minimo/massimo dei valori.</summary>
-    public static double CollectionMin(object? collection)
+    /// <summary>FIRST/LAST di una collection boxed (COLLFIRST/COLLLAST). Mappe → coppia
+    /// [chiave, valore] (canone VM/C/C99, ≡ Min/Max); sequenze → elemento di testa/coda;
+    /// vuota → null. Prima il token canonico CollFirst/CollLast non aveva handler IL/PCode.</summary>
+    public static object? CollectionFirst(object? collection) => CollectionFirstLast(collection, last: false);
+    public static object? CollectionLast(object? collection) => CollectionFirstLast(collection, last: true);
+    private static object? CollectionFirstLast(object? collection, bool last)
     {
+        if (collection is null) return null;
+        // Mappe con interfaccia non generica (Cache/BPlus/RedBlack): Entries() in ordine
+        // CANONICO di chiave (la Cache ha storage hash → ordine instabile senza sort).
+        if (collection is CommonLib.Collections.IKeyValueIndexable kvi)
+        {
+            object? k = null, v = null; bool any = false;
+            foreach (var kv in KviEntriesSorted(kvi))
+            {
+                k = kv.Key; v = kv.Value; any = true;
+                if (!last) break;
+            }
+            return any ? new object?[] { k, v } : null;
+        }
+        // DICT/TREE/AVL/SORTED/BAG (IDictionary): prima/ultima entry nell'ordine di
+        // enumerazione (per SortedDictionary è l'ordine di chiave, come Min/Max).
+        if (collection is System.Collections.IDictionary map)
+        {
+            object? k = null, v = null; bool any = false;
+            foreach (System.Collections.DictionaryEntry e in map)
+            {
+                k = e.Key; v = e.Value; any = true;
+                if (!last) break;
+            }
+            return any ? new object?[] { k, v } : null;
+        }
+        // Sequenze (LIST/QUEUE/STACK/HEAP/HASHSET/...): elemento di testa/coda.
+        if (collection is System.Collections.IEnumerable en)
+        {
+            object? first = null, lastItem = null; bool any = false;
+            foreach (var item in en) { if (!any) { first = item; any = true; } lastItem = item; }
+            return any ? (last ? lastItem : first) : null;
+        }
+        return null;
+    }
+
+    /// <summary>Min()/Max() su una collection boxed (Tree/Bag/...) — minimo/massimo dei valori.</summary>
+    public static double CollectionMin(object? collection)    {
         var vals = ToDoubleEnumerable(collection).ToList();
         return vals.Count > 0 ? vals.Min() : 0.0;
     }
@@ -15151,6 +15192,12 @@ public static double TextWidth(string s)
                 return TimelineEdge(instance!, last: false);
             case "LAST" when args.Length == 0 && IsTimelineInstance(instance):
                 return TimelineEdge(instance!, last: true);
+            /* FIRST/LAST su MAPPE (TREE/AVL/REDBLACK/BPLUS/CACHE/DICT/SORTED) e SEQUENZE
+             * (LIST/QUEUE/STACK/HEAP/...): canone [chiave, valore] per le mappe (≡ Min/Max,
+             * come VM/C/C99) e l'elemento per le sequenze. Prima COLLFIRST/COLLLAST non
+             * avevano handler IL/PCode (ILGEN: "campo/proprietà 'First'"; PCode: null). */
+            case "FIRST" or "LAST" when args.Length == 0:
+                return CollectionFirstLast(instance!, last: methodName.Equals("LAST", StringComparison.OrdinalIgnoreCase));
             case "GETRANGE" when args.Length == 2 && IsTimelineInstance(instance):
                 return TimelineRange(instance!, args[0], args[1]);
             /* TIMELINE.Keys(): lista dei SERIALI OADate delle chiavi — stessa forma

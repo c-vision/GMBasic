@@ -196,6 +196,7 @@ gmb_list_t gmb_collection_entries_to_list(gmb_val_t coll);  /* ToArray/ToList de
 gmb_list_t gmb_coll_kv_entries_to_list(int64_t h, int* is_kv);
 gmb_val_t gmb_coll_kv_entry_min(int64_t h);                 /* [chiave, valore] */
 gmb_val_t gmb_coll_kv_entry_max(int64_t h);
+gmb_val_t gmb_coll_cache_entry(int64_t h, int last);        /* Cache: [chiave,valore] in ordine chiave */
 gmb_val_t gmb_coll_kv_entry_extract_min(int64_t h);
 gmb_val_t gmb_coll_kv_entry_extract_max(int64_t h);
 gmb_int_t gmb_coll_bag_count_of(int64_t h, gmb_val_t v);
