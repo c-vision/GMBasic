@@ -306,4 +306,32 @@ public static class Scene3DNative
     // PICK(x, y): id dell'oggetto nel pixel dal buffer di SCENE PICK.
     [DllImport(Lib, EntryPoint = "gmb_scene_pick", CallingConvention = CallingConvention.Cdecl)]
     public static extern long Pick(long x, long y);
+
+    // ── P5/M-RAYS: raggi della scena (gmb_3d_ray.c) ──────────────────────────────────────
+    // SHOOT/USE/SEES agiscono e tornano un numero; SHOT* leggono l'ultimo colpo.
+    // SHOOT/USE tornano l'ID del colpo (−1 = niente), non un codice: `Check`
+    // qui non si usa, altrimenti il −1 diventerebbe un errore di superficie.
+    // Gli argomenti fuori scala restano errori e arrivano come eccezione C
+    // (stessa semantica della gamba C, dove il rc si controlla in `gmb_scene_checked`).
+    [DllImport(Lib, EntryPoint = "gmb_scene_shoot", CallingConvention = CallingConvention.Cdecl)]
+    public static extern long Shoot(double range);
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_use", CallingConvention = CallingConvention.Cdecl)]
+    public static extern long Use(double reach);
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_sees", CallingConvention = CallingConvention.Cdecl)]
+    public static extern long Sees(long thing);
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_shotkind", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double ShotKind();
+    [DllImport(Lib, EntryPoint = "gmb_scene_shotobj", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double ShotObj();
+    [DllImport(Lib, EntryPoint = "gmb_scene_shotdist", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double ShotDist();
+    [DllImport(Lib, EntryPoint = "gmb_scene_shotx", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double ShotX();
+    [DllImport(Lib, EntryPoint = "gmb_scene_shoty", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double ShotY();
+    [DllImport(Lib, EntryPoint = "gmb_scene_shotz", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double ShotZ();
 }

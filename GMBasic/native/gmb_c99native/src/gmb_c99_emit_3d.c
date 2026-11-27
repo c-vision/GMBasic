@@ -467,6 +467,32 @@ int emit_bf_scene(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
             emit_expr(c, args[0]);
             sb_put(&c->out, "))");
             return 1;
+        /* P5/M-RAYS: raggi. SHOOT(range) e USE(reach) prendono un double e
+         * tornano l'id; SEES(n) torna 1/0/−1; SHOT* leggono l'ultimo colpo. */
+        case GMB_TOK_SceneShoot:
+            if (nargs < 1) return 0;
+            sb_put(&c->out, "gmb_scene_shoot(");
+            emit_expr(c, args[0]);
+            sb_put(&c->out, ")");
+            return 1;
+        case GMB_TOK_SceneUse:
+            if (nargs < 1) return 0;
+            sb_put(&c->out, "gmb_scene_use(");
+            emit_expr(c, args[0]);
+            sb_put(&c->out, ")");
+            return 1;
+        case GMB_TOK_SceneSees:
+            if (nargs < 1) return 0;
+            sb_put(&c->out, "gmb_scene_sees(");
+            emit_expr(c, args[0]);
+            sb_put(&c->out, ")");
+            return 1;
+        case GMB_TOK_SceneShotKind: sb_put(&c->out, "gmb_scene_shotkind()"); return 1;
+        case GMB_TOK_SceneShotObj:  sb_put(&c->out, "gmb_scene_shotobj()");  return 1;
+        case GMB_TOK_SceneShotDist: sb_put(&c->out, "gmb_scene_shotdist()"); return 1;
+        case GMB_TOK_SceneShotX:    sb_put(&c->out, "gmb_scene_shotx()");    return 1;
+        case GMB_TOK_SceneShotY:    sb_put(&c->out, "gmb_scene_shoty()");    return 1;
+        case GMB_TOK_SceneShotZ:    sb_put(&c->out, "gmb_scene_shotz()");    return 1;
         default: return 0;
     }
 }

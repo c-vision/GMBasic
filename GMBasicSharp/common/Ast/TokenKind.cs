@@ -2553,4 +2553,16 @@ public enum TokenKind
     SceneHit,
     SceneFloorAt,   // SCENE.FLOORAT(x, y, z) / SCENE.CEILAT(x, y, z)
     SceneCeilAt,
+    // P5/M-RAYS — raggi della scena: SHOOT colpisce oggetti e thing, USE prende
+    // l'oggetto davanti qualunque sia il flag, SEES è la linea di vista del thing.
+    // Lo stato dell'ultimo colpo si legge con SHOTKIND/SHOTOBJ/SHOTDIST/SHOTX/Y/Z.
+    SceneShoot,
+    SceneShotKind,
+    SceneShotObj,
+    SceneShotDist,
+    SceneShotX,
+    SceneShotY,
+    SceneShotZ,
+    SceneUse,
+    SceneSees,
   }

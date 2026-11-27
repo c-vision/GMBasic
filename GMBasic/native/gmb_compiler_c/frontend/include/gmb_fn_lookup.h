@@ -1474,6 +1474,15 @@ static const gmb_fn_lookup_row_t gmb_fn_lookup[] = {
     { "SceneZ", GMB_TOK_SceneZ },
     { "SceneZone", GMB_TOK_SceneZone },
     { "SceneZoneTag", GMB_TOK_SceneZoneTag },
+    { "SceneShoot", GMB_TOK_SceneShoot },
+    { "SceneShotKind", GMB_TOK_SceneShotKind },
+    { "SceneShotObj", GMB_TOK_SceneShotObj },
+    { "SceneShotDist", GMB_TOK_SceneShotDist },
+    { "SceneShotX", GMB_TOK_SceneShotX },
+    { "SceneShotY", GMB_TOK_SceneShotY },
+    { "SceneShotZ", GMB_TOK_SceneShotZ },
+    { "SceneUse", GMB_TOK_SceneUse },
+    { "SceneSees", GMB_TOK_SceneSees },
     { "SceneDrawn", GMB_TOK_SceneDrawn },
     { "SceneHash", GMB_TOK_SceneHash },
     { "ScenePick", GMB_TOK_ScenePick },
@@ -1906,6 +1915,9 @@ static const gmb_fn_lookup_row_t gmb_fn_lookup[] = {
     { "LIFT", GMB_TOK_SceneLift },
     { "FLOORAT", GMB_TOK_SceneFloorAt },
     { "CEILAT", GMB_TOK_SceneCeilAt },
+    /* SHOOT/USE/SEES e SHOT* NON entrano nella tabella piatta: le stesse grafie
+     * sono anche di WORLD (W-SHOOT/W-USE/W-SEES) e USE è verbo del dominio DBF.
+     * Si risolvono qualificati da gmb_ns_lookup (SCENE.SHOOT). */
     { "VGet", GMB_TOK_VGet },
     { "VGET", GMB_TOK_VGet },
     { "VideoFrame", GMB_TOK_AiVideoFrame },

@@ -186,6 +186,9 @@ const gmb_3d_aabb_t* gmb_3d_scene_bounds_all(int* count)
         const gmb_scene_obj_t* o = &g_geom.obj[oi];
         if (o->nvert <= 0) continue;
         obj_aabb_world(o, &g_geom.bounds[n]);
+        /* Id come SCENE.PICK: gli oggetti sono 1..nobj nell'ordine di
+         * dichiarazione, quindi i raggi possono riportarli a BASIC (M-RAYS). */
+        g_geom.bounds[n].id = oi + 1;
         n++;
     }
     if (count) *count = n;

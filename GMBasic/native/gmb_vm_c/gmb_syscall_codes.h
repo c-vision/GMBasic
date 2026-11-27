@@ -497,7 +497,6 @@
 #define GMB_SC_SCENE_VERTEX_N 507
 #define GMB_SC_SCENE_AA 508
 #define GMB_SC_SCENE_PICK 509
-/* P5 — superficie interattiva SCENE (specifica §3.3). */
 #define GMB_SC_SCENE_ZONE 510
 #define GMB_SC_SCENE_PLAYER 511
 #define GMB_SC_SCENE_MOVE 512

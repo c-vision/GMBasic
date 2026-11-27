@@ -70,8 +70,26 @@ int  gmb_3d_object_outside(const float planes[6][4], const float* model,
  * qui (nessuna seconda copia). */
 typedef struct gmb_3d_aabb {
     float min[3], max[3];   /* y = altezza (convenzione SCENE) */
-    int   flags;            /* M-FLAGS: 4 = passabile */
+    int   flags;            /* M-FLAGS: 4 = passabile, 8 = see-through */
+    int   id;               /* id dell'oggetto (1..n), come SCENE.PICK: i raggi lo riportano */
 } gmb_3d_aabb_t;
+
+/* Thing della scena (M-THINGS): billboard verticale di base (x, y, z), largo w e
+ * alto h. Vive in gmb_3d_cmd.c; i raggi (gmb_3d_ray.c) lo leggono per SHOOT/SEES. */
+#define GMB_SCENE_MAX_THINGS 256
+
+typedef struct gmb_3d_scene_thing_rt {
+    int used;
+    float x, y, z, w, h;
+    unsigned char light;
+} gmb_3d_scene_thing_rt;
+
+/* Array dei thing (capacità GMB_SCENE_MAX_THINGS), sola lettura per i raggi. */
+const gmb_3d_scene_thing_rt* gmb_3d_scene_things(int* count);
+
+/* Raggi della superficie SCENE (gmb_3d_ray.c, P5/M-RAYS): azzera l'ultimo colpo.
+ * Chiamata da SCENE RESET. */
+void gmb_3d_ray_reset(void);
 
 /* --- buffer della scena a capacità dinamica (gmb_3d_scene_buf.c, P5) -------
  * Il primo blocco di P5 aveva tetti statici (32768 vertici, 16384 triangoli,

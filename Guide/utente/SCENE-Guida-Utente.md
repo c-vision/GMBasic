@@ -628,6 +628,44 @@ IF SCENE.ZONE(SCENE.X(), SCENE.Y(), SCENE.Z()) = 1 THEN
 END IF
 ```
 
+### Raggi: `SCENE.SHOOT(range)` · `SCENE.USE(reach)` · `SCENE.SEES(n)`
+
+Il colpo parte dall'**occhio** e va lungo la vista (yaw e pitch compresi).
+
+| Lettura | Risposta |
+|---|---|
+| `SCENE.SHOOT(range)` | `−1` = niente; altrimenti l'id di ciò che ha preso: **oggetto** (`1…n`, lo stesso id di `SCENE.PICK`) o **indice del thing** (`0…255`) |
+| `SCENE.SHOTKIND()` | `0` niente, `1` oggetto, `2` thing: dice come leggere il numero di `SHOOT` |
+| `SCENE.SHOTOBJ()` | l'id dell'oggetto colpito, `0` se il colpo non ha preso un oggetto (thing o niente) |
+| `SCENE.SHOTDIST()` | distanza del colpo, `−1` se non c'è stato |
+| `SCENE.SHOTX()` / `SHOTY()` / `SHOTZ()` | punto colpito, `−1000000` se non c'è stato |
+| `SCENE.USE(reach)` | id dell'oggetto davanti entro `reach`, **qualunque sia il flag**, `−1` se niente |
+| `SCENE.SEES(n)` | `1` = il thing `n` ha linea di vista verso l'occhio, `0` = non ce l'ha, `−1` = `n` non è un thing esistente |
+
+Le regole che contano:
+
+* **Flag 8 (see-through)** lascia passare colpi e vista; **flag 4 (passabile)** no: è solo
+  collisione, non trasparenza. `USE` invece ignora i flag — è il verbo per «prendere quello che
+  ho davanti», anche se è un vetro o una decorazione.
+* I colpi si fermano sugli **oggetti**; i **thing** sono cilindri verticali larghi `w` (raggio
+  `w/2`) alti `h`, con la base a `y`. `SEES` parte dal **70%** dell'altezza del thing.
+* `SHOOT` sovrascrive lo stato dell'ultimo colpo a ogni chiamata; `USE` non lo tocca.
+* Con la scena vuota o fuori gittata le sentinelle sono `−1`/`0`/`−1000000`: due «niente»
+  diversi non si confondono con un id vero.
+
+```
+IF SCENE.SHOOT(200) >= 0 THEN
+   IF SCENE.SHOTKIND() = 1 THEN PRINT "preso l'oggetto "; SCENE.SHOTOBJ()
+   IF SCENE.SHOTKIND() = 2 THEN PRINT "preso il thing " ; SCENE.SHOOT(200)
+   PRINT "a "; SCENE.SHOTDIST(); " passi"
+END IF
+IF SCENE.SEES(7) = 1 THEN PRINT "il thing 7 ti vede"
+```
+
+Disponibili su **C99Native, IL, PCode e VM/C** con gli stessi valori (MiniTest
+`shared/minitests/3d/scene_rays.bas`; il gate `tools/sh/check_3d_oracle.sh` verifica
+`SHOOT`/`USE`/`SEES` con 21 controlli headless).
+
 ---
 
 ## 4. Errori e diagnosi
@@ -754,7 +792,6 @@ superficie interattiva di P5). Mancano, e arriveranno con le fasi successive del
   `THING n, x, y, z, w, h`, con luce piena e la texture corrente;
 * le letture degli **oggetti** (`SCENE.OBJ*`) e `SCENE.STATS`; la camera e il corpo hanno già le
   loro (`SCENE.X/Y/Z/EYE/YAW/PITCH/HIT`);
-* i **raggi** (`SHOOT`, `USE`, `SEES`): interazione a distanza con oggetti e thing;
 * il present **a video** e il tetto dei frame: `SCENE PRESENT` porta il target nella pagina 2D
   (canvas o `SCREEN`), e la finestra la mostra il pump SDL al tick successivo; il controllo del
   frame rate resta fuori dal dominio.
@@ -763,6 +800,7 @@ MiniTest che bloccano i numeri: `shared/minitests/3d/scene_mesh.bas`,
 `scene_texture_file.bas`, `scene_light.bas`, `scene_material_flags.bas`, `scene_present.bas` per
 la P3, `scene_lamp_point_spot.bas`, `scene_fog.bas`, `scene_far.bas`, `scene_sky.bas`,
 `scene_colormap.bas`, `scene_thing.bas` per la P4, e `scene_move.bas` (corpo, `MOVE`/`TURN`/
-`LIFT`, `HIT`, letture camera) e `scene_zones.bas` (zone, tag, `FLOORAT`/`CEILAT`, passabile) per
+`LIFT`, `HIT`, letture camera), `scene_zones.bas` (zone, tag, `FLOORAT`/`CEILAT`, passabile) e
+`scene_rays.bas` (raggi, flag 8 contro flag 4, linea di vista) per
 la superficie interattiva — tutti con gli stessi valori su C99Native, IL, PCode e VM/C. Sample: `Samples3D/MeshBasics.bas`, `TextureFile.bas`, `LightFaces.bas`,
 `MaterialFlags.bas`, `PresentLoop.bas`.

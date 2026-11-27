@@ -948,6 +948,13 @@ public sealed partial class Compiler
         { TokenKind.SceneYaw, BuiltInFunction.SCENE_YAW }, { TokenKind.ScenePitch, BuiltInFunction.SCENE_PITCH },
         { TokenKind.SceneHit, BuiltInFunction.SCENE_HIT },
         { TokenKind.SceneFloorAt, BuiltInFunction.SCENE_FLOORAT }, { TokenKind.SceneCeilAt, BuiltInFunction.SCENE_CEILAT },
+        // P5/M-RAYS: raggi (SHOOT/USE/SEES) e stato dell'ultimo colpo.
+        { TokenKind.SceneShoot, BuiltInFunction.SCENE_SHOOT }, { TokenKind.SceneUse, BuiltInFunction.SCENE_USE },
+        { TokenKind.SceneSees, BuiltInFunction.SCENE_SEES },
+        { TokenKind.SceneShotKind, BuiltInFunction.SCENE_SHOTKIND }, { TokenKind.SceneShotObj, BuiltInFunction.SCENE_SHOTOBJ },
+        { TokenKind.SceneShotDist, BuiltInFunction.SCENE_SHOTDIST },
+        { TokenKind.SceneShotX, BuiltInFunction.SCENE_SHOTX }, { TokenKind.SceneShotY, BuiltInFunction.SCENE_SHOTY },
+        { TokenKind.SceneShotZ, BuiltInFunction.SCENE_SHOTZ },
         { TokenKind.ClockFps, BuiltInFunction.CLOCK_FPS }, { TokenKind.ClockScale, BuiltInFunction.CLOCK_SCALE },
         // FINANCE varianti (2026-08-06). YIELD riusa TokenKind.Yield (comando task YIELD e'
         // statement-only via ParseYieldStatement, nessun conflitto con la funzione qualificata).

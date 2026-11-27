@@ -4,10 +4,11 @@
 
 /* ==== GMB-STDLIB-AUDIT-BEGIN ====
  * FILE: Scene — namespace 'SCENE' (motore 3D, renderer mesh)
- * 19 funzioni | 1 comando | 0 tipi | 0 costanti
+ * 28 funzioni | 1 comando | 0 tipi | 0 costanti
  *
- * FUNZIONI (19): VERTS, TRIS, DRAWN, CULLED, PIXELS, HASH, PIXEL, PICK, X, Y, Z, EYE, YAW,
- *                PITCH, HIT, FLOORAT, CEILAT, ZONE, ZONETAG
+ * FUNZIONI (28): VERTS, TRIS, DRAWN, CULLED, PIXELS, HASH, PIXEL, PICK, X, Y, Z, EYE, YAW,
+ *                PITCH, HIT, FLOORAT, CEILAT, ZONE, ZONETAG, SHOOT, SHOTKIND, SHOTOBJ,
+ *                SHOTDIST, SHOTX, SHOTY, SHOTZ, USE, SEES
  * COMANDO (1): SCENE (RESET | VIEW | TEXTURE | OBJECT | VERTEX | QUAD | BOX | OBJPOS | CAMERA |
  *                    PLAYER | MOVE | TURN | LIFT | ZONE | LIGHT | LAMP | FOG | FAR | SKY |
  *                    COLORMAP | THING | SMOOTH | ALPHA | TWOSIDED | PICK | RENDER | PRESENT | SAVE)
@@ -129,7 +130,42 @@ public sealed partial class StdLib
                 [
                     new Parameter(-1, T(TokenKind.Identifier, "id"), new LongType(), noFlags, null, false)
                 ],
-                new StringType(), TokenKind.SceneZoneTag)
+                new StringType(), TokenKind.SceneZoneTag),
+
+            // ── P5: raggi (specifica §3.3, M-RAYS) ─────────────────────────────────
+            // SHOOT(range): colpisce oggetti (1) e thing (2); il flag 8 lascia
+            // passare il colpo. Ritorna −1 o l'id; SHOT* leggono l'ultimo colpo.
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SceneShoot, "SHOOT"),
+                [
+                    new Parameter(-1, T(TokenKind.Identifier, "range"), new DoubleType(), noFlags, null, false)
+                ],
+                new DoubleType(), TokenKind.SceneShoot),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SceneShotKind, "SHOTKIND"),
+                [], new DoubleType(), TokenKind.SceneShotKind),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SceneShotObj, "SHOTOBJ"),
+                [], new DoubleType(), TokenKind.SceneShotObj),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SceneShotDist, "SHOTDIST"),
+                [], new DoubleType(), TokenKind.SceneShotDist),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SceneShotX, "SHOTX"),
+                [], new DoubleType(), TokenKind.SceneShotX),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SceneShotY, "SHOTY"),
+                [], new DoubleType(), TokenKind.SceneShotY),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SceneShotZ, "SHOTZ"),
+                [], new DoubleType(), TokenKind.SceneShotZ),
+
+            // USE(reach): l'oggetto davanti QUALUNQUE sia il flag, −1 se niente.
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SceneUse, "USE"),
+                [
+                    new Parameter(-1, T(TokenKind.Identifier, "reach"), new DoubleType(), noFlags, null, false)
+                ],
+                new DoubleType(), TokenKind.SceneUse),
+
+            // SEES(n): 1 vede, 0 non vede, −1 thing inesistente (C-DIVERGE-SEES).
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SceneSees, "SEES"),
+                [
+                    new Parameter(-1, T(TokenKind.Identifier, "n"), new LongType(), noFlags, null, false)
+                ],
+                new DoubleType(), TokenKind.SceneSees)
         };
 
         var types = new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase);

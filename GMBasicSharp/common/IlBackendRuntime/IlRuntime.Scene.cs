@@ -106,4 +106,15 @@ public static partial class IlRuntime
     public static double SceneCeilAt(double x, double y, double z) => CommonLib.Scene3DNative.CeilAt(x, y, z);
     public static double SceneZoneAt(double x, double y, double z) => CommonLib.Scene3DNative.ZoneAt(x, y, z);
     public static string SceneZoneTag(long id) => CommonLib.Scene3DNative.ZoneTag(id);
+
+    // P5/M-RAYS: raggi. SHOOT/USE tornano l'id (−1 = niente); SHOT* l'ultimo colpo.
+    public static double SceneShoot(double range) => CommonLib.Scene3DNative.Shoot(range);
+    public static double SceneUse(double reach) => CommonLib.Scene3DNative.Use(reach);
+    public static double SceneSees(long thing) => CommonLib.Scene3DNative.Sees(thing);
+    public static double SceneShotKind() => CommonLib.Scene3DNative.ShotKind();
+    public static double SceneShotObj() => CommonLib.Scene3DNative.ShotObj();
+    public static double SceneShotDist() => CommonLib.Scene3DNative.ShotDist();
+    public static double SceneShotX() => CommonLib.Scene3DNative.ShotX();
+    public static double SceneShotY() => CommonLib.Scene3DNative.ShotY();
+    public static double SceneShotZ() => CommonLib.Scene3DNative.ShotZ();
 }

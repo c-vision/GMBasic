@@ -1614,4 +1614,15 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     SCENE_HIT = 3928,
     SCENE_FLOORAT = 3929,   // (x, y, z)   → gmb_scene_floor_at
     SCENE_CEILAT = 3930,    // (x, y, z)   → gmb_scene_ceil_at
+    // P5/M-RAYS — raggi della scena. SHOOT/USE/SEES agiscono; SHOT* leggono
+    // l'ultimo colpo. In coda, come sempre: mirror in gmb_builtin.c.
+    SCENE_SHOOT = 3931,     // (range)     → gmb_scene_shoot
+    SCENE_SHOTKIND = 3932,  // ()          → gmb_scene_shotkind (0/1/2)
+    SCENE_SHOTOBJ = 3933,   // ()          → gmb_scene_shotobj (0 = non oggetto)
+    SCENE_SHOTDIST = 3934,  // ()          → gmb_scene_shotdist (-1 = nessun colpo)
+    SCENE_SHOTX = 3935,     // ()          → gmb_scene_shotx
+    SCENE_SHOTY = 3936,
+    SCENE_SHOTZ = 3937,
+    SCENE_USE = 3938,       // (reach)     → gmb_scene_use
+    SCENE_SEES = 3939,      // (thing)     → gmb_scene_sees (1/0/-1)
 }

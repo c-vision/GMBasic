@@ -11469,6 +11469,35 @@ static void gmb_bf_scene_zone(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, i
     bout->result = (double)gmb_scene_zone_at(scene_arg(args, argc, 0), scene_arg(args, argc, 1),
                                              scene_arg(args, argc, 2));
 }
+/* P5/M-RAYS — raggi: SHOOT/USE agiscono e tornano l'id (-1 = niente), SEES
+ * torna 1/0/-1, SHOT* leggono l'ultimo colpo. Nessuno stato qui (§0bis). */
+static void gmb_bf_scene_shoot(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    bout->result = (double)gmb_scene_shoot(scene_arg(args, argc, 0));
+}
+static void gmb_bf_scene_use(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    bout->result = (double)gmb_scene_use(scene_arg(args, argc, 0));
+}
+static void gmb_bf_scene_sees(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    bout->result = (double)gmb_scene_sees((int64_t)scene_arg(args, argc, 0));
+}
+static void gmb_bf_scene_shotkind(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_shotkind(); }
+static void gmb_bf_scene_shotobj(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_shotobj(); }
+static void gmb_bf_scene_shotdist(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_shotdist(); }
+static void gmb_bf_scene_shotx(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_shotx(); }
+static void gmb_bf_scene_shoty(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_shoty(); }
+static void gmb_bf_scene_shotz(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{ (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_shotz(); }
 static void gmb_bf_scene_zonetag(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)func_code; (void)task;
@@ -17012,6 +17041,16 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3928, gmb_bf_scene_hit },
     { 3929, gmb_bf_scene_floorat },
     { 3930, gmb_bf_scene_ceiling },
+    /* P5/M-RAYS — raggi della scena (BuiltInFunction 3931..3939). */
+    { 3931, gmb_bf_scene_shoot },
+    { 3932, gmb_bf_scene_shotkind },
+    { 3933, gmb_bf_scene_shotobj },
+    { 3934, gmb_bf_scene_shotdist },
+    { 3935, gmb_bf_scene_shotx },
+    { 3936, gmb_bf_scene_shoty },
+    { 3937, gmb_bf_scene_shotz },
+    { 3938, gmb_bf_scene_use },
+    { 3939, gmb_bf_scene_sees },
     { 826, gmb_bf_796_c826 },
     { 827, gmb_bf_796_c827 },
     { 828, gmb_bf_796_c828 },

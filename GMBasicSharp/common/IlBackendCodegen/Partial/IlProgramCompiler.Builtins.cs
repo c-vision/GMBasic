@@ -535,6 +535,16 @@ public sealed partial class IlProgramCompiler
             case TokenKind.SceneCeilAt: EmitSceneReadPoint(expr, nameof(IlRuntime.SceneCeilAt)); break;
             case TokenKind.SceneZone: EmitSceneReadPoint(expr, nameof(IlRuntime.SceneZoneAt)); break;
             case TokenKind.SceneZoneTag: EmitSceneReadZoneTag(expr); break;
+            // P5/M-RAYS: raggi e stato dell'ultimo colpo.
+            case TokenKind.SceneShoot: EmitSceneReadOneDouble(expr, nameof(IlRuntime.SceneShoot)); break;
+            case TokenKind.SceneUse: EmitSceneReadOneDouble(expr, nameof(IlRuntime.SceneUse)); break;
+            case TokenKind.SceneSees: EmitSceneReadOneLong(expr, nameof(IlRuntime.SceneSees)); break;
+            case TokenKind.SceneShotKind: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneShotKind)); break;
+            case TokenKind.SceneShotObj: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneShotObj)); break;
+            case TokenKind.SceneShotDist: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneShotDist)); break;
+            case TokenKind.SceneShotX: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneShotX)); break;
+            case TokenKind.SceneShotY: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneShotY)); break;
+            case TokenKind.SceneShotZ: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneShotZ)); break;
             case TokenKind.MatrixColumnCount: EmitMatrixValueOrHandleUnary(expr, nameof(IlRuntime.MatrixValueColumnCount), RuntimeMethod(nameof(IlRuntime.MatrixColumnCount))); break;
             case TokenKind.MatrixClone: EmitMatrixUnaryValue(expr, RuntimeMethod(nameof(IlRuntime.MatrixCloneValue)), nameof(IlRuntime.MatrixValueClone)); break;
             // MATRIX F2b (2026-11-09): ROW/COL/ISCONTIGUOUS.

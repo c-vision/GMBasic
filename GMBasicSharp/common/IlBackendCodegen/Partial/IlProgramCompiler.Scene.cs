@@ -266,6 +266,24 @@ public sealed partial class IlProgramCompiler
         _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneZoneTag)));
     }
 
+    /// <summary>SCENE.SHOOT/USE(argomento): un double, risultato double (P5/M-RAYS).</summary>
+    private void EmitSceneReadOneDouble(BuiltinFunctionCallExpr expr, string methodName)
+    {
+        if (expr.Args.Length != 1)
+            throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento.");
+        EmitDoubleArgument(expr.Args[0]);
+        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
+    }
+
+    /// <summary>SCENE.SEES(n): un id intero, risultato double (1/0/−1).</summary>
+    private void EmitSceneReadOneLong(BuiltinFunctionCallExpr expr, string methodName)
+    {
+        if (expr.Args.Length != 1)
+            throw new NotSupportedException($"Backend IL: {expr.OriginalToken.Lexeme} richiede 1 argomento (id).");
+        EmitInt64Argument(expr.Args[0]);
+        _il.Emit(OpCodes.Call, RuntimeMethod(methodName));
+    }
+
     /// <summary>SCENE.PIXEL(x, y): due argomenti interi, risultato double.</summary>
     private void EmitSceneReadPixel(BuiltinFunctionCallExpr expr, string methodName)
     {

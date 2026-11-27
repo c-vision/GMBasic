@@ -1554,6 +1554,93 @@ static int run_p5_interact(void)
     return fail == 0 ? 0 : 1;
 }
 
+/* ── P5/M-RAYS: raggi della scena (SHOOT/USE/SEES) ────────────────────────────
+ * Scena costruita a mano, con i numeri scelti per essere esatti:
+ *  - muro solido a z = 100 (oggetto 1);
+ *  - vetro see-through (flag 8) a z = 50 (oggetto 2): SHOOT ci passa, USE no;
+ *  - scatola passabile (flag 4) a z = 40 dal secondo punto di vista (oggetto 3):
+ *    ai raggi NON è trasparente (`M-RAYS`: passa solo il flag 8);
+ *  - thing 7 a z = 20, alto 80: il colpo lo prende prima della scatola;
+ *  - muro a z = 10 (oggetto 4) per spegnere la linea di vista del thing. */
+static int p5_ray_scene(void)
+{
+    if (gmb_scene_reset() != GMB_3D_OK) return 0;
+
+    if (gmb_scene_object(200, 200, 200) != GMB_3D_OK) return 0;
+    if (gmb_scene_box(-50.0, 0.0, 100.0, 50.0, 100.0, 110.0) != GMB_3D_OK) return 0;
+    if (gmb_scene_object_flags(120, 200, 255, 8, 255) != GMB_3D_OK) return 0;
+    if (gmb_scene_box(-50.0, 0.0, 50.0, 50.0, 100.0, 55.0) != GMB_3D_OK) return 0;
+    if (gmb_scene_object_flags(60, 200, 60, 4, 255) != GMB_3D_OK) return 0;
+    if (gmb_scene_box(90.0, 0.0, 40.0, 110.0, 60.0, 50.0) != GMB_3D_OK) return 0;
+    /* Il thing arriva DOPO la prova del passabile: è più vicino (z 20) e
+     * coprirebbe il colpo (riga più sotto la verifica). */
+    return 1;
+}
+
+static int run_p5_rays(void)
+{
+    int ok = 0, fail = 0;
+#define P5R_CHECK(cond, ...) do { if (cond) ok++; else { fail++; printf("P5-RAYS fail: "); printf(__VA_ARGS__); printf("\n"); } } while (0)
+
+    P5R_CHECK(p5_ray_scene(), "dichiarazione della scena dei raggi");
+
+    /* M-RAYS/see-through: il vetro a z = 50 NON ferma il colpo, il muro a 100 sì. */
+    P5R_CHECK(gmb_scene_camera(0.0, 46.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "camera dei raggi");
+    P5R_CHECK(gmb_scene_shoot(300.0) == 1, "SHOOT attraverso il vetro = %lld (atteso 1)",
+              (long long)gmb_scene_shoot(300.0));
+    P5R_CHECK(gmb_scene_shotkind() == 1.0 && gmb_scene_shotobj() == 1.0,
+              "SHOTKIND/SHOTOBJ = %g/%g (attesi 1/1)", gmb_scene_shotkind(), gmb_scene_shotobj());
+    P5R_CHECK(fabs(gmb_scene_shotdist() - 100.0) < 1e-3, "SHOTDIST = %g (atteso 100)", gmb_scene_shotdist());
+    P5R_CHECK(fabs(gmb_scene_shotx()) < 1e-3 && fabs(gmb_scene_shoty() - 46.0) < 1e-3
+              && fabs(gmb_scene_shotz() - 100.0) < 1e-3,
+              "SHOTX/Y/Z = %g/%g/%g (attesi 0/46/100)", gmb_scene_shotx(), gmb_scene_shoty(), gmb_scene_shotz());
+
+    /* USE: qualunque sia il flag, quindi prende il vetro (2) prima del muro (1). */
+    P5R_CHECK(gmb_scene_use(300.0) == 2, "USE davanti = %lld (atteso 2, il vetro)",
+              (long long)gmb_scene_use(300.0));
+    P5R_CHECK(gmb_scene_use(20.0) == -1, "USE a portata corta = %lld (atteso -1)",
+              (long long)gmb_scene_use(20.0));
+
+    /* Flag 4 (passabile): collisione sì, trasparenza no. */
+    P5R_CHECK(gmb_scene_camera(100.0, 46.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "camera sulla scatola passabile");
+    P5R_CHECK(gmb_scene_shoot(1000.0) == 3, "SHOOT sul passabile = %lld (atteso 3)",
+              (long long)gmb_scene_shoot(1000.0));
+
+    /* Thing: cilindro w/2 (fronte a z = 20 − 5 = 15), colpito prima della
+     * scatola; SHOTOBJ resta 0 perché non è un oggetto. */
+    P5R_CHECK(gmb_scene_thing(7, 100.0, 0.0, 20.0, 10.0, 80.0) == GMB_3D_OK, "thing 7");
+    P5R_CHECK(gmb_scene_shoot(100.0) == 7 && gmb_scene_shotkind() == 2.0 && gmb_scene_shotobj() == 0.0,
+              "SHOOT sul thing = %lld kind=%g obj=%g (attesi 7/2/0)",
+              (long long)gmb_scene_shoot(100.0), gmb_scene_shotkind(), gmb_scene_shotobj());
+    P5R_CHECK(fabs(gmb_scene_shotdist() - 15.0) < 0.5, "SHOTDIST sul thing = %g (atteso ~15)",
+              gmb_scene_shotdist());
+
+    /* SEES: 1 con la via libera, 0 con il muro in mezzo, -1 se il thing non esiste. */
+    P5R_CHECK(gmb_scene_sees(7) == 1, "SEES(7) libero = %lld (atteso 1)", (long long)gmb_scene_sees(7));
+    P5R_CHECK(gmb_scene_object(200, 120, 120) == GMB_3D_OK
+              && gmb_scene_box(90.0, 0.0, 10.0, 110.0, 100.0, 12.0) == GMB_3D_OK,
+              "muro fra il thing e l'occhio");
+    P5R_CHECK(gmb_scene_sees(7) == 0, "SEES(7) col muro = %lld (atteso 0)", (long long)gmb_scene_sees(7));
+    P5R_CHECK(gmb_scene_sees(99) == -1, "SEES(99) = %lld (atteso -1)", (long long)gmb_scene_sees(99));
+
+    /* Nessun colpo: sentinelle 0/-1/-1000000, non zeri ambigui. */
+    P5R_CHECK(gmb_scene_camera(0.0, 46.0, 0.0, 90.0, 0.0) == GMB_3D_OK, "camera verso il vuoto");
+    P5R_CHECK(gmb_scene_shoot(50.0) == -1 && gmb_scene_shotkind() == 0.0
+              && gmb_scene_shotdist() == -1.0 && gmb_scene_shotx() == -1000000.0,
+              "SHOOT a vuoto = %lld kind=%g dist=%g x=%g (attesi -1/0/-1/-1000000)",
+              (long long)gmb_scene_shoot(50.0), gmb_scene_shotkind(), gmb_scene_shotdist(), gmb_scene_shotx());
+
+    /* Argomenti non validi: errore esplicito, non un colpo inventato. */
+    P5R_CHECK(gmb_scene_shoot(0.0) != GMB_3D_OK && strstr(gmb_3d_last_error(), "gittata"),
+              "SHOOT con gittata 0 non è un errore esplicito");
+    P5R_CHECK(gmb_scene_use(-1.0) != GMB_3D_OK && strstr(gmb_3d_last_error(), "portata"),
+              "USE con portata negativa non è un errore esplicito");
+
+#undef P5R_CHECK
+    printf("P5-RAYS ok=%d fail=%d\n", ok, fail);
+    return fail == 0 ? 0 : 1;
+}
+
 static int cmp_double(const void* a, const void* b)
 {
     double x = *(const double*)a, y = *(const double*)b;
@@ -1663,12 +1750,14 @@ static void usage(void)
            "     gmb_3d_oracle --bench [--frames N]\n"
            "     gmb_3d_oracle --cullcheck\n"
            "     gmb_3d_oracle --interactcheck\n"
+           "     gmb_3d_oracle --raycheck\n"
            "     gmb_3d_oracle --bench-scene [--objects N | --tris N] [--size WxH] [--frames N]\n"
            "  DIR   = cartella delle golden (<scena>.<rid>.png)\n"
            "  --demo MAPPA = mappa demo (.gmbscene): scena `demo`, T-* e bench\n"
            "  --bench = frame time della demo a 640x300 (limite 4 ms)\n"
            "  --cullcheck = culling per oggetto sulla superficie SCENE (P5)\n"
            "  --interactcheck = corpo, MOVE, quote e zone della superficie SCENE (P5)\n"
+           "  --raycheck = SHOOT/USE/SEES e stato dell'ultimo colpo (P5, M-RAYS)\n"
            "  --bench-scene = N oggetti (default 500) a --size (default 640x360)\n"
            "  --tris N = N triangoli dichiarati (12 per box) in griglia frontale\n");
 }
@@ -1681,7 +1770,7 @@ int main(int argc, char** argv)
     const char* demo = NULL;
     double tol = 0.0;
     int bench = 0, frames = 120;
-    int cullcheck = 0, interactcheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
+    int cullcheck = 0, interactcheck = 0, raycheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
     int tris_target = 0;   /* --tris N: 0 = griglia storica a oggetti */
 
     for (int i = 1; i < argc; i++)
@@ -1703,6 +1792,7 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "--bench")) bench = 1;
         else if (!strcmp(argv[i], "--cullcheck")) cullcheck = 1;
         else if (!strcmp(argv[i], "--interactcheck")) interactcheck = 1;
+        else if (!strcmp(argv[i], "--raycheck")) raycheck = 1;
         else if (!strcmp(argv[i], "--bench-scene")) bench_scene = 1;
         else if (!strcmp(argv[i], "--objects") && i + 1 < argc) objects = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--tris") && i + 1 < argc) tris_target = atoi(argv[++i]);
@@ -1717,6 +1807,7 @@ int main(int argc, char** argv)
     if (demo) w_set_demo_path(demo);
     if (cullcheck) return run_p5_cull();
     if (interactcheck) return run_p5_interact();
+    if (raycheck) return run_p5_rays();
     if (bench_scene)
     {
         /* --tris N: 12 triangoli per box, griglia quadrata (vedi p5_scene_bench). */

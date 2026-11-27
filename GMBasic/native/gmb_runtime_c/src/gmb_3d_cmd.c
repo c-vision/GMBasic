@@ -190,11 +190,9 @@ static const int g_scene_unit_idx[12 * 3] = {
 
 #define GMB_SCENE_MAX_THINGS 256
 
-typedef struct gmb_scene_thing {
-    int used;
-    float x, y, z, w, h;
-    unsigned char light;
-} gmb_scene_thing_t;
+/* Il thing (M-THINGS) è dichiarato in gmb_3d_internal.h: lo leggono anche i raggi
+ * (gmb_3d_ray.c), che ne hanno un accessore in sola lettura qui sotto. */
+typedef gmb_3d_scene_thing_rt gmb_scene_thing_t;
 
 static gmb_3d_target_t g_scene_target;   /* argb != NULL = target allocato */
 static double  g_scene_fov = 60.0;
@@ -245,6 +243,14 @@ static unsigned char* g_scene_sky = NULL;
 static int      g_scene_sky_w = 0, g_scene_sky_h = 0;
 static float    g_scene_sky_repeat = 1.0f, g_scene_sky_shift = 0.0f;
 static gmb_scene_thing_t g_scene_thing[GMB_SCENE_MAX_THINGS];
+
+/* accessore in sola lettura per i raggi (gmb_3d_ray.c): l'array resta di questo
+ * file, una sola copia (§0bis). */
+const gmb_3d_scene_thing_rt* gmb_3d_scene_things(int* count)
+{
+    if (count) *count = GMB_SCENE_MAX_THINGS;
+    return g_scene_thing;
+}
 
 /* Matrici e culling per oggetto vivono in gmb_3d_scene.c (P5): qui si chiamano
  * soltanto, così questo file resta la facciata dei comandi e sta sotto le 1200
@@ -357,6 +363,7 @@ int64_t gmb_scene_reset(void)
     gmb_3d_env_clear(&g_scene_env);
     g_scene_colormap = 0;
     memset(g_scene_thing, 0, sizeof(g_scene_thing));
+    gmb_3d_ray_reset();
     free(g_scene_sky);
     g_scene_sky = NULL;
     g_scene_sky_w = g_scene_sky_h = 0;

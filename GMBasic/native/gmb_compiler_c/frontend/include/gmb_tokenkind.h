@@ -2773,9 +2773,21 @@ typedef enum gmb_tokenkind {
     GMB_TOK_SceneHit,
     GMB_TOK_SceneFloorAt,
     GMB_TOK_SceneCeilAt,
+    /* P5/M-RAYS — raggi della scena: SHOOT/USE/SEES e lo stato dell'ultimo colpo
+     * (SHOTKIND/SHOTOBJ/SHOTDIST/SHOTX/Y/Z). Stessi TokenKind del lato C#, nello
+     * stesso ordine: gli ordinali sono canonici. */
+    GMB_TOK_SceneShoot,
+    GMB_TOK_SceneShotKind,
+    GMB_TOK_SceneShotObj,
+    GMB_TOK_SceneShotDist,
+    GMB_TOK_SceneShotX,
+    GMB_TOK_SceneShotY,
+    GMB_TOK_SceneShotZ,
+    GMB_TOK_SceneUse,
+    GMB_TOK_SceneSees,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2739
+  #define GMB_TOK_COUNT 2748
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

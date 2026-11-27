@@ -35,6 +35,16 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.SCENE_HIT,
         BuiltInFunction.SCENE_FLOORAT,
         BuiltInFunction.SCENE_CEILAT,
+        // P5/M-RAYS: raggi e stato dell'ultimo colpo.
+        BuiltInFunction.SCENE_SHOOT,
+        BuiltInFunction.SCENE_USE,
+        BuiltInFunction.SCENE_SEES,
+        BuiltInFunction.SCENE_SHOTKIND,
+        BuiltInFunction.SCENE_SHOTOBJ,
+        BuiltInFunction.SCENE_SHOTDIST,
+        BuiltInFunction.SCENE_SHOTX,
+        BuiltInFunction.SCENE_SHOTY,
+        BuiltInFunction.SCENE_SHOTZ,
     ];
 
     private object? ExecuteBuiltInScene(PCodeTask task, BuiltInFunction fn, object?[] args)
@@ -73,6 +83,17 @@ internal sealed partial class PCodeProcessor
                 return (double)CommonLib.Scene3DNative.ZoneAt(ToDouble(args, 0), ToDouble(args, 1), ToDouble(args, 2));
             case BuiltInFunction.SCENE_ZONETAG:
                 return CommonLib.Scene3DNative.ZoneTag((long)ToDouble(args, 0));
+            // P5/M-RAYS: SHOOT/USE agiscono e tornano l'id (−1 = niente); SHOT*
+            // leggono l'ultimo colpo; SEES è 1/0/−1.
+            case BuiltInFunction.SCENE_SHOOT: return CommonLib.Scene3DNative.Shoot(ToDouble(args, 0));
+            case BuiltInFunction.SCENE_USE: return CommonLib.Scene3DNative.Use(ToDouble(args, 0));
+            case BuiltInFunction.SCENE_SEES: return (double)CommonLib.Scene3DNative.Sees((long)ToDouble(args, 0));
+            case BuiltInFunction.SCENE_SHOTKIND: return CommonLib.Scene3DNative.ShotKind();
+            case BuiltInFunction.SCENE_SHOTOBJ: return CommonLib.Scene3DNative.ShotObj();
+            case BuiltInFunction.SCENE_SHOTDIST: return CommonLib.Scene3DNative.ShotDist();
+            case BuiltInFunction.SCENE_SHOTX: return CommonLib.Scene3DNative.ShotX();
+            case BuiltInFunction.SCENE_SHOTY: return CommonLib.Scene3DNative.ShotY();
+            case BuiltInFunction.SCENE_SHOTZ: return CommonLib.Scene3DNative.ShotZ();
         }
         return null;
     }

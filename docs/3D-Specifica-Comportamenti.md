@@ -184,6 +184,24 @@ Verifica: `shared/minitests/3d/scene_pick.bas` (nessun target `−1`, pick spent
 occlusione `1` invece del lontano `2`, fondo `0`, fuori target `−1`, colore invariato) con gli
 **stessi valori** su C99Native, IL, PCode e VM/C.
 
+#### Raggi: `SHOOT` / `USE` / `SEES` (P5, 2026-11-27)
+
+| ID | Superficie BASIC | Comportamento implementato |
+|---|---|---|
+| `M-RAYS` | `SCENE.SHOOT(range)`, `SCENE.USE(reach)` | il raggio parte dall'**occhio** e segue la vista (yaw + pitch, direzione già unitaria); gli ostacoli sono gli **AABB MONDO** degli oggetti — la stessa fonte della collisione (`M-COLLIDE`) e delle quote (`M-FLOOR`), non una seconda copia della geometria |
+| `M-RAYS-FLAGS` | quali flag lasciano passare | passa **solo** il flag **8** (see-through), per colpi e vista; il flag **4** (passabile) **non** è trasparenza: ferma il colpo. `USE` ignora **tutti** i flag, come da specifica («l'oggetto davanti qualunque siano i flag») |
+| `M-RAYS-THING` | `SHOOT` contro i thing | il thing è un **cilindro verticale** di raggio `w/2`, da `y` a `y+h`; il colpo lo prende prima della geometria dietro e vale `SHOTKIND = 2` |
+| `M-RAYS-ID` | valore di ritorno di `SHOOT` | `−1` niente, altrimenti l'id: **oggetto** `1…n` (lo stesso di `SCENE.PICK`, `M-PICK-ID`) o **indice del thing** `0…255`; `SHOTKIND` (0/1/2) dice quale dei due |
+| `M-RAYS-SHOT` | `SHOTKIND`, `SHOTOBJ`, `SHOTDIST`, `SHOTX/Y/Z` | stato dell'**ultimo** `SHOOT`: `SHOTKIND` 0/1/2, `SHOTOBJ` = id dell'oggetto (`0` se non era un oggetto, la stessa sentinella del fondo di `PICK`), `SHOTDIST` = distanza (`−1` nessun colpo), `SHOTX/Y/Z` = punto colpito (`−1000000` = assente, `C-SENTINEL`). `USE` **non** tocca questo stato |
+| `M-RAYS-SEES` | `SCENE.SEES(n)` | linea di vista dal **70%** dell'altezza del thing verso l'occhio: `1` vede, `0` non vede, `−1` thing inesistente (`C-DIVERGE-SEES`) |
+| `M-RAYS-TIE` | due ostacoli alla stessa distanza | vince l'**id più basso**, cioè l'ordine di dichiarazione — la stessa regola di `M-ZONE` |
+| `M-RAYS-NOALLOC` | costo | la scansione legge il buffer degli AABB già riservato (`gmb_3d_scene_bounds_all`): `SHOOT`/`USE`/`SEES` non allocano e non entrano nel conto `allocs` del frame |
+
+Verifica: `gmb_3d_oracle --raycheck` (**P5-RAYS ok=21 fail=0**, dentro `check_3d_oracle.sh`, gate
+A/B `cc`+`zcc` su `gmb_3d_ray.c`) e `shared/minitests/3d/scene_rays.bas` con gli **stessi valori**
+su C99Native, IL, PCode e VM/C (flag 8 attraversato, flag 4 no, `USE` che prende il vetro,
+thing colpito a `z − w/2`, `SEES` 1/0/`−1`).
+
 ### 3.3 Collisione, raggi, zone
 
 | ID | Comportamento |

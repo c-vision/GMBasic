@@ -565,6 +565,25 @@ double gmb_scene_yaw(void);
 double gmb_scene_pitch(void);
 double gmb_scene_hit(void);
 
+/* --- P5: raggi (specifica §3.3, M-RAYS) -----------------------------------
+ * SHOOT(range) spara lungo la vista: colpisce gli oggetti (SHOTKIND 1) e i thing
+ * (SHOTKIND 2); il flag 8 (see-through) lascia passare il colpo, il flag 4 no.
+ * Ritorna −1 se non prende nulla, altrimenti l'id: oggetto (come SCENE.PICK, 1..n)
+ * o indice del thing (0..255) — SHOTKIND dice quale. USE(reach) ritorna l'oggetto
+ * davanti qualunque sia il flag, −1 se niente. SEES(n): 1 vede, 0 non vede,
+ * −1 thing inesistente (C-DIVERGE-SEES).
+ * Stato dell'ultimo colpo: SHOTKIND 0/1/2, SHOTOBJ (0 = non era un oggetto),
+ * SHOTDIST (−1 = nessun colpo), SHOTX/Y/Z (−1000000 = nessun colpo). */
+int64_t gmb_scene_shoot(double range);
+int64_t gmb_scene_use(double reach);
+int64_t gmb_scene_sees(int64_t thing);
+double gmb_scene_shotkind(void);
+double gmb_scene_shotobj(void);
+double gmb_scene_shotdist(void);
+double gmb_scene_shotx(void);
+double gmb_scene_shoty(void);
+double gmb_scene_shotz(void);
+
 /* Load che hanno parcheggiato il task (R11): 0 in T3, +1 per ogni load dentro
  * un task. Osservabile come alloc_count per R4. */
 unsigned long gmb_3d_load_park_count(void);
