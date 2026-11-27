@@ -120,13 +120,14 @@ int  gmb_3d_lod_source(int oi, const float eye[3]);
 
 /* Instancing per materiale (gmb_3d_inst.c, M-INST) — `SCENE INSTANCE o, src`:
  * `o` disegna la geometria e il materiale (flag, luce base) di `src`, con la
- * propria trasformazione e tinta. `gmb_3d_inst_geom` è la geometria da
- * disegnare (istanza, altrimenti LOD, altrimenti sé stesso); `_flags` e
- * `_light` sono il materiale (quello della sorgente per un'istanza).
+ * propria trasformazione e tinta. Due indici 0-based e basta:
+ * `gmb_3d_inst_geom` = geometria da disegnare (istanza, altrimenti LOD,
+ * altrimenti sé stesso); `gmb_3d_inst_mat` = oggetto da cui prendere flag e
+ * luce base (la sorgente per un'istanza, altrimenti sé stesso). Il disegno
+ * legge i due campi dall'oggetto indicato: nessuna copia del materiale.
  */
 int  gmb_3d_inst_geom(int oi, const float eye[3]);
-unsigned char gmb_3d_inst_flags(int oi);
-unsigned char gmb_3d_inst_light(int oi);
+int  gmb_3d_inst_mat(int oi);
 
 /* --- buffer della scena a capacità dinamica (gmb_3d_scene_buf.c, P5) -------
  * Il primo blocco di P5 aveva tetti statici (32768 vertici, 16384 triangoli,

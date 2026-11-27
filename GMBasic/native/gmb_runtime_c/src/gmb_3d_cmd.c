@@ -799,9 +799,10 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
                              const gmb_3d_env_t* env)
 {
     const gmb_scene_obj_t* o = &g_scene.obj[oi];
-    /* M-LOD/M-INST: la GEOMETRIA può venire da un altro oggetto (LOD oltre la
-     * soglia, oppure istanza); trasformazione, tinta e identità restano di `o`. */
+    /* M-LOD/M-INST: GEOMETRIA e MATERIALE possono venire da altri oggetti (LOD,
+     * istanza); trasformazione, tinta e identità sono di `o`. */
     const gmb_scene_obj_t* g = &g_scene.obj[gmb_3d_inst_geom(oi, g_scene_eye)];
+    const gmb_scene_obj_t* mo = &g_scene.obj[gmb_3d_inst_mat(oi)];
     if (g->ntri <= 0 || g->nvert <= 0) return GMB_3D_OK;
 
     float model[16], mvp[16];
@@ -893,9 +894,8 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
         mat.th = g_scene_tex_h;
     }
     /* Flag del materiale: il kernel li consuma, qui si passano soltanto. */
-    /* M-INST: il materiale (flag, luce base) può venire dalla sorgente. */
-    const unsigned char mflags = gmb_3d_inst_flags(oi);
-    const unsigned char mlight = gmb_3d_inst_light(oi);
+    const unsigned char mflags = mo->flags;
+    const unsigned char mlight = mo->light;
     mat.bilinear = g_scene_smooth;
     mat.masked = g_scene_alpha || ((mflags & 1) != 0);
     mat.two_sided = g_scene_two_sided || ((mflags & 16) != 0);
@@ -992,7 +992,7 @@ int64_t gmb_scene_render(void)
 
     for (int oi = 0; oi < g_scene.nobj; oi++)
     {
-        if ((gmb_3d_inst_flags(oi) & 2) != 0) continue;   /* traslucido: dopo i thing */
+        if ((g_scene.obj[gmb_3d_inst_mat(oi)].flags & 2) != 0) continue;   /* traslucido: dopo i thing */
         rc = scene_draw_object(oi, vp, planes, &g_scene_env);
         if (rc != GMB_3D_OK) return rc;
     }
@@ -1052,7 +1052,7 @@ int64_t gmb_scene_render(void)
         int cnt = 0;
         for (int oi = 0; oi < g_scene.nobj; oi++)
         {
-            if ((gmb_3d_inst_flags(oi) & 2) == 0) continue;
+            if ((g_scene.obj[gmb_3d_inst_mat(oi)].flags & 2) == 0) continue;
             float dx = g_scene.obj[oi].x - g_scene_eye[0];
             float dy = g_scene.obj[oi].y - g_scene_eye[1];
             float dz = g_scene.obj[oi].z - g_scene_eye[2];
