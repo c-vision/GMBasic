@@ -411,6 +411,9 @@ set(GMB_ALL_SRCS
     # P5/M-LOD: livello di dettaglio per oggetto (quale geometria disegnare),
     # separato per non superare le 1200 righe della facciata dei comandi.
     src/gmb_3d_lod.c
+    # P5/M-INST: instancing per materiale (geometria e materiale condivisi fra
+    # oggetti), stesso motivo: la facciata dei comandi non cresce.
+    src/gmb_3d_inst.c
     # SCENE PICK (buffer di id additivo, spento di default): stato del flag e
     # superficie, separati per non superare le 1200 righe del dominio.
     src/gmb_3d_pick.c
@@ -865,6 +868,7 @@ add_library(gmb_3d SHARED
     src/gmb_3d_stats.c
     src/gmb_3d_key.c
     src/gmb_3d_lod.c
+    src/gmb_3d_inst.c
     # gmb_3d_io.o (dentro gmb_runtime) usa gm_tex_* e il raster della suite: le stesse
     # sorgenti che compila l'oracolo, così la dylib non resta con simboli irrisolti e
     # un dlopen dal C# non muore al primo WORLD LOAD.

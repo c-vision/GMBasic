@@ -253,6 +253,14 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
         wscene(c, "gmb_scene_lod", a, 3, s->line);
         return;
     }
+    if (tk == GMB_TOK_SceneInstance)
+    {
+        /* M-INST: oggetto e sorgente (indici 1..nobj). La facciata C valida e
+         * risolve geometria/materiale: qui solo l'arità. */
+        if (n != 2) { c99_fail(c, s->line, "SCENE INSTANCE o, src"); return; }
+        wscene(c, "gmb_scene_instance", a, 2, s->line);
+        return;
+    }
     if (tk == GMB_TOK_SceneCamera)
     {
         if (n != 5) { c99_fail(c, s->line, "SCENE CAMERA x, y, z, yaw, pitch"); return; }

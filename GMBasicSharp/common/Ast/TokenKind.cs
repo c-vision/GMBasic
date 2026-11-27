@@ -2575,4 +2575,7 @@ public enum TokenKind
     // P5/M-LOD — `SCENE LOD o, dist, mesh`: oltre `dist` l'oggetto `o` disegna la
     // geometria dell'oggetto `mesh`, con la trasformazione e la tinta di `o`.
     SceneLod,
+    // P5/M-INST — `SCENE INSTANCE o, src`: `o` disegna geometria e materiale di
+    // `src`, con la trasformazione e la tinta di `o` (instancing per materiale).
+    SceneInstance,
   }

@@ -118,6 +118,16 @@ double gmb_scene_time_now(void);           /* tempo di scena corrente */
  */
 int  gmb_3d_lod_source(int oi, const float eye[3]);
 
+/* Instancing per materiale (gmb_3d_inst.c, M-INST) — `SCENE INSTANCE o, src`:
+ * `o` disegna la geometria e il materiale (flag, luce base) di `src`, con la
+ * propria trasformazione e tinta. `gmb_3d_inst_geom` è la geometria da
+ * disegnare (istanza, altrimenti LOD, altrimenti sé stesso); `_flags` e
+ * `_light` sono il materiale (quello della sorgente per un'istanza).
+ */
+int  gmb_3d_inst_geom(int oi, const float eye[3]);
+unsigned char gmb_3d_inst_flags(int oi);
+unsigned char gmb_3d_inst_light(int oi);
+
 /* --- buffer della scena a capacità dinamica (gmb_3d_scene_buf.c, P5) -------
  * Il primo blocco di P5 aveva tetti statici (32768 vertici, 16384 triangoli,
  * 512 oggetti) che rendevano irraggiungibile l'accettazione dei 200k triangoli.
@@ -140,6 +150,7 @@ typedef struct gmb_scene_obj {
     float pitch, roll;     /* M-KEY: 0 = solo yaw (percorso di sempre, bit-identico) */
     int   lod_mesh;        /* M-LOD: 0 = nessun LOD, altrimenti 1..nobj (geometria sostitutiva) */
     float lod_dist;        /* M-LOD: oltre questa distanza si disegna la mesh */
+    int   inst_src;        /* M-INST: 0 = nessuna istanza, altrimenti 1..nobj (geometria+materiale) */
     unsigned char r, g, b;
     unsigned char flags;   /* M-FLAGS: 1 masked, 2 traslucido, 4 passabile, 8 see-through, 16 due lati */
     unsigned char light;   /* luce base dell'oggetto 0..255 */

@@ -6060,6 +6060,17 @@ static void vm_sys_scene_lod(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
     (void)gmb_scene_lod((int64_t)vm_world_num(&a[0]), vm_world_num(&a[1]),
                         (int64_t)vm_world_num(&a[2]));
 }
+/* SCENE INSTANCE o, src (P5/M-INST): instancing per materiale — geometria e
+ * materiale della sorgente, trasformazione e tinta dell'oggetto. Indici
+ * validati dalla facciata C (gmb_3d_inst.c). */
+static void vm_sys_scene_instance(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[2];
+    int n = argc > 2 ? 2 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n < 2) return;
+    (void)gmb_scene_instance((int64_t)vm_world_num(&a[0]), (int64_t)vm_world_num(&a[1]));
+}
 /* SCENE SMOOTH|ALPHA|TWOSIDED on|off (idea #5): un argomento 0/1, nessuna logica qui —
  * lo stato e il significato stanno nella facciata C. */
 static void vm_sys_scene_flag(gmb_vm_t* vm, gmb_task_t* task, int code, int argc, int which) {
@@ -7420,6 +7431,7 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_SCENE_KEY, vm_sys_scene_key },
     { GMB_SC_SCENE_TIME, vm_sys_scene_time },
     { GMB_SC_SCENE_LOD, vm_sys_scene_lod },
+    { GMB_SC_SCENE_INSTANCE, vm_sys_scene_instance },
     { GMB_SC_CLOCK_PAUSE, vm_sys_clock_pause },
     { GMB_SC_CLOCK_RESUME, vm_sys_clock_resume },
     { GMB_SC_CLOCK_SCALE, vm_sys_clock_scale },

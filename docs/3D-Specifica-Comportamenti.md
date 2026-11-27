@@ -246,7 +246,9 @@ pitch a 90° che mettono il quad di taglio, roll che cambia il frame, `RESET` ch
 | `M-LOD-SWITCH` | la soglia | confronto **stretto** (`>`, non `>=`): alla distanza esatta vince ancora la geometria piena. `dist = 0` = sempre la mesh (l'occhio non sta nell'origine dell'oggetto) |
 | `M-LOD-MESH` | che cos'è `mesh` | un oggetto **come gli altri**: continua a disegnarsi per conto suo (di norma lo si tiene lontano o fuori dal frustum) e non riapplica il proprio LOD — **un livello solo**, quindi nessuna catena e nessun ciclo. `mesh = o` è un no-op dichiarato, non un errore |
 | `M-LOD-IDENTITY` | identità | la geometria sostituita mantiene l'identità di `o`: `SCENE.PICK` e il buffer di id restituiscono **`o`**, non `mesh`; la tinta è quella di `o` |
-| `M-LOD-VIS` | cosa **non** cambia | è solo una scelta di disegno: AABB mondo, `FLOORAT`/`CEILAT`, `SHOOT`/`USE`/`SEES` e collisione restano quelli della geometria **dichiarata** di `o`. Un cambio di dettaglio non sposta il mondo sotto i piedi del giocatore, e golden e raggi delle scene senza LOD non cambiano |
+| `M-LOD-VIS` | cosa **non** cambia | è solo una scelta di disegno: AABB mondo, `FLOORAT`/`CEILAT`, `SHOOT`/`USE`/`SEES` e collisione restano quelli della geometria **dichiarata** di `o`. Un cambio di dettaglio non sposta il mondo sotto i piedi del giocatore, e golden e raggi delle scene senza LOD non cambiano. L'unica eccezione, dichiarata sotto, è il **culling del frustum**, che guarda la geometria disegnata |
+| `M-LOD-CULL` | culling del frustum | il test di visibilità dell'oggetto usa l'AABB **locale della geometria che sta per essere disegnata** (quella di `mesh`), trasformato con il modello di `o`: la scatola dichiarata di `o` non entra nel test. Quindi un oggetto può essere fuori dal frustum con la geometria piena e dentro con la sostitutiva (o il contrario), e `DRAWN`/`CULLED` contano i triangoli della geometria scelta, non quelli dichiarati |
+| `M-LOD-EMPTY` | oggetto senza geometria | un `SCENE OBJECT` senza vertici può fare da **ospite** del solo LOD: sotto la soglia non disegna niente (la sua geometria è vuota), oltre la soglia disegna la mesh con trasformazione, tinta e identità di `o`. Non entra nell'AABB mondo (`nvert <= 0`), quindi non è ostacolo per quote, raggi o collisione; `SCENE.PICK` lo restituisce dove la mesh disegnata copre il pixel. La regola è simmetrica: se è la `mesh` a non avere geometria, oltre la soglia non si disegna niente e non è un errore — il test dei triangoli è sulla geometria scelta, non su `o` |
 | `M-LOD-RESET` | `RESET` e ri-dichiarazione | `SCENE RESET` azzera il LOD insieme alla geometria; l'ultima `SCENE LOD` su un oggetto vince (è un setter, non una pista) |
 | `M-LOD-ALLOC` | costo per frame | **zero allocazioni**: due campi nell'oggetto, letti dal frame (`P5-LOD` tiene `allocs` fermo) |
 
@@ -254,7 +256,29 @@ Verifica: `gmb_3d_oracle --lodcheck` (**P5-LOD ok=35 fail=0**, dentro `check_3d_
 A/B `cc`+`zcc` su `gmb_3d_lod.c`) e `shared/minitests/3d/scene_lod.bas` con gli **stessi valori**
 su C99Native, IL, PCode e VM/C: soglia stretta, geometria sostitutiva visibile solo quando il LOD
 la disegna (le mesh stanno oltre il far plane), identità di `PICK`, un livello solo, raggi che
-restano quelli dichiarati, `RESET` che azzera il LOD.
+restano quelli dichiarati, `RESET` che azzera il LOD. `M-LOD-CULL` e `M-LOD-EMPTY` sono
+comportamenti del frame come gli altri, ma non hanno ancora un controllo headless dedicato:
+`P5-LOD` non distingue una scatola di culling dall'altra né dichiara un oggetto senza vertici.
+
+#### Instancing per materiale: `SCENE INSTANCE` (P5, M-INST)
+
+| codice | regola | comportamento |
+|---|---|---|
+| `M-INST` | `SCENE INSTANCE o, src` | dichiara che l'oggetto `o` (`1..nobj`, ordine di dichiarazione come `SCENE.PICK`) disegna la **geometria** e il **materiale** dell'oggetto `src`: geometria e materiale si dichiarano **una volta** e valgono per N collocazioni, ognuna con la propria trasformazione (posizione, `yaw`, `pitch`, `roll`) e la propria tinta. Il comando non disegna: dice **quale geometria e quale materiale** |
+| `M-INST-MAT` | che cos'è il materiale | i flag di materiale (`1` masked, `2` traslucido, `16` due lati) e la **luce base** vengono da `src`; la tinta resta quella di `o`, così ogni istanza ha il suo colore. Texture, `SMOOTH`/`ALPHA`/`TWOSIDED`/`AA` sono stato di **scena** (uno per frame), non dell'oggetto |
+| `M-INST-SRC` | che cos'è `src` | un oggetto **come gli altri**: continua a disegnarsi per conto suo (di norma lo si tiene fuori scena o fuori dal frustum) e **un livello solo** — la sorgente non riapplica la propria istanza né il proprio LOD, quindi nessuna catena e nessun ciclo. `src = o` riporta `o` alla propria geometria: è un no-op dichiarato, non un errore |
+| `M-INST-LAST` | `INSTANCE` e `LOD` | si contendono la stessa scelta («quale geometria»): l'ultima dichiarazione vince e azzera l'altra. Cambia il materiale: dopo un `INSTANCE` il `LOD` torna a flag e luce di `o`; dopo un `LOD` l'`INSTANCE` prende quelli di `src` |
+| `M-INST-IDENTITY` | identità | `SCENE.PICK` e il buffer di id restituiscono **`o`**, non `src` |
+| `M-INST-VIS` | cosa **non** cambia | è solo una scelta di disegno: AABB mondo, `FLOORAT`/`CEILAT`, `SHOOT`/`USE`/`SEES` e collisione restano quelli della geometria **dichiarata** di `o`. Un ospite senza vertici non è un ostacolo e non ha quote. Il **culling del frustum**, invece, usa l'AABB della geometria disegnata con il modello di `o`, come `M-LOD-CULL` |
+| `M-INST-EMPTY` | oggetto senza geometria | un `SCENE OBJECT` senza vertici può fare da puro **ospite** dell'istanza: disegna la geometria di `src` a ogni frame, **senza soglia di distanza** (a differenza del LOD, che ne ha una) |
+| `M-INST-ALLOC` | costo per frame | **zero allocazioni**: un intero nell'oggetto, letto dal frame (`P5-INST` tiene `allocs` fermo) |
+
+Verifica: `gmb_3d_oracle --instcheck` (**P5-INST ok=92 fail=0**, dentro `check_3d_oracle.sh`, gate
+A/B `cc`+`zcc` su `gmb_3d_inst.c`) e `shared/minitests/3d/scene_instance.bas` con gli **stessi
+valori** su C99Native, IL, PCode e VM/C: geometria della sorgente con trasformazione e identità di
+`o`, materiale della sorgente (luce 128 → pixel `0x800000`) distinto da quello del LOD
+(`0xFF0000`), un livello solo, `src = o`, culling sulla geometria disegnata, raggi e quote sulla
+dichiarata, `RESET`.
 
 ### 3.3 Collisione, raggi, zone
 
@@ -264,7 +288,8 @@ restano quelli dichiarati, `RESET` che azzera il LOD.
 | `M-COLLIDE` | Stessa semantica di `W-MOVE`, sul piano (x, z) e con `y` come altezza: scivola, sale gradini ≤ step, bloccato da soffitto basso. `MOVE avanti, destra` (unità del mondo), `TURN dyaw[, dpitch]` (gradi), `LIFT dy`. `HIT` è una maschera: **1** parete, **2** fermo (la richiesta non ha spostato nulla), **4** quota cambiata. |
 | `M-RAYS` | `SHOOT(range)` contro thing e oggetti (`SHOTKIND` 0/1 oggetto/2 thing, `SHOTOBJ`, `SHOTDIST`, `SHOTX/Y/Z`); `USE(reach)` l'oggetto davanti **qualunque siano i flag**; `SEES(n)` linea di vista del thing verso l'occhio. Passano solo i flag 8 (non 4) per vista/colpi. |
 | `M-KEY` | `KEY o, t, …` dichiara una chiave TRS e `TIME t` fissa il tempo di scena; `RENDER` campiona (lineare, clamp fuori intervallo, pitch/roll applicati, zero allocazioni per frame); `RESET` azzera piste e tempo. |
-| `M-LOD` | `LOD o, dist, mesh` oltre `dist` (stretto) disegna la geometria di `mesh` con trasformazione e tinta di `o`; un livello solo, identità di `o` in `PICK`, raggi e AABB quelli dichiarati, zero allocazioni; `RESET` azzera. |
+| `M-LOD` | `LOD o, dist, mesh` oltre `dist` (stretto) disegna la geometria di `mesh` con trasformazione e tinta di `o`; un livello solo, identità di `o` in `PICK`, raggi, quote e AABB quelli dichiarati mentre il **culling del frustum** usa l'AABB della geometria disegnata, zero allocazioni; un oggetto senza geometria può ospitare solo la mesh; `RESET` azzera. |
+| `M-INST` | `INSTANCE o, src` fa disegnare a `o` geometria e materiale (flag, luce base) di `src`, con trasformazione e tinta di `o`; un livello solo, `INSTANCE`/`LOD` last-wins, identità di `o` in `PICK`, culling sulla geometria disegnata e raggi/quote/AABB su quella dichiarata, zero allocazioni; `RESET` azzera. |
 | `M-STATS` | `STATS(nome$)` = una misura per nome: `tris`/`objs`/`bytes` (geometria dichiarata e memoria riservata), `draw`/`culled`/`pixels` (ultimo `RENDER`), `renders`/`renders_max` (`RENDER` per frame), `allocs` (allocazioni dall'avvio). Chiave ignota `−1`; il tempo di un frame si misura fuori dal motore. |
 | `M-FLOOR` | `FLOORAT(x,y,z)` = **superficie più alta a o sotto `y`**, sul punto (x, z); `CEILAT` l'analogo sopra. `−1000000` = nessuna superficie. È ciò che permette di stare su un mobile senza una fisica generale. |
 | `M-ZONE` | `ZONE id,x1,y1,x2,y2,z1,z2[,tag]` (`y` = altezza): `ZONE(x,y,z)` = id della **prima** zona che contiene il punto (`y` entro `y1−2 … y2`, `x` in `x1…x2` e `z` in `z1…z2`, estremi inclusi), `−1` se nessuna; `ZONETAG(id)` = il tag (`""` se l'id non esiste). **L'ordine di creazione conta**: le zone dei piani superiori e dei mobili calpestabili vanno create **prima** di quelle sotto. Il renderer non usa le zone. |

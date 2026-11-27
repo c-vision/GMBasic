@@ -590,6 +590,13 @@ public enum SysCall : ushort
     // P5/M-LOD — livello di dettaglio per oggetto: oltre `dist` si disegna la
     // geometria dell'oggetto `mesh`. In coda (codici canonici).
     SCENE_LOD = 517,        // (o, dist, mesh)                         → gmb_scene_lod
+    // P5/M-INST — instancing per materiale: geometria e materiale dell'oggetto
+    // `src`, trasformazione e tinta di `o`. In coda (codici canonici).
+    SCENE_INSTANCE = 518,   // (o, src)                                → gmb_scene_instance
+    // LAYOUT — WINDOW RESIZE w, h: ridimensiona la pagina LOGICA (percorso pixel e
+    // percorso a celle) e riapplica il LAYOUT dei controlli (EXPAND/ANCHOR/ALIGN).
+    // Unica implementazione nel runtime C (gmb_window_resize), condivisa da VM/C.
+    WINDOW_RESIZE = 519,    // (w, h)                                  → gmb_window_resize
 }
 
 /// <summary>

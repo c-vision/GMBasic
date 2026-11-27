@@ -47,6 +47,8 @@ public sealed partial class Compiler
         TokenKind.SceneTime => SysCall.SCENE_TIME,
         // P5/M-LOD: livello di dettaglio per oggetto.
         TokenKind.SceneLod => SysCall.SCENE_LOD,
+        // P5/M-INST: instancing per materiale.
+        TokenKind.SceneInstance => SysCall.SCENE_INSTANCE,
         _ => throw new NotImplementedException($"SCENE: verbo '{kind}' non supportato dalla PCodeVM.")
     };
 

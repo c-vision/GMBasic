@@ -1033,6 +1033,14 @@ internal sealed partial class PCodeProcessor
                 CommonLib.Scene3DNative.Lod(o, dist, mesh);
                 break;
             }
+            // P5/M-INST: instancing per materiale (ordine di stack: sorgente, oggetto).
+            case SysCall.SCENE_INSTANCE:
+            {
+                var src = (long)PopNum(task);
+                var o = (long)PopNum(task);
+                CommonLib.Scene3DNative.Instance(o, src);
+                break;
+            }
             case SysCall.SCENE_FOG:
                 CommonLib.Scene3DNative.Fog(PopNum(task));
                 break;
@@ -6622,6 +6630,7 @@ internal sealed partial class PCodeProcessor
 
             case SysCall.PIXEL_CTRL:      PixelCtrl(task); break;
             case SysCall.FORM_FRAME:      FormFrame(task); break;
+            case SysCall.WINDOW_RESIZE:   WindowResize(task); break;
             case SysCall.FORM_CLOSED:     task.PushRef(IlRuntime.FormClosed()); break;
             case SysCall.FORM_CLOSE:      IlRuntime.FormClose(); break;
             case SysCall.FORM_CTRL_GET:   FormCtrlGet(task); break;

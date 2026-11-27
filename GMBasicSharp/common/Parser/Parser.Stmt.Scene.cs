@@ -103,6 +103,9 @@ public sealed partial class Parser
             // la geometria di `mesh`).
             TokenKind.SceneLod => SceneCmd(command, SceneArgs(parser, 3, 3,
                 "SCENE LOD o, dist, mesh")),
+            // P5/M-INST: instancing per materiale (geometria e materiale di `src`).
+            TokenKind.SceneInstance => SceneCmd(command, SceneArgs(parser, 2, 2,
+                "SCENE INSTANCE o, src")),
             TokenKind.ScenePresent => SceneCmd(command, SceneNoArgs(parser, "SCENE PRESENT non accetta argomenti")),
             TokenKind.SceneRender => SceneCmd(command, SceneNoArgs(parser, "SCENE RENDER non accetta argomenti")),
             TokenKind.SceneSave => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE SAVE: manca il percorso del PNG")),
@@ -146,6 +149,7 @@ public sealed partial class Parser
         "KEY" => TokenKind.SceneKey,
         "TIME" => TokenKind.SceneTime,
         "LOD" => TokenKind.SceneLod,
+        "INSTANCE" => TokenKind.SceneInstance,
         "RENDER" => TokenKind.SceneRender,
         "SAVE" => TokenKind.SceneSave,
         _ => TokenKind.Unknown

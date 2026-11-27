@@ -47,8 +47,8 @@ gate() {   # $1 = sorgente: lo stesso file con cc e con tools/sh/zcc
   done
 }
 # gmb_3d_scene.c (P5): matrici e culling per oggetto, lo stesso file su tutte le gambe.
-for f in gmb_3d_frame.c gmb_3d_io.c gmb_3d_sector.c gmb_3d_move.c gmb_3d_time.c gmb_3d_scene.c gmb_3d_scene_actor.c gmb_3d_scene_buf.c gmb_3d_scene_tex.c gmb_3d_ray.c gmb_3d_stats.c gmb_3d_key.c; do gate "$f"; done
-say "gate C: gmb_3d_{frame,io,sector,move,time,scene,scene_actor,scene_buf,scene_tex,ray,stats,key}.c compilano con cc e tools/sh/zcc"
+for f in gmb_3d_frame.c gmb_3d_io.c gmb_3d_sector.c gmb_3d_move.c gmb_3d_time.c gmb_3d_scene.c gmb_3d_scene_actor.c gmb_3d_scene_buf.c gmb_3d_scene_tex.c gmb_3d_ray.c gmb_3d_stats.c gmb_3d_key.c gmb_3d_lod.c gmb_3d_inst.c; do gate "$f"; done
+say "gate C: gmb_3d_{frame,io,sector,move,time,scene,scene_actor,scene_buf,scene_tex,ray,stats,key,lod,inst}.c compilano con cc e tools/sh/zcc"
 
 # 2) Build dell'oracolo (target dedicato; il runtime statico è una sua dipendenza).
 if [ ! -f "$BUILD/CMakeCache.txt" ]; then
@@ -125,6 +125,14 @@ fi
 # restano quelli dichiarati, nessuna allocazione e RESET che azzera il LOD.
 if ! "$BIN" --lodcheck; then
   echo "check_3d_oracle: livello di dettaglio FALLITO" >&2
+  exit 1
+fi
+
+# 3quinquies-ter) P5: instancing per materiale (M-INST). Geometria e materiale
+# condivisi dalla sorgente, trasformazione e tinta dell'oggetto, identità in
+# PICK, un livello solo, raggi e quote sulla geometria dichiarata, zero alloc.
+if ! "$BIN" --instcheck; then
+  echo "check_3d_oracle: instancing FALLITO" >&2
   exit 1
 fi
 

@@ -40,6 +40,8 @@ int64_t gmb_scene_lod(int64_t o, double dist, int64_t mesh)
     gmb_scene_obj_t* ob = &g->obj[o - 1];
     ob->lod_mesh = (int)mesh;
     ob->lod_dist = (float)dist;
+    /* La geometria ha UNA sola sorgente: LOD sostituisce l'eventuale istanza. */
+    ob->inst_src = 0;
     gmb_3d_set_error("");
     return GMB_3D_OK;
 }

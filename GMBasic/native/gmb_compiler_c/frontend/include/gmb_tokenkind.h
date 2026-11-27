@@ -2793,9 +2793,12 @@ typedef enum gmb_tokenkind {
     /* P5/M-LOD — livello di dettaglio per oggetto: oltre una distanza l'oggetto
      * disegna la geometria di un altro. Stesso TokenKind del lato C#. */
     GMB_TOK_SceneLod,
+    /* P5/M-INST — instancing per materiale: geometria e materiale di un altro
+     * oggetto, trasformazione e tinta proprie. Stesso TokenKind del lato C#. */
+    GMB_TOK_SceneInstance,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2752
+  #define GMB_TOK_COUNT 2753
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

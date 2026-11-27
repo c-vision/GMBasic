@@ -46,7 +46,8 @@ Il dominio segue la regola del linguaggio: **il comando scrive, la funzione legg
 | Comando | `SCENE PICK on\|off` | buffer di id per pixel per `SCENE.PICK` (additivo, default off) |
 | Comando | `SCENE KEY o, t, x, y, z, yaw, pitch, roll` | keyframe TRS dell'oggetto al tempo `t` (secondi) |
 | Comando | `SCENE TIME t` | tempo di scena: quello che `RENDER` usa per campionare le chiavi |
-| Comando | `SCENE LOD o, dist, mesh` | oltre `dist` l'oggetto `o` disegna la geometria dell'oggetto `mesh` |
+| Comando | `SCENE LOD o, dist, mesh` | oltre `dist` l'oggetto `o` disegna la geometria dell'oggetto `mesh` (il culling guarda quella disegnata) |
+| Comando | `SCENE INSTANCE o, src` | `o` disegna geometria e materiale di `src`, con posizione, rotazione e colore di `o` |
 | Comando | `SCENE RENDER` | rasterizza la scena nel target |
 | Comando | `SCENE PRESENT` | copia il target 3D nella pagina 2D corrente |
 | Comando | `SCENE SAVE path$` | salva il frame corrente in PNG |
@@ -750,9 +751,64 @@ geometria dichiarata di `o` (il LOD è una scelta di disegno, non un cambio di c
 cambio di dettaglio non sposta il pavimento sotto i piedi e le golden non cambiano. L'ultima
 `SCENE LOD` su un oggetto vince; `SCENE RESET` la cancella con il resto della scena.
 
+**Il culling guarda quello che disegni.** L'unica cosa che segue la geometria sostitutiva è il
+test di frustum: usa l'AABB locale di `mesh` con la posizione e la rotazione di `o`, perché è
+quella la scatola che finisce sullo schermo. Un oggetto può quindi essere fuori campo con la
+geometria piena e dentro con la sostitutiva, o il contrario; `SCENE.DRAWN()` e `SCENE.CULLED()`
+contano i triangoli della geometria scelta, non quelli dichiarati.
+
+**Un oggetto senza geometria può ospitare solo il LOD.** Un `SCENE OBJECT` senza vertici sotto la
+soglia non mostra niente (non ha geometria); oltre la soglia disegna la mesh con la sua posizione,
+il suo colore e la sua identità. Non essendo nell'AABB mondo non è un ostacolo per `FLOORAT`,
+raggi o collisione, ma `SCENE.PICK` lo restituisce dove la mesh copre il pixel. Se invece è la
+mesh a essere vuota, oltre la soglia non si disegna niente: non è un errore, il test dei
+triangoli è sulla geometria scelta.
+
 MiniTest: `shared/minitests/3d/scene_lod.bas` (soglia, identità di `PICK`, copertura dello schermo,
 un livello solo, `SHOOT` che usa la geometria dichiarata, `RESET`). Oracolo:
 `gmb_3d_oracle --lodcheck` (35 controlli headless, dentro `tools/sh/check_3d_oracle.sh`).
+
+### Instancing per materiale: `SCENE INSTANCE`
+
+Molte copie dello stesso oggetto — sedie, lampioni, mattoni — non hanno bisogno di altrettante
+copie di vertici e triangoli. `SCENE INSTANCE o, src` dice: l'oggetto `o` disegna **la geometria e
+il materiale** dell'oggetto `src`, con la sua posizione, la sua rotazione e il suo colore.
+
+```
+SCENE OBJECT 200, 200, 200
+SCENE BOX -5, -5, -5, 5, 5, 5        ' oggetto 1: la geometria condivisa, dichiarata una volta
+SCENE OBJPOS 0, 0, 400, 0            ' fuori scena: non si vede da sé
+SCENE OBJECT 255, 0, 0
+SCENE OBJPOS -40, 0, 80, 0           ' oggetto 2: una collocazione
+SCENE OBJECT 0, 255, 0
+SCENE OBJPOS 40, 0, 80, 0            ' oggetto 3: un'altra
+SCENE INSTANCE 2, 1
+SCENE INSTANCE 3, 1
+```
+
+**Il materiale è quello della sorgente.** I flag (masked, traslucido, due lati) e la luce base
+vengono da `src`; la tinta resta quella di `o`, così ogni istanza può avere il suo colore pur
+condividendo la geometria. Texture, `SMOOTH`, `ALPHA`, `TWOSIDED` e `AA` sono stato di scena: uno
+per frame, non uno per oggetto.
+
+**La sorgente resta un oggetto come gli altri** e continua a disegnarsi per conto suo: di solito la
+si tiene fuori scena o fuori dal frustum. **Un livello solo**: se anche lei è un'istanza (o ha un
+`SCENE LOD`), non lo riapplica quando fa da sorgente. `SCENE INSTANCE 2, 2` riporta l'oggetto alla
+propria geometria.
+
+**`INSTANCE` e `LOD` si contendono la stessa scelta** («quale geometria»): l'ultima dichiarazione
+vince e azzera l'altra. La differenza è nel materiale: il LOD tiene flag e luce dell'oggetto,
+l'istanza prende quelli della sorgente.
+
+**Identità e mondo non cambiano.** `SCENE.PICK` risponde `o`; quote, raggi e collisione continuano
+a usare la geometria dichiarata di `o` — un ospite senza vertici non è un ostacolo. Il **culling
+del frustum**, invece, guarda la geometria disegnata (quella della sorgente) con il modello di `o`:
+un oggetto può essere in campo grazie all'istanza anche se la sua geometria dichiarata è fuori. Non
+c'è soglia di distanza: l'istanza vale sempre; `SCENE RESET` la cancella con il resto della scena.
+
+MiniTest: `shared/minitests/3d/scene_instance.bas` (geometria e materiale della sorgente, identità
+di `PICK`, un livello solo, `src = o`, `LOD`/`INSTANCE` last-wins, raggi, `RESET`). Oracolo:
+`gmb_3d_oracle --instcheck` (92 controlli headless, dentro `tools/sh/check_3d_oracle.sh`).
 
 ### Statistiche per nome: `SCENE.STATS(nome$)`
 

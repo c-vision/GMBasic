@@ -200,6 +200,7 @@ Funzioni: `SCENE.X/Y/Z/EYE/YAW/PITCH/LIFT/HIT/FLOORZ/FLOORAT/CEILAT/TON/TX/TY/TZ
 | Skinning (64 ossa) | `SCENE BONES`, `WEIGHT o,v,bone,w`, `POSEBONE`, `ANIM skeleton` | assente là |
 | Keyframe TRS | `SCENE KEY o, t, x,y,z,yaw,pitch,roll` + `SCENE TIME t` | animazioni dichiarative — **consegnato** 2026-11-27 (M-KEY, `P5-KEY ok=49`, `scene_key.bas` su quattro gambe) |
 | LOD + culling spaziale | `SCENE LOD o, dist, mesh` (culling interno) | Engine1999: "no spatial culling" — **consegnato** 2026-11-27 (M-LOD, `P5-LOD ok=35`, `scene_lod.bas` su quattro gambe) |
+| Instancing per materiale | `SCENE INSTANCE o, src` | geometria e materiale (flag, luce base) dichiarati una volta e condivisi da N oggetti, trasformazione e tinta proprie — **consegnato** 2026-11-27 (M-INST, `P5-INST ok=92`, `scene_instance.bas` su quattro gambe) |
 | Luci colorate + tonemap | `SCENE LIGHT color`, opzione `tone` | là solo additive neutre |
 | Ombre (shadow map low-res, PCF-lite) | `SCENE SHADOWS 0..2` | assente |
 | Tilt vero | `WORLD CAMERA … roll` | là shear ~30° |
@@ -546,9 +547,18 @@ dichiarazione e riusato: `SCENE RESET` non libera e non rialloca.
 **Divergenza dichiarata** (`M-STATS-MS`): niente `ms`/`frame_ms` in `STATS`. Un orologio dentro
 `RENDER` è ciò che §0septies vieta; i millisecondi li misura fuori `tools/sh/bench_3d.sh`.
 
-**Non ancora fatto, dichiarato**: instancing per materiale e skinning 64 ossa (`KEY` TRS consegnato
-il 2026-11-27 con `SCENE KEY`/`SCENE TIME`, `LOD` consegnato lo stesso giorno con `SCENE LOD`:
-specifiche M-KEY e M-LOD).
+**Consegnato il 2026-11-27 (ottavo blocco: instancing per materiale).**
+
+| Pezzo | Dove | Verifica |
+|---|---|---|
+| `SCENE INSTANCE o, src`: geometria e materiale (flag, luce base) di `src`, trasformazione e tinta di `o` | `src/gmb_3d_inst.c` (nuovo), facciata in `include/gmb_3d.h` | `gmb_3d_oracle --instcheck`: **P5-INST ok=92 fail=0**, dentro `check_3d_oracle.sh` |
+| `INSTANCE` e `LOD` sulla stessa scelta («quale geometria»): l'ultima vince; `src = o` annulla | `gmb_3d_inst.c` + `gmb_3d_lod.c` | stesso gate: il materiale distingue le due strade (`0x800000` la sorgente, `0xFF0000` il LOD) |
+| Un livello solo, culling sulla geometria disegnata, raggi/quote/AABB sulla dichiarata, `allocs=0` | `gmb_3d_cmd.c` (`gmb_3d_inst_geom/flags/light`) | stesso gate + `scene_instance.bas` identico su quattro gambe |
+| 1 TokenKind (2753 in C), 1 syscall (518) su 4 gambe | `TokenKind.cs`/`gmb_tokenkind.h`, `gmb_parser_stmt_domain.c`, `gmb_c99_emit_3d.c`, IL/PCode/VM-C | `check_enum_ids` verde; gate A/B `cc`+`zcc` su `gmb_3d_inst.c` (e `gmb_3d_lod.c`, prima fuori dall'elenco) |
+
+**Non ancora fatto, dichiarato**: skinning 64 ossa (`KEY` TRS consegnato il 2026-11-27 con
+`SCENE KEY`/`SCENE TIME`, `LOD` lo stesso giorno con `SCENE LOD`, instancing per materiale con
+`SCENE INSTANCE`: specifiche M-KEY, M-LOD e M-INST).
 
 ### P6 — Audio 3D e input (5–7 gg)
 

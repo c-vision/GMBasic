@@ -235,6 +235,8 @@ static int gmb_p_scene_verb_tk(const char* v)
         { "KEY", GMB_TOK_SceneKey }, { "TIME", GMB_TOK_SceneTime },
         /* P5/M-LOD: livello di dettaglio per oggetto (o, dist, mesh). */
         { "LOD", GMB_TOK_SceneLod },
+        /* P5/M-INST: instancing per materiale (o, src). */
+        { "INSTANCE", GMB_TOK_SceneInstance },
     };
     for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
         if (strcasecmp(v, map[i].word) == 0) return (int)map[i].tk;

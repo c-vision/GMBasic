@@ -73,6 +73,10 @@ public static partial class IlRuntime
     public static void SceneLod(long o, double dist, long mesh)
         => CommonLib.Scene3DNative.Lod(o, dist, mesh);
 
+    // P5/M-INST: geometria e materiale dell'oggetto `src`, trasformazione e tinta di `o`.
+    public static void SceneInstance(long o, long src)
+        => CommonLib.Scene3DNative.Instance(o, src);
+
     // SCENE PRESENT: target 3D → pagina 2D corrente (il present vero resta al main thread).
     public static void ScenePresent() => CommonLib.Scene3DNative.Present();
 

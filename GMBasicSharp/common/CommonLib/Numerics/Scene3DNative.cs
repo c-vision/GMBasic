@@ -203,6 +203,13 @@ public static class Scene3DNative
     public static long Lod(long o, double dist, long mesh)
     { var rc = LodRaw(o, dist, mesh); Check(rc); return rc; }
 
+    // SCENE INSTANCE o, src — instancing per materiale (P5/M-INST): geometria e
+    // materiale di `src`, trasformazione e tinta di `o`.
+    [DllImport(Lib, EntryPoint = "gmb_scene_instance", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long InstanceRaw(long o, long src);
+    public static long Instance(long o, long src)
+    { var rc = InstanceRaw(o, src); Check(rc); return rc; }
+
     // SCENE PRESENT, lato 3D: guardia GPM e frame corrente. La COPIA nella pagina vive in
     // `gmb_gfx` (`gmb_gfx_present_argb`), perché le pagine 2D appartengono a quel modulo:
     // qui e lì c'è una copia ciascuno del runtime, quindi si passa il puntatore del frame.

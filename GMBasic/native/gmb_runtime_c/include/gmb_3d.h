@@ -472,6 +472,18 @@ int64_t gmb_scene_time(double t);
  * L'ultima dichiarazione vince. E_ARG = oggetto o mesh inesistente, distanza
  * negativa o non finita. */
 int64_t gmb_scene_lod(int64_t o, double dist, int64_t mesh);
+/* SCENE INSTANCE o, src — instancing per materiale dell'oggetto `o` (1..nobj):
+ * RENDER disegna la geometria E il materiale (flag 1/2/16, luce base) dell'oggetto
+ * `src`, con la trasformazione (posizione, yaw, pitch, roll) e la tinta di `o`:
+ * geometria e materiale si dichiarano UNA volta e valgono per N collocazioni. La
+ * sorgente è un oggetto come gli altri e non riapplica la propria istanza né il
+ * proprio LOD (un livello solo, nessuna catena). `src == o` riporta l'oggetto alla
+ * propria geometria; INSTANCE e LOD si contendono la stessa scelta e l'ultima
+ * dichiarazione vince. È SOLO una scelta di disegno: PICK (identità di `o`), AABB
+ * mondo, quote, raggi e collisione restano quelli della geometria DICHIARATA di
+ * `o`, mentre il culling del frustum guarda quella disegnata. E_ARG = oggetto o
+ * sorgente inesistente (1..nobj). */
+int64_t gmb_scene_instance(int64_t o, int64_t src);
 int64_t gmb_scene_camera(double x, double y, double z,
                          double yaw_deg, double pitch_deg);
 /* SCENE LIGHT dx, dy, dz, livello: luce direzionale per faccia. (dx,dy,dz) punta VERSO

@@ -1987,6 +1987,203 @@ static int run_p5_lod(void)
     return fail == 0 ? 0 : 1;
 }
 
+static int run_p5_inst(void)
+{
+    int ok = 0, fail = 0;
+#define P5I_CHECK(cond, ...) do { if (cond) ok++; else { fail++; printf("P5-INST fail: "); printf(__VA_ARGS__); printf("\n"); } } while (0)
+
+    /* Oggetto 1: due quad 10×20 a z=60 (quattro triangoli), tinta blu. Oggetto 2:
+     * un quad piccolo ±6 a z=400 — oltre il far plane (300), invisibile da solo —
+     * tinta verde e luce base 128. Oggetto 3 e 4: ospiti SENZA geometria, a z=50
+     * e z=40: l'unico modo di vederli è che disegnino la geometria di un altro.
+     * La tinta del pixel distingue il materiale: 0x800000 = rosso 255 con luce
+     * 128 (della sorgente), 0xFF0000 = luce 255 (dell'oggetto). */
+#define P5I_SCENE() do { \
+        P5I_CHECK(gmb_scene_reset() == GMB_3D_OK, "RESET"); \
+        P5I_CHECK(gmb_scene_view(32, 32, 60.0) == GMB_3D_OK, "VIEW"); \
+        P5I_CHECK(gmb_scene_camera(0.0, 0.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "CAMERA"); \
+        P5I_CHECK(gmb_scene_pick_enable(1) == GMB_3D_OK, "PICK on"); \
+        P5I_CHECK(gmb_scene_object(0, 0, 255) == GMB_3D_OK \
+                  && gmb_scene_vertex(-15.0, -10.0, 0.0, 0.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(0.0, -10.0, 0.0, 0.5, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(0.0, 10.0, 0.0, 0.5, 0.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(-15.0, 10.0, 0.0, 0.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_quad(0, 3, 2, 1) == GMB_3D_OK \
+                  && gmb_scene_vertex(0.0, -10.0, 0.0, 0.5, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(15.0, -10.0, 0.0, 1.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(15.0, 10.0, 0.0, 1.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(0.0, 10.0, 0.0, 0.5, 0.0) == GMB_3D_OK \
+                  && gmb_scene_quad(4, 7, 6, 5) == GMB_3D_OK \
+                  && gmb_scene_objpos(0.0, 0.0, 60.0, 0.0) == GMB_3D_OK, "oggetto 1"); \
+        P5I_CHECK(gmb_scene_object_flags(0, 255, 0, 0, 128) == GMB_3D_OK \
+                  && gmb_scene_vertex(-6.0, -6.0, 0.0, 0.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(6.0, -6.0, 0.0, 1.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(6.0, 6.0, 0.0, 1.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(-6.0, 6.0, 0.0, 0.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_quad(0, 3, 2, 1) == GMB_3D_OK \
+                  && gmb_scene_objpos(0.0, 0.0, 400.0, 0.0) == GMB_3D_OK, "oggetto 2 (mesh lontana)"); \
+        P5I_CHECK(gmb_scene_object(255, 0, 0) == GMB_3D_OK \
+                  && gmb_scene_objpos(0.0, 0.0, 50.0, 0.0) == GMB_3D_OK, "oggetto 3 (ospite)"); \
+        P5I_CHECK(gmb_scene_object(255, 255, 255) == GMB_3D_OK \
+                  && gmb_scene_objpos(0.0, 0.0, 40.0, 0.0) == GMB_3D_OK, "oggetto 4 (ospite)"); \
+        P5I_CHECK(gmb_scene_object(255, 255, 0) == GMB_3D_OK \
+                  && gmb_scene_objpos(0.0, 0.0, 250.0, 0.0) == GMB_3D_OK, "oggetto 5 (ospite lontano)"); \
+        P5I_CHECK(gmb_scene_object(0, 255, 255) == GMB_3D_OK \
+                  && gmb_scene_objpos(0.0, 0.0, 400.0, 0.0) == GMB_3D_OK, "oggetto 6 (ospite oltre il far)"); \
+    } while (0)
+
+    /* Argomenti: oggetto e sorgente in 1..nobj (esistono 1..4). */
+    P5I_SCENE();
+    P5I_CHECK(gmb_scene_instance(0, 2) == GMB_3D_E_ARG
+              && gmb_scene_instance(7, 2) == GMB_3D_E_ARG,
+              "INSTANCE su oggetto 0 o 7 (esistono 1..6) non rifiutato");
+    P5I_CHECK(gmb_scene_instance(3, 0) == GMB_3D_E_ARG
+              && gmb_scene_instance(3, 7) == GMB_3D_E_ARG,
+              "INSTANCE con sorgente 0 o 7 non rifiutato");
+    P5I_CHECK(gmb_3d_last_error()[0] != 0, "errore di INSTANCE senza messaggio");
+
+    /* Senza istanza gli ospiti non disegnano niente: restano i quattro
+     * triangoli dell'oggetto 1, che copre il pixel 16 e il 12. */
+    P5I_SCENE();
+    P5I_CHECK(gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_drawn() == 4 && gmb_scene_pick(16, 16) == 1
+              && gmb_scene_pick(12, 16) == 1,
+              "senza istanza: draw=%lld pick16=%lld pick12=%lld (attesi 4/1/1)",
+              (long long)gmb_scene_drawn(), (long long)gmb_scene_pick(16, 16),
+              (long long)gmb_scene_pick(12, 16));
+
+    /* Istanza: geometria della sorgente (2 triangoli), trasformazione
+     * dell'oggetto 3 (z=50, davanti all'1) e identità di 3 in PICK. Il materiale
+     * è quello della sorgente: tinta rossa (di 3) con la luce 128 (di 2). */
+    P5I_CHECK(gmb_scene_instance(3, 2) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_drawn() == 6 && gmb_scene_pick(16, 16) == 3
+              && gmb_scene_pick(10, 16) == 1
+              && gmb_scene_pixel(16, 16) == 0x800000
+              && gmb_scene_pixel(10, 16) == 0x0000FF,
+              "istanza: draw=%lld pick16=%lld pick10=%lld px16=%06llx px10=%06llx (attesi 6/3/1/800000/0000ff)",
+              (long long)gmb_scene_drawn(), (long long)gmb_scene_pick(16, 16),
+              (long long)gmb_scene_pick(10, 16),
+              (long long)(unsigned)gmb_scene_pixel(16, 16),
+              (long long)(unsigned)gmb_scene_pixel(10, 16));
+
+    /* L'istanza non ha soglia di distanza: a z=250 (dentro il far plane) la
+     * geometria della sorgente si disegna ancora, senza dichiarare distanze. */
+    P5I_SCENE();
+    P5I_CHECK(gmb_scene_instance(5, 2) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK && gmb_scene_drawn() == 6,
+              "istanza lontana: draw=%lld (atteso 6)", (long long)gmb_scene_drawn());
+
+    /* Il culling guarda la geometria DISEGNATA con il modello dell'oggetto:
+     * con l'ospite oltre il far plane (400) l'istanza è scartata come la
+     * sorgente, e resta solo l'oggetto 1. */
+    P5I_SCENE();
+    P5I_CHECK(gmb_scene_instance(6, 2) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK && gmb_scene_drawn() == 4,
+              "istanza oltre il far: draw=%lld (atteso 4)", (long long)gmb_scene_drawn());
+
+    /* UN livello: l'istanza 4 di 3 (a sua volta istanza di 2) disegna la
+     * geometria DICHIARATA di 3, che è vuota — non segue la catena. */
+    P5I_SCENE();
+    P5I_CHECK(gmb_scene_instance(3, 2) == GMB_3D_OK
+              && gmb_scene_instance(4, 3) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_drawn() == 6 && gmb_scene_pick(16, 16) == 3,
+              "catena di istanze: draw=%lld pick16=%lld (attesi 6/3)",
+              (long long)gmb_scene_drawn(), (long long)gmb_scene_pick(16, 16));
+    /* La seconda istanza punta alla sorgente vera: due triangoli in più, e
+     * l'oggetto 4 (z=40) è davanti a tutti. */
+    P5I_CHECK(gmb_scene_instance(4, 2) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_drawn() == 8 && gmb_scene_pick(16, 16) == 4,
+              "due istanze: draw=%lld pick16=%lld (attesi 8/4)",
+              (long long)gmb_scene_drawn(), (long long)gmb_scene_pick(16, 16));
+    /* `src == o` riporta l'oggetto alla propria geometria (ospite vuoto). */
+    P5I_CHECK(gmb_scene_instance(4, 4) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_drawn() == 6 && gmb_scene_pick(16, 16) == 3,
+              "INSTANCE 4, 4: draw=%lld pick16=%lld (attesi 6/3)",
+              (long long)gmb_scene_drawn(), (long long)gmb_scene_pick(16, 16));
+
+    /* INSTANCE e LOD si contendono la stessa scelta: dopo LOD l'oggetto 3
+     * disegna i triangoli di 2 ma con il PROPRIO materiale (luce 255, 0xFF0000);
+     * l'INSTANCE successiva riporta il materiale della sorgente (0x800000). */
+    P5I_SCENE();
+    P5I_CHECK(gmb_scene_lod(3, 0.0, 2) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_drawn() == 6 && gmb_scene_pixel(16, 16) == 0xFF0000,
+              "LOD dopo INSTANCE: draw=%lld px16=%06llx (attesi 6/ff0000)",
+              (long long)gmb_scene_drawn(),
+              (long long)(unsigned)gmb_scene_pixel(16, 16));
+    P5I_CHECK(gmb_scene_instance(3, 2) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_drawn() == 6 && gmb_scene_pixel(16, 16) == 0x800000,
+              "INSTANCE dopo LOD: draw=%lld px16=%06llx (attesi 6/800000)",
+              (long long)gmb_scene_drawn(),
+              (long long)(unsigned)gmb_scene_pixel(16, 16));
+
+    /* L'oggetto che ospita l'istanza non entra nell'AABB mondo (non ha
+     * geometria): il colpo passa e prende l'oggetto 1 a z=60, e sotto l'ospite
+     * non c'è nessuna superficie. */
+    {
+        long long hit = (long long)gmb_scene_shoot(300.0);
+        P5I_CHECK(hit == 1 && gmb_scene_shotdist() == 60.0,
+                  "SHOOT con istanza: obj=%lld dist=%g (attesi 1/60)", hit, gmb_scene_shotdist());
+        P5I_CHECK(gmb_scene_floor_at(0.0, 100.0, 50.0) == -1000000.0,
+                  "l'ospite dell'istanza è diventato un ostacolo: FLOORAT=%g",
+                  gmb_scene_floor_at(0.0, 100.0, 50.0));
+    }
+
+    /* Il materiale viene dalla sorgente anche nei FLAG: un quad con avvolgimento
+     * rovescio è scartato con i flag di 1 (nessun due lati) e disegnato con i
+     * flag 16 di 3. L'ospite 2 resta lo stesso. */
+    P5I_CHECK(gmb_scene_reset() == GMB_3D_OK
+              && gmb_scene_view(32, 32, 60.0) == GMB_3D_OK
+              && gmb_scene_camera(0.0, 0.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "scena dei flag");
+    P5I_CHECK(gmb_scene_object_flags(0, 0, 255, 0, 255) == GMB_3D_OK
+              && gmb_scene_vertex(-6.0, -6.0, 0.0, 0.0, 1.0) == GMB_3D_OK
+              && gmb_scene_vertex(6.0, -6.0, 0.0, 1.0, 1.0) == GMB_3D_OK
+              && gmb_scene_vertex(6.0, 6.0, 0.0, 1.0, 0.0) == GMB_3D_OK
+              && gmb_scene_vertex(-6.0, 6.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && gmb_scene_quad(0, 1, 2, 3) == GMB_3D_OK
+              && gmb_scene_objpos(0.0, 0.0, 400.0, 0.0) == GMB_3D_OK, "sorgente a un lato");
+    P5I_CHECK(gmb_scene_object(255, 0, 0) == GMB_3D_OK
+              && gmb_scene_objpos(0.0, 0.0, 50.0, 0.0) == GMB_3D_OK, "ospite dei flag");
+    P5I_CHECK(gmb_scene_object_flags(0, 255, 0, 16, 255) == GMB_3D_OK
+              && gmb_scene_vertex(-6.0, -6.0, 0.0, 0.0, 1.0) == GMB_3D_OK
+              && gmb_scene_vertex(6.0, -6.0, 0.0, 1.0, 1.0) == GMB_3D_OK
+              && gmb_scene_vertex(6.0, 6.0, 0.0, 1.0, 0.0) == GMB_3D_OK
+              && gmb_scene_vertex(-6.0, 6.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && gmb_scene_quad(0, 1, 2, 3) == GMB_3D_OK
+              && gmb_scene_objpos(0.0, 0.0, 400.0, 0.0) == GMB_3D_OK, "sorgente a due lati");
+    P5I_CHECK(gmb_scene_instance(2, 1) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK && gmb_scene_drawn() == 0,
+              "flag della sorgente ignorati (due lati spento): draw=%lld",
+              (long long)gmb_scene_drawn());
+    P5I_CHECK(gmb_scene_instance(2, 3) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK && gmb_scene_drawn() == 2,
+              "flag due lati della sorgente non applicati: draw=%lld",
+              (long long)gmb_scene_drawn());
+
+    /* Zero allocazioni: l'istanza è un intero nell'oggetto, letto dal frame. */
+    {
+        unsigned long a0 = gmb_3d_alloc_count();
+        P5I_CHECK(gmb_scene_render() == GMB_3D_OK && gmb_3d_alloc_count() == a0,
+                  "RENDER con istanze ha allocato: %lu", gmb_3d_alloc_count() - a0);
+    }
+
+    /* RESET azzera anche le istanze. */
+    P5I_SCENE();
+    P5I_CHECK(gmb_scene_render() == GMB_3D_OK && gmb_scene_drawn() == 4,
+              "dopo RESET l'istanza è rimasta attiva: draw=%lld (atteso 4)",
+              (long long)gmb_scene_drawn());
+
+#undef P5I_SCENE
+#undef P5I_CHECK
+    printf("P5-INST ok=%d fail=%d\n", ok, fail);
+    return fail == 0 ? 0 : 1;
+}
+
 static int cmp_double(const void* a, const void* b)
 {
     double x = *(const double*)a, y = *(const double*)b;
@@ -2170,6 +2367,7 @@ static void usage(void)
            "  --statscheck = SCENE.STATS: contatori del frame e memoria riservata (P5)\n"
            "  --keycheck = SCENE KEY/TIME: piste TRS, clamp, tetto, pitch/roll (P5, M-KEY)\n"
            "  --lodcheck = SCENE LOD: soglie, mesh sostitutiva, identità, raggi (P5, M-LOD)\n"
+           "  --instcheck = SCENE INSTANCE: geometria e materiale condivisi, identità (P5, M-INST)\n"
            "  --bench-scene = N oggetti (default 500) a --size (default 640x360)\n"
            "  --tris N = N triangoli dichiarati (12 per box) in griglia frontale\n"
            "  --bench-key = tempo di dichiarazione di N oggetti x K chiavi (--keys, default 32)\n");
@@ -2183,7 +2381,7 @@ int main(int argc, char** argv)
     const char* demo = NULL;
     double tol = 0.0;
     int bench = 0, frames = 120;
-    int cullcheck = 0, interactcheck = 0, raycheck = 0, statscheck = 0, keycheck = 0, lodcheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
+    int cullcheck = 0, interactcheck = 0, raycheck = 0, statscheck = 0, keycheck = 0, lodcheck = 0, instcheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
     int bench_key = 0, keys = 32, rounds = 5;
     int tris_target = 0;   /* --tris N: 0 = griglia storica a oggetti */
 
@@ -2210,6 +2408,7 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "--statscheck")) statscheck = 1;
         else if (!strcmp(argv[i], "--keycheck")) keycheck = 1;
         else if (!strcmp(argv[i], "--lodcheck")) lodcheck = 1;
+        else if (!strcmp(argv[i], "--instcheck")) instcheck = 1;
         else if (!strcmp(argv[i], "--bench-scene")) bench_scene = 1;
         else if (!strcmp(argv[i], "--bench-key")) bench_key = 1;
         else if (!strcmp(argv[i], "--keys") && i + 1 < argc) keys = atoi(argv[++i]);
@@ -2231,6 +2430,7 @@ int main(int argc, char** argv)
     if (statscheck) return run_p5_stats();
     if (keycheck) return run_p5_key();
     if (lodcheck) return run_p5_lod();
+    if (instcheck) return run_p5_inst();
     if (bench_key) return p5_key_bench(objects, keys, rounds);
     if (bench_scene)
     {

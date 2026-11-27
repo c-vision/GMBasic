@@ -196,6 +196,14 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneLod)));
                 return;
 
+            // P5/M-INST: oggetto e sorgente, entrambi indici oggetto (1..nobj).
+            case TokenKind.SceneInstance:
+                RequireSceneArgs(stmt, 2, "SCENE INSTANCE o, src");
+                EmitInt64Argument(a[0]);
+                EmitInt64Argument(a[1]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneInstance)));
+                return;
+
             case TokenKind.ScenePresent:
                 RequireSceneArgs(stmt, 0, "SCENE PRESENT non accetta argomenti");
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ScenePresent)));

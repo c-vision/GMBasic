@@ -652,8 +652,7 @@ int64_t gmb_scene_thing_light(int64_t n, int64_t level)
 int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b)
 {
     if (gmb_3d_scene_reserve_objs(g_scene.nobj + 1) != GMB_3D_OK) return GMB_3D_E_ARG;
-    gmb_scene_obj_t* o = &g_scene.obj[g_scene.nobj];
-    o->first_vert = g_scene.nv;
+    gmb_scene_obj_t* o = &g_scene.obj[g_scene.nobj];    o->first_vert = g_scene.nv;
     o->nvert = 0;
     o->first_tri = g_scene.nt;
     o->ntri = 0;
@@ -661,7 +660,7 @@ int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b)
     o->yaw = 0.0f;
     o->pitch = o->roll = 0.0f;
     o->lod_mesh = 0;               /* M-LOD: nessun livello di dettaglio */
-    o->lod_dist = 0.0f;
+    o->lod_dist = 0.0f; o->inst_src = 0;   /* M-LOD / M-INST: nessuna sorgente */
     o->r = (unsigned char)g_scene_clampi(r);
     o->g = (unsigned char)g_scene_clampi(g);
     o->b = (unsigned char)g_scene_clampi(b);
@@ -787,11 +786,9 @@ void gmb_3d_scene_camera_set(float x, float y, float z, float yaw, float pitch)
     gmb_3d_actor_sync_feet((double)y);
 }
 
-/* AABB MONDO degli oggetti con geometria, per la superficie interattiva
- * (gmb_3d_scene_actor.c). Il modello è traslazione + rotazione su y: si
- * ruotano gli otto angoli dell'AABB locale e si ricava l'AABB che li contiene. */
-/* Gli AABB mondo sono in gmb_3d_scene_buf.c (`gmb_3d_scene_bounds_all`): lo
- * stesso buffer persistente serve al corpo e a FLOORAT/CEILAT, senza copie. */
+/* AABB MONDO degli oggetti con geometria, per la superficie interattiva: il
+ * modello è traslazione + rotazione su y, si ruotano gli otto angoli dell'AABB
+ * locale e si ricava quello che li contiene. Buffer in gmb_3d_scene_buf.c. */
 
 /* --- disegno -------------------------------------------------------------- */
 
@@ -802,9 +799,9 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
                              const gmb_3d_env_t* env)
 {
     const gmb_scene_obj_t* o = &g_scene.obj[oi];
-    /* M-LOD: oltre la distanza dichiarata la GEOMETRIA viene da un altro oggetto,
-     * trasformata e tinta con questa: l'identità (PICK, id) resta quella di `o`. */
-    const gmb_scene_obj_t* g = &g_scene.obj[gmb_3d_lod_source(oi, g_scene_eye)];
+    /* M-LOD/M-INST: la GEOMETRIA può venire da un altro oggetto (LOD oltre la
+     * soglia, oppure istanza); trasformazione, tinta e identità restano di `o`. */
+    const gmb_scene_obj_t* g = &g_scene.obj[gmb_3d_inst_geom(oi, g_scene_eye)];
     if (g->ntri <= 0 || g->nvert <= 0) return GMB_3D_OK;
 
     float model[16], mvp[16];
@@ -896,13 +893,16 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
         mat.th = g_scene_tex_h;
     }
     /* Flag del materiale: il kernel li consuma, qui si passano soltanto. */
+    /* M-INST: il materiale (flag, luce base) può venire dalla sorgente. */
+    const unsigned char mflags = gmb_3d_inst_flags(oi);
+    const unsigned char mlight = gmb_3d_inst_light(oi);
     mat.bilinear = g_scene_smooth;
-    mat.masked = g_scene_alpha || ((o->flags & 1) != 0);
-    mat.two_sided = g_scene_two_sided || ((o->flags & 16) != 0);
-    mat.translucent = (o->flags & 2) != 0;
+    mat.masked = g_scene_alpha || ((mflags & 1) != 0);
+    mat.two_sided = g_scene_two_sided || ((mflags & 16) != 0);
+    mat.translucent = (mflags & 2) != 0;
     mat.aa = g_scene_aa;   /* SSAA 2x per draw: spento = nessun target doppio, byte di P4 */
     mat.id = (unsigned)(oi + 1);   /* SCENE PICK: 1..256, ordine di dichiarazione */
-    mat.light = o->light;
+    mat.light = mlight;
     mat.tint_r = o->r;
     mat.tint_g = o->g;
     mat.tint_b = o->b;
@@ -916,9 +916,9 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
     int start = 0;
     while (start < g->ntri)
     {
-        unsigned char light = lights ? lights[start] : o->light;
+        unsigned char light = lights ? lights[start] : mlight;
         int n = 1;
-        while (start + n < g->ntri && (lights ? lights[start + n] : o->light) == light) n++;
+        while (start + n < g->ntri && (lights ? lights[start + n] : mlight) == light) n++;
 
         mat.light = light;
         m.idx = g_scene.idx + (size_t)(g->first_tri + start) * 3;
@@ -992,7 +992,7 @@ int64_t gmb_scene_render(void)
 
     for (int oi = 0; oi < g_scene.nobj; oi++)
     {
-        if ((g_scene.obj[oi].flags & 2) != 0) continue;   /* traslucido: dopo i thing */
+        if ((gmb_3d_inst_flags(oi) & 2) != 0) continue;   /* traslucido: dopo i thing */
         rc = scene_draw_object(oi, vp, planes, &g_scene_env);
         if (rc != GMB_3D_OK) return rc;
     }
@@ -1052,7 +1052,7 @@ int64_t gmb_scene_render(void)
         int cnt = 0;
         for (int oi = 0; oi < g_scene.nobj; oi++)
         {
-            if ((g_scene.obj[oi].flags & 2) == 0) continue;
+            if ((gmb_3d_inst_flags(oi) & 2) == 0) continue;
             float dx = g_scene.obj[oi].x - g_scene_eye[0];
             float dy = g_scene.obj[oi].y - g_scene_eye[1];
             float dz = g_scene.obj[oi].z - g_scene_eye[2];
