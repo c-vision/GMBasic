@@ -15009,16 +15009,21 @@ int gmb_vm_tick(gmb_vm_t* vm, gmb_task_t* task)
                             int n = 0;
                             char** words = gmb_coll_trie_find_all(ch, s0, &n);
                             gmb_obj_shared_val_t* out = gmb_shared_list_new();
-                            if (out && words)
+                            if (out)
                             {
-                                for (int i = 0; i < n; i++)
+                                if (words)
                                 {
-                                    gmb_obj_string_t* s = gmb_str_cstr(words[i]);
-                                    gmb_list_add(out->list, gmb_make_val_string_counted(s->data));
-                                    gmb_str_release(s);
-                                    free(words[i]);
+                                    for (int i = 0; i < n; i++)
+                                    {
+                                        gmb_obj_string_t* s = gmb_str_cstr(words[i]);
+                                        gmb_list_add(out->list, gmb_make_val_string_counted(s->data));
+                                        gmb_str_release(s);
+                                        free(words[i]);
+                                    }
                                 }
                                 free(words);
+                                /* Nessuna parola = LISTA VUOTA (JSON []), non null:
+                                 * canone IL/PCode/C99. */
                                 push_ref_new(task, (gmb_obj_t*)out, GMB_BT_OBJECT);
                             }
                             else { free(words); push_nil(task); }
