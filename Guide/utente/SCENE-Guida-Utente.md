@@ -810,6 +810,48 @@ MiniTest: `shared/minitests/3d/scene_instance.bas` (geometria e materiale della 
 di `PICK`, un livello solo, `src = o`, `LOD`/`INSTANCE` last-wins, raggi, `RESET`). Oracolo:
 `gmb_3d_oracle --instcheck` (92 controlli headless, dentro `tools/sh/check_3d_oracle.sh`).
 
+### Skinning: `SCENE BONES`, `POSEBONE`, `WEIGHT`
+
+Un albero che ondeggia, una porta a cerniera, un braccio: la geometria è una, ma i vertici non si
+muovono tutti insieme. Lo skinning lega i vertici alle **ossa**, e ogni osso porta la sua
+trasformazione.
+
+```
+SCENE BONES 2                        ' due ossa
+SCENE OBJECT 200, 200, 200
+SCENE BOX -5, -5, 0, 5, 5, 20        ' oggetto 1: la geometria
+SCENE WEIGHT 1, 0, 1, 1              ' il vertice 0 (dentro l'oggetto) segue l'osso 1 al 100%
+SCENE WEIGHT 1, 1, 1, 1
+SCENE OBJPOS 0, 0, 60, 0
+SCENE POSEBONE 1, 0, 0, 0, 30        ' l'osso 1 ruota di 30 gradi
+SCENE RENDER
+```
+
+**La posa è una trasformazione nello spazio dell'oggetto**, come `OBJPOS`: `POSEBONE b, x, y, z,
+yaw`, e la forma lunga `POSEBONE b, x, y, z, yaw, pitch, roll`. La posa di default è l'identità,
+quindi finché non chiami `POSEBONE` non cambia niente, e riportare una posa a zero la riporta
+esattamente all'identità.
+
+**`WEIGHT o, v, bone, w`**: `o` è l'oggetto (`1..n`), `v` il vertice **contato da zero dentro
+l'oggetto** (come gli indici di `QUAD`), `bone` l'osso (`1..BONES`) e `w` il peso `0..1`. Al massimo
+**due influenze** per vertice — la terza è un errore esplicito. I pesi si **normalizzano alla
+somma**: `0` non muove il vertice, `1` e `1` fra due ossa danno il punto medio, un peso solo vale
+tutto anche se vale `0,25`.
+
+**Cosa non cambia.** Come LOD e istanze, lo skinning è solo una scelta di disegno: `FLOORAT`,
+`SHOOT`, `USE`, collisione e l'AABB mondo restano quelli della geometria **dichiarata**. Anche il
+culling guarda la scatola dichiarata: una posa che porta i vertici molto fuori può essere scartata
+prima di disegnare. Le normali dichiarate (`VERTEX` a 8 argomenti) **non** si skinano: la luce per
+faccia sì, perché usa le posizioni skinnate.
+
+**Costo e memoria.** I pesi sono 4 byte per vertice e i loro buffer nascono al primo `WEIGHT`: una
+scena senza skinning non paga niente. `RENDER` non alloca. `SCENE BONES` azzera pose e pesi (cambiare
+scheletro non lascia legature appese) e `SCENE RESET` azzera tutto.
+
+MiniTest: `shared/minitests/3d/scene_skin.bas` (peso 0 e posa identità che non muovono niente, posa
+che sposta il quad, fusione fra due ossa, peso singolo normalizzato, `RESET`). Oracolo:
+`gmb_3d_oracle --skincheck` (44 controlli headless, dentro `tools/sh/check_3d_oracle.sh`).
+
 ### Statistiche per nome: `SCENE.STATS(nome$)`
 
 Le stesse misure delle letture qui sopra, più i contatori che servono a capire **come** gira il

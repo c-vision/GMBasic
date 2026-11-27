@@ -2184,6 +2184,184 @@ static int run_p5_inst(void)
     return fail == 0 ? 0 : 1;
 }
 
+/* P5/M-SKIN — skinning a 64 ossa. Un quad ±10 a z=60 in un 64×64 con fov 60:
+ * mezzo lato verticale = 60·tan30° = 34,64 unità, quindi 1 unità = 0,924 px e il
+ * quad copre i pixel 23..41. Una posa +10 in x lo sposta di 9,2 px (32..50),
+ * +20 di 18,5 (41..59). Il fondo è 0x0f1729. */
+/* I quattro vertici del quad (oggetto 1) allo stesso osso/peso: una posa muove
+ * la figura intera, non un angolo solo. */
+static int p5s_quad_weight(int bone, double w)
+{
+    for (long long v = 0; v < 4; v++)
+        if (gmb_scene_weight(1, v, bone, w) != GMB_3D_OK) return 0;
+    return 1;
+}
+
+static int run_p5_skin(void)
+{
+    int ok = 0, fail = 0;
+#define P5S_CHECK(cond, ...) do { if (cond) ok++; else { fail++; printf("P5-SKIN fail: "); printf(__VA_ARGS__); printf("\n"); } } while (0)
+#define P5S_BG 0x0f1729
+
+#define P5S_SCENE() do { \
+        P5S_CHECK(gmb_scene_reset() == GMB_3D_OK, "RESET"); \
+        P5S_CHECK(gmb_scene_view(64, 64, 60.0) == GMB_3D_OK, "VIEW"); \
+        P5S_CHECK(gmb_scene_camera(0.0, 0.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "CAMERA"); \
+        P5S_CHECK(gmb_scene_pick_enable(1) == GMB_3D_OK, "PICK on"); \
+        P5S_CHECK(gmb_scene_object(255, 255, 255) == GMB_3D_OK \
+                  && gmb_scene_vertex(-10.0, -10.0, 0.0, 0.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(10.0, -10.0, 0.0, 1.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(10.0, 10.0, 0.0, 1.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(-10.0, 10.0, 0.0, 0.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_quad(0, 3, 2, 1) == GMB_3D_OK \
+                  && gmb_scene_objpos(0.0, 0.0, 60.0, 0.0) == GMB_3D_OK, "oggetto 1 (quad)"); \
+    } while (0)
+
+    /* Riferimento: geometria dichiarata. */
+    P5S_SCENE();
+    P5S_CHECK(gmb_scene_render() == GMB_3D_OK && gmb_scene_drawn() == 2
+              && gmb_scene_pixel(32, 32) == 0xFFFFFF && gmb_scene_pick(32, 32) == 1
+              && gmb_scene_pixel(44, 32) == P5S_BG,
+              "base: draw=%lld px32=%06llx pick=%lld px44=%06llx",
+              (long long)gmb_scene_drawn(), (long long)(unsigned)gmb_scene_pixel(32, 32),
+              (long long)gmb_scene_pick(32, 32), (long long)(unsigned)gmb_scene_pixel(44, 32));
+    long long base_hash = (long long)gmb_scene_hash();
+
+    /* Le ossa senza pesi non cambiano un byte: il percorso skinnato non esiste
+     * finché WEIGHT non lega un vertice (M-SKIN-ALLOC). */
+    P5S_CHECK(gmb_scene_bones(2) == GMB_3D_OK, "BONES 2");
+    P5S_CHECK(gmb_scene_render() == GMB_3D_OK && (long long)gmb_scene_hash() == base_hash,
+              "BONES senza pesi ha cambiato il frame");
+    P5S_CHECK(gmb_scene_bones(65) == GMB_3D_E_ARG && gmb_scene_bones(-1) == GMB_3D_E_ARG,
+              "BONES fuori 0..64 non rifiutato");
+    P5S_CHECK(gmb_scene_bones(2) == GMB_3D_OK, "BONES 2 (ripristino)");
+
+    /* Argomenti: osso 1..BONES, oggetto 1..nobj, vertice 0..nvert-1. */
+    P5S_CHECK(gmb_scene_posebone(0, 0, 0, 0, 0) == GMB_3D_E_ARG
+              && gmb_scene_posebone(3, 0, 0, 0, 0) == GMB_3D_E_ARG,
+              "POSEBONE con osso 0 o 3 (esistono 1..2) non rifiutato");
+    P5S_CHECK(gmb_scene_weight(0, 0, 1, 1.0) == GMB_3D_E_ARG
+              && gmb_scene_weight(2, 0, 1, 1.0) == GMB_3D_E_ARG,
+              "WEIGHT con oggetto 0 o 2 (esiste 1) non rifiutato");
+    P5S_CHECK(gmb_scene_weight(1, -1, 1, 1.0) == GMB_3D_E_ARG
+              && gmb_scene_weight(1, 4, 1, 1.0) == GMB_3D_E_ARG,
+              "WEIGHT con vertice -1 o 4 (esistono 0..3) non rifiutato");
+    P5S_CHECK(gmb_scene_weight(1, 0, 0, 1.0) == GMB_3D_E_ARG
+              && gmb_scene_weight(1, 0, 3, 1.0) == GMB_3D_E_ARG,
+              "WEIGHT con osso 0 o 3 non rifiutato");
+    P5S_CHECK(gmb_3d_last_error()[0] != 0, "errore di WEIGHT senza messaggio");
+
+    /* Peso 0 e posa identità: il frame resta quello di sempre, bit per bit. */
+    P5S_CHECK(p5s_quad_weight(1, 0.0)
+              && gmb_scene_render() == GMB_3D_OK && (long long)gmb_scene_hash() == base_hash,
+              "peso 0 ha mosso il vertice");
+    P5S_CHECK(p5s_quad_weight(1, 1.0)
+              && gmb_scene_render() == GMB_3D_OK && (long long)gmb_scene_hash() == base_hash
+              && gmb_scene_drawn() == 2,
+              "posa identità diversa dalla geometria dichiarata");
+
+    /* Posa +10 in x: il quad si sposta di 9,2 px. La camera guarda +z con up +y,
+     * quindi +x va a SINISTRA sullo schermo (copre 14..32). */
+    P5S_CHECK(gmb_scene_posebone(1, 10.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_pixel(24, 32) == 0xFFFFFF && gmb_scene_pick(24, 32) == 1
+              && gmb_scene_pixel(45, 32) == P5S_BG,
+              "posa +10: px24=%06llx px45=%06llx",
+              (long long)(unsigned)gmb_scene_pixel(24, 32),
+              (long long)(unsigned)gmb_scene_pixel(45, 32));
+
+    /* Tornare alla posa identità riporta il frame di riferimento. */
+    P5S_CHECK(gmb_scene_posebone(1, 0.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK && (long long)gmb_scene_hash() == base_hash,
+              "POSEBONE identità non torna al frame base");
+
+    /* Due influenze 1:1 fra l'identità e +20 → punto medio +10. */
+    P5S_CHECK(gmb_scene_bones(2) == GMB_3D_OK, "BONES 2 per il blend");
+    P5S_CHECK(p5s_quad_weight(1, 1.0) && p5s_quad_weight(2, 1.0),
+              "due influenze sugli stessi vertici");
+    P5S_CHECK(gmb_scene_posebone(2, 20.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_pixel(24, 32) == 0xFFFFFF && gmb_scene_pixel(45, 32) == P5S_BG,
+              "blend 1:1: px24=%06llx px45=%06llx (atteso il punto medio +10)",
+              (long long)(unsigned)gmb_scene_pixel(24, 32),
+              (long long)(unsigned)gmb_scene_pixel(45, 32));
+    /* Un peso fuori 0..1 si clampa: 3 vale 1, quindi il blend resta 1:1. */
+    P5S_CHECK(p5s_quad_weight(1, 3.0)
+              && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_pixel(24, 32) == 0xFFFFFF && gmb_scene_pixel(45, 32) == P5S_BG,
+              "peso 3 non clampato a 1: px24=%06llx px45=%06llx",
+              (long long)(unsigned)gmb_scene_pixel(24, 32),
+              (long long)(unsigned)gmb_scene_pixel(45, 32));
+
+    /* Una sola influenza con peso 0,25 vale la matrice intera (normalizzazione). */
+    P5S_SCENE();
+    P5S_CHECK(gmb_scene_bones(2) == GMB_3D_OK, "BONES 2 (peso singolo)");
+    P5S_CHECK(gmb_scene_posebone(2, 20.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && p5s_quad_weight(2, 0.25)
+              && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_pixel(10, 32) == 0xFFFFFF && gmb_scene_pixel(45, 32) == P5S_BG,
+              "peso singolo 0,25: px10=%06llx px45=%06llx (atteso +20 pieno)",
+              (long long)(unsigned)gmb_scene_pixel(10, 32),
+              (long long)(unsigned)gmb_scene_pixel(45, 32));
+
+    /* Terza influenza: errore esplicito, non una caduta silenziosa. */
+    P5S_CHECK(gmb_scene_bones(3) == GMB_3D_OK
+              && gmb_scene_weight(1, 0, 1, 1.0) == GMB_3D_OK
+              && gmb_scene_weight(1, 0, 2, 1.0) == GMB_3D_OK
+              && gmb_scene_weight(1, 0, 3, 1.0) == GMB_3D_E_ARG,
+              "terza influenza non rifiutata");
+
+    /* La posa NON sposta il mondo: AABB, raggi e quote restano i dichiarati. */
+    P5S_SCENE();
+    P5S_CHECK(gmb_scene_bones(1) == GMB_3D_OK
+              && gmb_scene_posebone(1, 20.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && p5s_quad_weight(1, 1.0)
+              && gmb_scene_render() == GMB_3D_OK, "scena della posa estrema");
+    {
+        long long hit = (long long)gmb_scene_shoot(300.0);
+        P5S_CHECK(hit == 1 && gmb_scene_shotdist() == 60.0,
+                  "SHOOT con skin: obj=%lld dist=%g (attesi 1/60)", hit, gmb_scene_shotdist());
+        P5S_CHECK(gmb_scene_floor_at(0.0, 100.0, 60.0) == 10.0,
+                  "FLOORAT con skin: %g (atteso 10, AABB dichiarato)",
+                  gmb_scene_floor_at(0.0, 100.0, 60.0));
+    }
+
+    /* Zero allocazioni per frame, anche con pesi e pose. */
+    {
+        unsigned long a0 = gmb_3d_alloc_count();
+        P5S_CHECK(gmb_scene_render() == GMB_3D_OK && gmb_3d_alloc_count() == a0,
+                  "RENDER con skin ha allocato: %lu", gmb_3d_alloc_count() - a0);
+    }
+
+    /* BONES azzera i pesi: cambiare scheletro non lascia legature appese. */
+    P5S_CHECK(gmb_scene_bones(1) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK
+              && (long long)gmb_scene_hash() == base_hash,
+              "BONES non ha azzerato i pesi");
+    /* RESET azzera ossa, pose e pesi: la stessa scena ridichiarata senza comandi
+     * di skin torna al frame di riferimento (se un peso fosse rimasto, il quad
+     * del vertice 0 sarebbe ancora spostato). */
+    P5S_CHECK(gmb_scene_reset() == GMB_3D_OK, "RESET");
+    P5S_CHECK(gmb_scene_view(64, 64, 60.0) == GMB_3D_OK
+              && gmb_scene_camera(0.0, 0.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && gmb_scene_pick_enable(1) == GMB_3D_OK
+              && gmb_scene_object(255, 255, 255) == GMB_3D_OK
+              && gmb_scene_vertex(-10.0, -10.0, 0.0, 0.0, 1.0) == GMB_3D_OK
+              && gmb_scene_vertex(10.0, -10.0, 0.0, 1.0, 1.0) == GMB_3D_OK
+              && gmb_scene_vertex(10.0, 10.0, 0.0, 1.0, 0.0) == GMB_3D_OK
+              && gmb_scene_vertex(-10.0, 10.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && gmb_scene_quad(0, 3, 2, 1) == GMB_3D_OK
+              && gmb_scene_objpos(0.0, 0.0, 60.0, 0.0) == GMB_3D_OK,
+              "scena ridichiarata dopo RESET");
+    P5S_CHECK(gmb_scene_render() == GMB_3D_OK && (long long)gmb_scene_hash() == base_hash,
+              "dopo RESET lo skin e' rimasto attivo");
+
+#undef P5S_SCENE
+#undef P5S_CHECK
+#undef P5S_BG
+    printf("P5-SKIN ok=%d fail=%d\n", ok, fail);
+    return fail == 0 ? 0 : 1;
+}
+
 static int cmp_double(const void* a, const void* b)
 {
     double x = *(const double*)a, y = *(const double*)b;
@@ -2368,6 +2546,7 @@ static void usage(void)
            "  --keycheck = SCENE KEY/TIME: piste TRS, clamp, tetto, pitch/roll (P5, M-KEY)\n"
            "  --lodcheck = SCENE LOD: soglie, mesh sostitutiva, identità, raggi (P5, M-LOD)\n"
            "  --instcheck = SCENE INSTANCE: geometria e materiale condivisi, identità (P5, M-INST)\n"
+           "  --skincheck = SCENE BONES/POSEBONE/WEIGHT: ossa, pesi, fusione, identità (P5, M-SKIN)\n"
            "  --bench-scene = N oggetti (default 500) a --size (default 640x360)\n"
            "  --tris N = N triangoli dichiarati (12 per box) in griglia frontale\n"
            "  --bench-key = tempo di dichiarazione di N oggetti x K chiavi (--keys, default 32)\n");
@@ -2381,7 +2560,7 @@ int main(int argc, char** argv)
     const char* demo = NULL;
     double tol = 0.0;
     int bench = 0, frames = 120;
-    int cullcheck = 0, interactcheck = 0, raycheck = 0, statscheck = 0, keycheck = 0, lodcheck = 0, instcheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
+    int cullcheck = 0, interactcheck = 0, raycheck = 0, statscheck = 0, keycheck = 0, lodcheck = 0, instcheck = 0, skincheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
     int bench_key = 0, keys = 32, rounds = 5;
     int tris_target = 0;   /* --tris N: 0 = griglia storica a oggetti */
 
@@ -2409,6 +2588,7 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "--keycheck")) keycheck = 1;
         else if (!strcmp(argv[i], "--lodcheck")) lodcheck = 1;
         else if (!strcmp(argv[i], "--instcheck")) instcheck = 1;
+        else if (!strcmp(argv[i], "--skincheck")) skincheck = 1;
         else if (!strcmp(argv[i], "--bench-scene")) bench_scene = 1;
         else if (!strcmp(argv[i], "--bench-key")) bench_key = 1;
         else if (!strcmp(argv[i], "--keys") && i + 1 < argc) keys = atoi(argv[++i]);
@@ -2431,6 +2611,7 @@ int main(int argc, char** argv)
     if (keycheck) return run_p5_key();
     if (lodcheck) return run_p5_lod();
     if (instcheck) return run_p5_inst();
+    if (skincheck) return run_p5_skin();
     if (bench_key) return p5_key_bench(objects, keys, rounds);
     if (bench_scene)
     {

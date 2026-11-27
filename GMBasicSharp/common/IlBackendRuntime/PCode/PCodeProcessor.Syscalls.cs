@@ -1041,6 +1041,32 @@ internal sealed partial class PCodeProcessor
                 CommonLib.Scene3DNative.Instance(o, src);
                 break;
             }
+            // P5/M-SKIN: scheletro, posa di un osso e peso (stack al contrario).
+            case SysCall.SCENE_BONES:
+                CommonLib.Scene3DNative.Bones((long)PopNum(task));
+                break;
+            case SysCall.SCENE_POSEBONE:
+            {
+                var yaw = PopNum(task); var z = PopNum(task); var y = PopNum(task);
+                var x = PopNum(task); var b = (long)PopNum(task);
+                CommonLib.Scene3DNative.PoseBone(b, x, y, z, yaw);
+                break;
+            }
+            case SysCall.SCENE_POSEBONE_TRS:
+            {
+                var roll = PopNum(task); var pitch = PopNum(task); var yaw = PopNum(task);
+                var z = PopNum(task); var y = PopNum(task); var x = PopNum(task);
+                var b = (long)PopNum(task);
+                CommonLib.Scene3DNative.PoseBoneTrs(b, x, y, z, yaw, pitch, roll);
+                break;
+            }
+            case SysCall.SCENE_WEIGHT:
+            {
+                var w = PopNum(task); var bone = (long)PopNum(task);
+                var v = (long)PopNum(task); var o = (long)PopNum(task);
+                CommonLib.Scene3DNative.Weight(o, v, bone, w);
+                break;
+            }
             case SysCall.SCENE_FOG:
                 CommonLib.Scene3DNative.Fog(PopNum(task));
                 break;

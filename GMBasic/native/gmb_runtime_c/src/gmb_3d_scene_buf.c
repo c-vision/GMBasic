@@ -54,6 +54,48 @@ static int buf_next_cap(int cap, int init, int need, int max)
     return cap;
 }
 
+/* Nessuna influenza: due ossi «assenti» e pesi a zero. */
+static void skin_blank(gmb_3d_skin_t* s, size_t n)
+{
+    for (size_t i = 0; i < n; i++)
+    {
+        s[i].b0 = GMB_SKIN_NONE; s[i].b1 = GMB_SKIN_NONE;
+        s[i].w0 = 0;             s[i].w1 = 0;
+    }
+}
+
+/* I buffer del skinning, quando la scena usa WEIGHT (M-SKIN): prima erano
+ * assenti, quindi la scena non pagava 16 byte per vertice. */
+int gmb_3d_scene_skin_touch(void)
+{
+    if (g_geom.skin != NULL) return GMB_3D_OK;
+    if (g_geom.cap_v <= 0 && gmb_3d_scene_reserve_verts(GMB_SCENE_VERTS_INIT) != GMB_3D_OK)
+        return GMB_3D_E_ARG;
+    size_t c = (size_t)g_geom.cap_v;
+    gmb_3d_skin_t* skin = (gmb_3d_skin_t*)malloc(c * sizeof(gmb_3d_skin_t));
+    float* sk_pos = (float*)malloc(c * 3 * sizeof(float));
+    if (skin == NULL || sk_pos == NULL)
+    {
+        free(skin); free(sk_pos);
+        return buf_fail();
+    }
+    skin_blank(skin, c);
+    g_geom.skin = skin;
+    g_geom.sk_pos = sk_pos;
+    gmb_3d_note_alloc(2);   /* pesi e posizioni skinnate */
+    return GMB_3D_OK;
+}
+
+void gmb_3d_scene_skin_clear(int nvert)
+{
+    if (g_geom.skin == NULL) return;
+    if (nvert > g_geom.nv) nvert = g_geom.nv;
+    if (nvert > 0) skin_blank(g_geom.skin, (size_t)nvert);
+    /* Senza pesi nessun oggetto è più skinnato: la scena torna al percorso di
+     * sempre (stessi byte, nessuno scratch letto). */
+    for (int i = 0; i < g_geom.nobj; i++) g_geom.obj[i].has_skin = 0;
+}
+
 int gmb_3d_scene_reserve_verts(int need)
 {
     if (need <= g_geom.cap_v) return GMB_3D_OK;
@@ -68,9 +110,15 @@ int gmb_3d_scene_reserve_verts(int need)
     float* uv   = (float*)malloc(c * 2 * sizeof(float));
     float* nrm  = (float*)malloc(c * 3 * sizeof(float));
     float* nrmw = (float*)malloc(c * 3 * sizeof(float));
-    if (pos == NULL || uv == NULL || nrm == NULL || nrmw == NULL)
+    /* M-SKIN: se la scena usa il skinning, i due buffer crescono con i vertici
+     * (una scena senza WEIGHT non li ha e non li alloca). */
+    const int want_skin = (g_geom.skin != NULL);
+    gmb_3d_skin_t* skin = want_skin ? (gmb_3d_skin_t*)malloc(c * sizeof(gmb_3d_skin_t)) : NULL;
+    float* sk_pos = want_skin ? (float*)malloc(c * 3 * sizeof(float)) : NULL;
+    if (pos == NULL || uv == NULL || nrm == NULL || nrmw == NULL
+        || (want_skin && (skin == NULL || sk_pos == NULL)))
     {
-        free(pos); free(uv); free(nrm); free(nrmw);
+        free(pos); free(uv); free(nrm); free(nrmw); free(skin); free(sk_pos);
         return buf_fail();
     }
     if (used > 0)
@@ -79,11 +127,15 @@ int gmb_3d_scene_reserve_verts(int need)
         memcpy(uv,   g_geom.uv,    used * 2 * sizeof(float));
         memcpy(nrm,  g_geom.nrm,   used * 3 * sizeof(float));
         memcpy(nrmw, g_geom.nrm_w, used * 3 * sizeof(float));
+        if (want_skin) memcpy(skin, g_geom.skin, used * sizeof(gmb_3d_skin_t));
     }
+    if (want_skin) skin_blank(skin + used, c - used);   /* coda nuova: nessuna influenza */
     free(g_geom.pos); free(g_geom.uv); free(g_geom.nrm); free(g_geom.nrm_w);
+    free(g_geom.skin); free(g_geom.sk_pos);
     g_geom.pos = pos; g_geom.uv = uv; g_geom.nrm = nrm; g_geom.nrm_w = nrmw;
+    g_geom.skin = skin; g_geom.sk_pos = sk_pos;
     g_geom.cap_v = cap;
-    gmb_3d_note_alloc(4);   /* i quattro buffer dei vertici */
+    gmb_3d_note_alloc(want_skin ? 6u : 4u);   /* i buffer dei vertici (più i due del skin) */
     return GMB_3D_OK;
 }
 
@@ -197,6 +249,9 @@ static void obj_aabb_world(const gmb_scene_obj_t* o, gmb_3d_aabb_t* b)
 double gmb_3d_scene_bytes(void)
 {
     size_t v = (size_t)g_geom.cap_v * 11u * sizeof(float);
+    /* M-SKIN: solo se la scena ha pesi (due buffer, 4 + 12 byte per vertice). */
+    if (g_geom.skin != NULL)
+        v += (size_t)g_geom.cap_v * (sizeof(gmb_3d_skin_t) + 3u * sizeof(float));
     size_t t = (size_t)g_geom.cap_t * (3u * sizeof(int) + 2u);
     size_t o = (size_t)g_geom.cap_o * (sizeof(gmb_scene_obj_t) + sizeof(int) + sizeof(float)
                                        + sizeof(gmb_3d_aabb_t));

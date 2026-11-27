@@ -280,6 +280,28 @@ valori** su C99Native, IL, PCode e VM/C: geometria della sorgente con trasformaz
 (`0xFF0000`), un livello solo, `src = o`, culling sulla geometria disegnata, raggi e quote sulla
 dichiarata, `RESET`.
 
+#### Skinning a 64 ossa: `SCENE BONES`, `POSEBONE`, `WEIGHT` (P5, M-SKIN)
+
+| codice | regola | comportamento |
+|---|---|---|
+| `M-SKIN` | i tre comandi | `SCENE BONES n` dichiara lo scheletro della scena (`0..64` ossa); `SCENE POSEBONE b, x, y, z, yaw [, pitch, roll]` dà la posa dell'osso `b` (`1..n`); `SCENE WEIGHT o, v, bone, w` lega il vertice `v` dell'oggetto `o` all'osso `bone` con peso `w`. Nessuno dei tre disegna: dichiarano |
+| `M-SKIN-POSE` | che cos'è una posa | una **TRS nello spazio dell'oggetto**, la stessa convenzione di `OBJPOS`/`KEY` (posizione, `yaw`, `pitch`, `roll`; la forma corta ha `pitch = roll = 0`). La posa di default è l'**identità**: non esiste una bind pose separata — la matrice dell'osso È la trasformazione dei vertici che gli sono legati, quindi una scena senza `POSEBONE` dà gli stessi byte di sempre |
+| `M-SKIN-WEIGHT` | che cos'è un peso | il vertice `v` è **0-based e relativo all'oggetto** `o` (come gli indici di `QUAD`/`TRI`), il peso `w` è `0..1` e viene **clampato**. Massimo **due influenze** per vertice; la terza è un errore esplicito (`E_ARG`), non una caduta silenziosa. Ripetere `WEIGHT` con lo stesso osso aggiorna quel peso |
+| `M-SKIN-BLEND` | la fusione | lineare, **normalizzata alla somma**: `p' = (w0·M0·p + w1·M1·p) / (w0 + w1)`. Quindi `w = 0` non muove il vertice, due pesi uguali danno il punto medio, un peso solo (anche `0,25`) vale la matrice intera |
+| `M-SKIN-NRM` | normali e luce | si skinano le **posizioni**: la luce per faccia (`M-LIGHT`) legge le posizioni skinnate. Le normali dichiarate (`M-LIGHT-N`) restano quelle del vertice: skinning e normali per vertice non si combinano |
+| `M-SKIN-VIS` | cosa **non** cambia | AABB mondo, `FLOORAT`/`CEILAT`, `SHOOT`/`USE`/`SEES` e collisione restano quelli della geometria **dichiarata** di `o`, come `M-LOD-VIS`/`M-INST-VIS`. Anche il **culling del frustum** usa l'AABB dichiarato (non quello della posa): una posa che porta i vertici molto fuori dalla scatola può essere scartata in anticipo — limite dichiarato |
+| `M-SKIN-BONES` | ridichiarare lo scheletro | `SCENE BONES` azzera pose **e pesi**: cambiare scheletro non lascia legature appese a ossa che non esistono più. `BONES 0` spegne tutto |
+| `M-SKIN-RESET` | `RESET` | azzera ossa, pose e pesi: la scena torna al percorso di sempre, senza buffer del skinning letti dal frame |
+| `M-SKIN-ALLOC` | costo | i pesi sono **4 byte per vertice** (due ossi da un byte, due pesi da un byte) e i loro buffer **esistono solo per le scene che usano `WEIGHT`**: le altre non pagano né memoria né un passaggio in più. `RENDER` non alloca; le 64 matrici TRS si calcolano una volta per frame |
+| `M-SKIN-ANIM` | cosa manca | le pose si danno **a mano** con `POSEBONE`, che è anche il modo più diretto: le aggiorna il programma a ogni frame. Le **piste di chiavi degli ossi** (`ANIM skeleton` del piano) non ci sono: `SCENE KEY` anima gli oggetti, non le ossa |
+
+Verifica: `gmb_3d_oracle --skincheck` (**P5-SKIN ok=44 fail=0**, dentro `check_3d_oracle.sh`, gate
+A/B `cc`+`zcc` su `gmb_3d_skin.c`) e `shared/minitests/3d/scene_skin.bas` con gli **stessi valori**
+su C99Native, IL, PCode e VM/C: peso 0 e posa identità che non cambiano un byte (hash uguale), posa
+`+10`/`+20` che sposta il quad di 9,2/18,5 px, fusione 1:1 al punto medio, peso singolo
+normalizzato, terza influenza rifiutata, raggi e quote sulla geometria dichiarata, `BONES` e `RESET`
+che azzerano i pesi, zero allocazioni per frame.
+
 ### 3.3 Collisione, raggi, zone
 
 | ID | Comportamento |
@@ -290,6 +312,7 @@ dichiarata, `RESET`.
 | `M-KEY` | `KEY o, t, …` dichiara una chiave TRS e `TIME t` fissa il tempo di scena; `RENDER` campiona (lineare, clamp fuori intervallo, pitch/roll applicati, zero allocazioni per frame); `RESET` azzera piste e tempo. |
 | `M-LOD` | `LOD o, dist, mesh` oltre `dist` (stretto) disegna la geometria di `mesh` con trasformazione e tinta di `o`; un livello solo, identità di `o` in `PICK`, raggi, quote e AABB quelli dichiarati mentre il **culling del frustum** usa l'AABB della geometria disegnata, zero allocazioni; un oggetto senza geometria può ospitare solo la mesh; `RESET` azzera. |
 | `M-INST` | `INSTANCE o, src` fa disegnare a `o` geometria e materiale (flag, luce base) di `src`, con trasformazione e tinta di `o`; un livello solo, `INSTANCE`/`LOD` last-wins, identità di `o` in `PICK`, culling sulla geometria disegnata e raggi/quote/AABB su quella dichiarata, zero allocazioni; `RESET` azzera. |
+| `M-SKIN` | `BONES n`, `POSEBONE b, x,y,z,yaw[,pitch,roll]`, `WEIGHT o,v,bone,w`: posa dell'osso nello spazio dell'oggetto (default identità), peso 0..1 clampato, massimo due influenze normalizzate alla somma; AABB/quote/raggi/collisione sulla geometria dichiarata, culling sull'AABB dichiarato; 4 byte per vertice solo per chi usa `WEIGHT`, zero allocazioni per frame; `BONES` e `RESET` azzerano ossa e pesi. |
 | `M-STATS` | `STATS(nome$)` = una misura per nome: `tris`/`objs`/`bytes` (geometria dichiarata e memoria riservata), `draw`/`culled`/`pixels` (ultimo `RENDER`), `renders`/`renders_max` (`RENDER` per frame), `allocs` (allocazioni dall'avvio). Chiave ignota `−1`; il tempo di un frame si misura fuori dal motore. |
 | `M-FLOOR` | `FLOORAT(x,y,z)` = **superficie più alta a o sotto `y`**, sul punto (x, z); `CEILAT` l'analogo sopra. `−1000000` = nessuna superficie. È ciò che permette di stare su un mobile senza una fisica generale. |
 | `M-ZONE` | `ZONE id,x1,y1,x2,y2,z1,z2[,tag]` (`y` = altezza): `ZONE(x,y,z)` = id della **prima** zona che contiene il punto (`y` entro `y1−2 … y2`, `x` in `x1…x2` e `z` in `z1…z2`, estremi inclusi), `−1` se nessuna; `ZONETAG(id)` = il tag (`""` se l'id non esiste). **L'ordine di creazione conta**: le zone dei piani superiori e dei mobili calpestabili vanno create **prima** di quelle sotto. Il renderer non usa le zone. |

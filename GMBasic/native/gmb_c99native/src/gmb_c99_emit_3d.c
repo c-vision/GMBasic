@@ -261,6 +261,33 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
         wscene(c, "gmb_scene_instance", a, 2, s->line);
         return;
     }
+    if (tk == GMB_TOK_SceneBones)
+    {
+        /* M-SKIN: numero di ossa (0..64), validato dalla facciata C. */
+        if (n != 1) { c99_fail(c, s->line, "SCENE BONES n"); return; }
+        wscene(c, "gmb_scene_bones", a, 1, s->line);
+        return;
+    }
+    if (tk == GMB_TOK_ScenePoseBone)
+    {
+        /* M-SKIN: osso + TRS nello spazio dell'oggetto; la forma corta non ha
+         * pitch/roll (come OBJECT 3/5 e LAMP 6/10). */
+        if (n != 5 && n != 7)
+        {
+            c99_fail(c, s->line, "SCENE POSEBONE b, x, y, z, yaw [, pitch, roll]");
+            return;
+        }
+        wscene(c, n == 7 ? "gmb_scene_posebone_trs" : "gmb_scene_posebone", a, n, s->line);
+        return;
+    }
+    if (tk == GMB_TOK_SceneWeight)
+    {
+        /* M-SKIN: oggetto, vertice (0-based, relativo all'oggetto), osso e peso.
+         * Range e massimo due influenze li valida gmb_3d_skin.c. */
+        if (n != 4) { c99_fail(c, s->line, "SCENE WEIGHT o, v, bone, w"); return; }
+        wscene(c, "gmb_scene_weight", a, 4, s->line);
+        return;
+    }
     if (tk == GMB_TOK_SceneCamera)
     {
         if (n != 5) { c99_fail(c, s->line, "SCENE CAMERA x, y, z, yaw, pitch"); return; }

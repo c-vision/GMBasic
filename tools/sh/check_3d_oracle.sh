@@ -47,7 +47,7 @@ gate() {   # $1 = sorgente: lo stesso file con cc e con tools/sh/zcc
   done
 }
 # gmb_3d_scene.c (P5): matrici e culling per oggetto, lo stesso file su tutte le gambe.
-for f in gmb_3d_frame.c gmb_3d_io.c gmb_3d_sector.c gmb_3d_move.c gmb_3d_time.c gmb_3d_scene.c gmb_3d_scene_actor.c gmb_3d_scene_buf.c gmb_3d_scene_tex.c gmb_3d_ray.c gmb_3d_stats.c gmb_3d_key.c gmb_3d_lod.c gmb_3d_inst.c; do gate "$f"; done
+for f in gmb_3d_frame.c gmb_3d_io.c gmb_3d_sector.c gmb_3d_move.c gmb_3d_time.c gmb_3d_scene.c gmb_3d_scene_actor.c gmb_3d_scene_buf.c gmb_3d_scene_tex.c gmb_3d_ray.c gmb_3d_stats.c gmb_3d_key.c gmb_3d_lod.c gmb_3d_inst.c gmb_3d_skin.c; do gate "$f"; done
 say "gate C: gmb_3d_{frame,io,sector,move,time,scene,scene_actor,scene_buf,scene_tex,ray,stats,key,lod,inst}.c compilano con cc e tools/sh/zcc"
 
 # 2) Build dell'oracolo (target dedicato; il runtime statico è una sua dipendenza).
@@ -133,6 +133,15 @@ fi
 # PICK, un livello solo, raggi e quote sulla geometria dichiarata, zero alloc.
 if ! "$BIN" --instcheck; then
   echo "check_3d_oracle: instancing FALLITO" >&2
+  exit 1
+fi
+
+# 3quinquies-quater) P5: skinning a 64 ossa (M-SKIN). Posa nello spazio
+# dell'oggetto, fusione normalizzata su due influenze al massimo, peso 0 e posa
+# identità che non cambiano un byte, raggi/AABB sulla geometria dichiarata,
+# zero allocazioni e RESET che azzera ossa e pesi.
+if ! "$BIN" --skincheck; then
+  echo "check_3d_oracle: skinning FALLITO" >&2
   exit 1
 fi
 

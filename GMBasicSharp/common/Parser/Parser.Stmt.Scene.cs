@@ -106,6 +106,12 @@ public sealed partial class Parser
             // P5/M-INST: instancing per materiale (geometria e materiale di `src`).
             TokenKind.SceneInstance => SceneCmd(command, SceneArgs(parser, 2, 2,
                 "SCENE INSTANCE o, src")),
+            // P5/M-SKIN: scheletro, posa di un osso (5 o 7 argomenti) e pesi.
+            TokenKind.SceneBones => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE BONES n")),
+            TokenKind.ScenePoseBone => SceneCmd(command, SceneArgsOneOf(parser,
+                "SCENE POSEBONE b, x, y, z, yaw [, pitch, roll]", 5, 7)),
+            TokenKind.SceneWeight => SceneCmd(command, SceneArgs(parser, 4, 4,
+                "SCENE WEIGHT o, v, bone, w")),
             TokenKind.ScenePresent => SceneCmd(command, SceneNoArgs(parser, "SCENE PRESENT non accetta argomenti")),
             TokenKind.SceneRender => SceneCmd(command, SceneNoArgs(parser, "SCENE RENDER non accetta argomenti")),
             TokenKind.SceneSave => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE SAVE: manca il percorso del PNG")),
@@ -150,6 +156,9 @@ public sealed partial class Parser
         "TIME" => TokenKind.SceneTime,
         "LOD" => TokenKind.SceneLod,
         "INSTANCE" => TokenKind.SceneInstance,
+        "BONES" => TokenKind.SceneBones,
+        "POSEBONE" => TokenKind.ScenePoseBone,
+        "WEIGHT" => TokenKind.SceneWeight,
         "RENDER" => TokenKind.SceneRender,
         "SAVE" => TokenKind.SceneSave,
         _ => TokenKind.Unknown

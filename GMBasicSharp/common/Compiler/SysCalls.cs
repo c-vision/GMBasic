@@ -593,6 +593,12 @@ public enum SysCall : ushort
     // P5/M-INST — instancing per materiale: geometria e materiale dell'oggetto
     // `src`, trasformazione e tinta di `o`. In coda (codici canonici).
     SCENE_INSTANCE = 518,   // (o, src)                                → gmb_scene_instance
+    // P5/M-SKIN — skinning a 64 ossa: scheletro, posa di un osso (forma corta e
+    // forma con pitch/roll) e peso di un vertice. In coda (codici canonici).
+    SCENE_BONES = 520,      // (n)                                     → gmb_scene_bones
+    SCENE_POSEBONE = 521,   // (b, x, y, z, yaw)                       → gmb_scene_posebone
+    SCENE_POSEBONE_TRS = 522, // (b, x, y, z, yaw, pitch, roll)        → gmb_scene_posebone_trs
+    SCENE_WEIGHT = 523,     // (o, v, bone, w)                         → gmb_scene_weight
     // LAYOUT — WINDOW RESIZE w, h: ridimensiona la pagina LOGICA (percorso pixel e
     // percorso a celle) e riapplica il LAYOUT dei controlli (EXPAND/ANCHOR/ALIGN).
     // Unica implementazione nel runtime C (gmb_window_resize), condivisa da VM/C.

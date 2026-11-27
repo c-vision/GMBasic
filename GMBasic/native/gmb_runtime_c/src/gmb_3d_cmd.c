@@ -365,7 +365,7 @@ int64_t gmb_scene_reset(void)
     memset(g_scene_thing, 0, sizeof(g_scene_thing));
     gmb_3d_ray_reset();
     gmb_3d_stats_reset();   /* renders/renders_max del frame (M-STATS) */
-    gmb_3d_key_reset();     /* piste keyframe e tempo di scena (M-KEY) */
+    gmb_3d_key_reset(); gmb_3d_skin_reset();   /* M-KEY: piste e tempo; M-SKIN: ossa e pesi */
     free(g_scene_sky);
     g_scene_sky = NULL;
     g_scene_sky_w = g_scene_sky_h = 0;
@@ -666,7 +666,7 @@ int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b)
     o->b = (unsigned char)g_scene_clampi(b);
     o->flags = 0;
     o->light = 255u;
-    o->has_nrm = 0;
+    o->has_nrm = 0; o->has_skin = 0;   /* M-SKIN: nessun peso finché non arriva WEIGHT */
     g_scene.cur = g_scene.nobj++;
     return GMB_3D_OK;
 }
@@ -799,11 +799,12 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
                              const gmb_3d_env_t* env)
 {
     const gmb_scene_obj_t* o = &g_scene.obj[oi];
-    /* M-LOD/M-INST: GEOMETRIA e MATERIALE possono venire da altri oggetti (LOD,
-     * istanza); trasformazione, tinta e identità sono di `o`. */
-    const gmb_scene_obj_t* g = &g_scene.obj[gmb_3d_inst_geom(oi, g_scene_eye)];
+    /* M-LOD/M-INST: geometria e materiale possono venire da altri oggetti. */
+    const int gidx = gmb_3d_inst_geom(oi, g_scene_eye);
+    const gmb_scene_obj_t* g = &g_scene.obj[gidx];
     const gmb_scene_obj_t* mo = &g_scene.obj[gmb_3d_inst_mat(oi)];
     if (g->ntri <= 0 || g->nvert <= 0) return GMB_3D_OK;
+    const float* pos = gmb_3d_skin_pos(gidx);   /* M-SKIN: dichiarate o skinnate */
 
     float model[16], mvp[16];
     gmb_3d_m4_model_trs(model, o->x, o->y, o->z, o->yaw, o->pitch, o->roll);
@@ -827,9 +828,9 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
     {
         for (int t = 0; t < g->ntri; t++)
         {
-            const float* pa = g_scene.pos + (size_t)(g->first_vert + g_scene.idx[(size_t)(g->first_tri + t) * 3 + 0]) * 3;
-            const float* pb = g_scene.pos + (size_t)(g->first_vert + g_scene.idx[(size_t)(g->first_tri + t) * 3 + 1]) * 3;
-            const float* pc = g_scene.pos + (size_t)(g->first_vert + g_scene.idx[(size_t)(g->first_tri + t) * 3 + 2]) * 3;
+            const float* pa = pos + (size_t)(g->first_vert + g_scene.idx[(size_t)(g->first_tri + t) * 3 + 0]) * 3;
+            const float* pb = pos + (size_t)(g->first_vert + g_scene.idx[(size_t)(g->first_tri + t) * 3 + 1]) * 3;
+            const float* pc = pos + (size_t)(g->first_vert + g_scene.idx[(size_t)(g->first_tri + t) * 3 + 2]) * 3;
             double ax = (double)model[0] * pa[0] + (double)model[4] * pa[1] + (double)model[8]  * pa[2] + (double)model[12];
             double ay = (double)model[1] * pa[0] + (double)model[5] * pa[1] + (double)model[9]  * pa[2] + (double)model[13];
             double az = (double)model[2] * pa[0] + (double)model[6] * pa[1] + (double)model[10] * pa[2] + (double)model[14];
@@ -863,7 +864,7 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
     }
 
     gmb_3d_mesh_t m;
-    m.pos = g_scene.pos + (size_t)g->first_vert * 3;
+    m.pos = pos + (size_t)g->first_vert * 3;
     m.uv = g_scene.uv + (size_t)g->first_vert * 2;
     m.nv = g->nvert;
     /* Normali: dichiarate nello spazio dell'oggetto, quindi girano con lui. Il
@@ -942,7 +943,7 @@ int64_t gmb_scene_render(void)
     /* M-KEY: le piste si campionano qui, al tempo di scena (SCENE TIME), e
      * scrivono la trasformazione negli oggetti: il resto del frame legge quella,
      * come se fosse stata data con OBJPOS. Nessuna allocazione. */
-    gmb_3d_key_sample();
+    gmb_3d_key_sample(); gmb_3d_skin_pose_all();   /* M-SKIN: matrici degli ossi, 1/frame */
     /* Una scena può essere fatta di solo cielo o di soli thing: il render non
      * deve pretendere una mesh (M-ORDER/M-SKY/M-THINGS). */
     if (g_scene.nobj <= 0 && g_scene.nt <= 0 && g_scene_sky == NULL)

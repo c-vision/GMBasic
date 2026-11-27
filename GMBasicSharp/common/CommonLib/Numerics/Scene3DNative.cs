@@ -210,6 +210,29 @@ public static class Scene3DNative
     public static long Instance(long o, long src)
     { var rc = InstanceRaw(o, src); Check(rc); return rc; }
 
+    // SCENE BONES / POSEBONE / WEIGHT — skinning a 64 ossa (P5/M-SKIN): scheletro,
+    // posa di un osso nello spazio dell'oggetto e legatura vertice-osso con peso.
+    [DllImport(Lib, EntryPoint = "gmb_scene_bones", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long BonesRaw(long n);
+    public static long Bones(long n) { var rc = BonesRaw(n); Check(rc); return rc; }
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_posebone", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long PoseBoneRaw(long b, double x, double y, double z, double yaw);
+    public static long PoseBone(long b, double x, double y, double z, double yaw)
+    { var rc = PoseBoneRaw(b, x, y, z, yaw); Check(rc); return rc; }
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_posebone_trs", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long PoseBoneTrsRaw(long b, double x, double y, double z,
+                                             double yaw, double pitch, double roll);
+    public static long PoseBoneTrs(long b, double x, double y, double z,
+                                   double yaw, double pitch, double roll)
+    { var rc = PoseBoneTrsRaw(b, x, y, z, yaw, pitch, roll); Check(rc); return rc; }
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_weight", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long WeightRaw(long o, long v, long bone, double w);
+    public static long Weight(long o, long v, long bone, double w)
+    { var rc = WeightRaw(o, v, bone, w); Check(rc); return rc; }
+
     // SCENE PRESENT, lato 3D: guardia GPM e frame corrente. La COPIA nella pagina vive in
     // `gmb_gfx` (`gmb_gfx_present_argb`), perché le pagine 2D appartengono a quel modulo:
     // qui e lì c'è una copia ciascuno del runtime, quindi si passa il puntatore del frame.

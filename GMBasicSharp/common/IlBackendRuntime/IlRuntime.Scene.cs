@@ -77,6 +77,16 @@ public static partial class IlRuntime
     public static void SceneInstance(long o, long src)
         => CommonLib.Scene3DNative.Instance(o, src);
 
+    // P5/M-SKIN: scheletro, posa di un osso (forma corta e con pitch/roll) e peso.
+    public static void SceneBones(long n) => CommonLib.Scene3DNative.Bones(n);
+    public static void ScenePoseBone(long b, double x, double y, double z, double yaw)
+        => CommonLib.Scene3DNative.PoseBone(b, x, y, z, yaw);
+    public static void ScenePoseBoneTrs(long b, double x, double y, double z,
+                                        double yaw, double pitch, double roll)
+        => CommonLib.Scene3DNative.PoseBoneTrs(b, x, y, z, yaw, pitch, roll);
+    public static void SceneWeight(long o, long v, long bone, double w)
+        => CommonLib.Scene3DNative.Weight(o, v, bone, w);
+
     // SCENE PRESENT: target 3D → pagina 2D corrente (il present vero resta al main thread).
     public static void ScenePresent() => CommonLib.Scene3DNative.Present();
 

@@ -204,6 +204,39 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneInstance)));
                 return;
 
+            // P5/M-SKIN: scheletro (1 argomento intero), posa di un osso (osso
+            // intero + TRS, 5 o 7 argomenti) e peso di un vertice (tre interi e
+            // un decimale).
+            case TokenKind.SceneBones:
+                RequireSceneArgs(stmt, 1, "SCENE BONES n");
+                EmitInt64Argument(a[0]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneBones)));
+                return;
+
+            case TokenKind.ScenePoseBone:
+                if (a.Length == 7)
+                {
+                    RequireSceneArgs(stmt, 7, "SCENE POSEBONE b, x, y, z, yaw, pitch, roll");
+                    EmitInt64Argument(a[0]);
+                    for (int i = 1; i < 7; i++) EmitDoubleArgument(a[i]);
+                    _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ScenePoseBoneTrs)));
+                    return;
+                }
+                RequireSceneArgs(stmt, 5, "SCENE POSEBONE b, x, y, z, yaw");
+                EmitInt64Argument(a[0]);
+                for (int i = 1; i < 5; i++) EmitDoubleArgument(a[i]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ScenePoseBone)));
+                return;
+
+            case TokenKind.SceneWeight:
+                RequireSceneArgs(stmt, 4, "SCENE WEIGHT o, v, bone, w");
+                EmitInt64Argument(a[0]);
+                EmitInt64Argument(a[1]);
+                EmitInt64Argument(a[2]);
+                EmitDoubleArgument(a[3]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneWeight)));
+                return;
+
             case TokenKind.ScenePresent:
                 RequireSceneArgs(stmt, 0, "SCENE PRESENT non accetta argomenti");
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ScenePresent)));

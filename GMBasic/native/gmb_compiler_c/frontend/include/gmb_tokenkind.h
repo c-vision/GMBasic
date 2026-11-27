@@ -2796,9 +2796,15 @@ typedef enum gmb_tokenkind {
     /* P5/M-INST — instancing per materiale: geometria e materiale di un altro
      * oggetto, trasformazione e tinta proprie. Stesso TokenKind del lato C#. */
     GMB_TOK_SceneInstance,
+    /* P5/M-SKIN — skinning a 64 ossa: scheletro (BONES), posa di un osso
+     * (POSEBONE, 5 o 7 argomenti come OBJECT/LAMP) e legatura vertice-osso
+     * (WEIGHT). Stessi TokenKind del lato C#, nello stesso ordine. */
+    GMB_TOK_SceneBones,
+    GMB_TOK_ScenePoseBone,
+    GMB_TOK_SceneWeight,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2753
+  #define GMB_TOK_COUNT 2756
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

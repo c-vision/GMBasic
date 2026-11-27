@@ -2578,4 +2578,9 @@ public enum TokenKind
     // P5/M-INST — `SCENE INSTANCE o, src`: `o` disegna geometria e materiale di
     // `src`, con la trasformazione e la tinta di `o` (instancing per materiale).
     SceneInstance,
+    // P5/M-SKIN — skinning a 64 ossa: `SCENE BONES n`, `SCENE POSEBONE b, x, y, z,
+    // yaw [, pitch, roll]` e `SCENE WEIGHT o, v, bone, w`. In coda.
+    SceneBones,
+    ScenePoseBone,
+    SceneWeight,
   }

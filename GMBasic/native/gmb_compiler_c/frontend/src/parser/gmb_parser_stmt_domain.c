@@ -237,6 +237,9 @@ static int gmb_p_scene_verb_tk(const char* v)
         { "LOD", GMB_TOK_SceneLod },
         /* P5/M-INST: instancing per materiale (o, src). */
         { "INSTANCE", GMB_TOK_SceneInstance },
+        /* P5/M-SKIN: scheletro, posa di un osso e pesi dei vertici. */
+        { "BONES", GMB_TOK_SceneBones }, { "POSEBONE", GMB_TOK_ScenePoseBone },
+        { "WEIGHT", GMB_TOK_SceneWeight },
     };
     for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
         if (strcasecmp(v, map[i].word) == 0) return (int)map[i].tk;

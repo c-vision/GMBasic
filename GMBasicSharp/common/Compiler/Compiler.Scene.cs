@@ -49,6 +49,10 @@ public sealed partial class Compiler
         TokenKind.SceneLod => SysCall.SCENE_LOD,
         // P5/M-INST: instancing per materiale.
         TokenKind.SceneInstance => SysCall.SCENE_INSTANCE,
+        // P5/M-SKIN: scheletro, posa di un osso (5 o 7 argomenti) e pesi.
+        TokenKind.SceneBones => SysCall.SCENE_BONES,
+        TokenKind.ScenePoseBone => argc == 7 ? SysCall.SCENE_POSEBONE_TRS : SysCall.SCENE_POSEBONE,
+        TokenKind.SceneWeight => SysCall.SCENE_WEIGHT,
         _ => throw new NotImplementedException($"SCENE: verbo '{kind}' non supportato dalla PCodeVM.")
     };
 

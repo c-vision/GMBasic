@@ -129,6 +129,23 @@ int  gmb_3d_lod_source(int oi, const float eye[3]);
 int  gmb_3d_inst_geom(int oi, const float eye[3]);
 int  gmb_3d_inst_mat(int oi);
 
+/* Skinning a 64 ossa (gmb_3d_skin.c, M-SKIN) — `SCENE BONES`/`POSEBONE`/`WEIGHT`.
+ * Un osso è una TRS nello spazio dell'oggetto (posa di default = identità); un
+ * vertice porta al massimo DUE influenze, ognuna con il suo osso e il suo peso
+ * 0..255 (la fusione normalizza alla somma). `gmb_3d_skin_pos` restituisce le
+ * posizioni da disegnare (NULL = geometria dichiarata) nello scratch riservato.
+ */
+#define GMB_SCENE_MAX_BONES 64
+typedef struct gmb_3d_skin {
+    unsigned char b0, b1;   /* osso 1..64; GMB_SKIN_NONE = influenza assente */
+    unsigned char w0, w1;   /* peso 0..255 */
+} gmb_3d_skin_t;
+#define GMB_SKIN_NONE 255u
+typedef struct gmb_3d_bone { float x, y, z, yaw, pitch, roll; } gmb_3d_bone_t;
+void gmb_3d_skin_reset(void);            /* RESET: ossa, pose e pesi */
+void gmb_3d_skin_pose_all(void);         /* matrici degli ossi, una volta per RENDER */
+const float* gmb_3d_skin_pos(int oi);    /* posizioni da disegnare, NULL = dichiarate */
+
 /* --- buffer della scena a capacità dinamica (gmb_3d_scene_buf.c, P5) -------
  * Il primo blocco di P5 aveva tetti statici (32768 vertici, 16384 triangoli,
  * 512 oggetti) che rendevano irraggiungibile l'accettazione dei 200k triangoli.
@@ -156,6 +173,7 @@ typedef struct gmb_scene_obj {
     unsigned char flags;   /* M-FLAGS: 1 masked, 2 traslucido, 4 passabile, 8 see-through, 16 due lati */
     unsigned char light;   /* luce base dell'oggetto 0..255 */
     unsigned char has_nrm; /* 1 = i vertici dichiarano la normale (M-LIGHT-N) */
+    int   has_skin;        /* M-SKIN: almeno un vertice ha un peso */
     float bmin[3], bmax[3];
 } gmb_scene_obj_t;
 
@@ -167,6 +185,8 @@ typedef struct gmb_3d_scene_geom {
     int nv, nt, nobj, cur;
     int cap_v, cap_t, cap_o;
     float *pos, *uv, *nrm, *nrm_w;
+    float* sk_pos;          /* M-SKIN: posizioni skinnate (scratch), NULL se nessun peso */
+    gmb_3d_skin_t* skin;    /* M-SKIN: due influenze per vertice, NULL se nessun peso */
     int* idx;
     unsigned char* light;
     unsigned char* lit_tri;
@@ -179,10 +199,14 @@ typedef struct gmb_3d_scene_geom {
 gmb_3d_scene_geom_t* gmb_3d_scene_geom(void);
 void gmb_3d_scene_geom_clear(void);          /* contatori a zero, capacità conservata */
 int  gmb_3d_scene_reserve_verts(int need);
+/* M-SKIN: i buffer dei pesi nascono al PRIMO WEIGHT (le scene senza skinning non
+ * li pagano) e crescono con i vertici; azzerare le prime `nvert` voci le riporta a
+ * «nessuna influenza» senza liberare niente. */
+int  gmb_3d_scene_skin_touch(void);
+void gmb_3d_scene_skin_clear(int nvert);
 int  gmb_3d_scene_reserve_tris(int need);
 int  gmb_3d_scene_reserve_objs(int need);
-/* AABB mondo di tutti gli oggetti con geometria, buffer persistente. */
-const gmb_3d_aabb_t* gmb_3d_scene_bounds_all(int* count);
+/* AABB mondo di tutti gli oggetti con geometria, buffer persistente. */const gmb_3d_aabb_t* gmb_3d_scene_bounds_all(int* count);
 /* Memoria RISERVATA dalla geometria (capacità, non uso), in byte: la sa il file
  * che possiede i buffer e i loro passi, così `SCENE.STATS("bytes")` non ripete
  * la formula in un secondo posto. RESET conserva la capacità: il numero non cala. */

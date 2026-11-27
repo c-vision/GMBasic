@@ -484,6 +484,26 @@ int64_t gmb_scene_lod(int64_t o, double dist, int64_t mesh);
  * `o`, mentre il culling del frustum guarda quella disegnata. E_ARG = oggetto o
  * sorgente inesistente (1..nobj). */
 int64_t gmb_scene_instance(int64_t o, int64_t src);
+/* SCENE BONES n — scheletro della scena: n ossa (0..64). Azzera pose e TUTTI i
+ * pesi (cambiare scheletro invalida le legature). RESET azzera ossa e pesi. */
+int64_t gmb_scene_bones(int64_t n);
+/* SCENE POSEBONE b, x, y, z, yaw [, pitch, roll] — posa dell'osso `b` (1..n):
+ * una TRS nello spazio dell'OGGETTO, stessa convenzione di OBJPOS/KEY. La posa
+ * di default è l'identità, quindi una scena senza POSEBONE dà gli stessi byte di
+ * sempre. I vertici pesati a un osso si trasformano con la sua matrice (fusione
+ * lineare sui pesi), le posizioni skinnate alimentano anche la luce per faccia.
+ * E_ARG = osso inesistente, componente non finita. */
+int64_t gmb_scene_posebone(int64_t b, double x, double y, double z, double yaw);
+int64_t gmb_scene_posebone_trs(int64_t b, double x, double y, double z,
+                               double yaw, double pitch, double roll);
+/* SCENE WEIGHT o, v, bone, w — lega il vertice `v` (0-based, relativo all'oggetto
+ * `o`, come gli indici di QUAD) all'osso `bone` con peso `w` (0..1, clampato).
+ * Massimo DUE influenze per vertice; la terza è un errore esplicito. I pesi si
+ * normalizzano alla somma: w = 0 non muove, due pesi uguali danno il punto medio.
+ * AABB mondo, quote, raggi e collisione restano quelli della geometria DICHIARATA
+ * (M-SKIN-VIS). E_ARG = oggetto/vertice/osso inesistente, peso non finito, terza
+ * influenza. */
+int64_t gmb_scene_weight(int64_t o, int64_t v, int64_t bone, double w);
 int64_t gmb_scene_camera(double x, double y, double z,
                          double yaw_deg, double pitch_deg);
 /* SCENE LIGHT dx, dy, dz, livello: luce direzionale per faccia. (dx,dy,dz) punta VERSO

@@ -6071,6 +6071,48 @@ static void vm_sys_scene_instance(gmb_vm_t* vm, gmb_task_t* task, int code, int 
     if (n < 2) return;
     (void)gmb_scene_instance((int64_t)vm_world_num(&a[0]), (int64_t)vm_world_num(&a[1]));
 }
+/* SCENE BONES n (P5/M-SKIN): scheletro della scena (0..64). Cambiare scheletro
+ * azzera pose e pesi; lo stato vive nella facciata C (gmb_3d_skin.c). */
+static void vm_sys_scene_bones(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n < 1) return;
+    (void)gmb_scene_bones((int64_t)vm_world_num(&a[0]));
+}
+/* SCENE POSEBONE b, x, y, z, yaw [, pitch, roll] (P5/M-SKIN): le due forme hanno
+ * codici distinti, come OBJECT 3/5 e LAMP 6/10. */
+static void vm_sys_scene_posebone(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm;
+    gmb_stack_entry_t a[7];
+    int n = argc > 7 ? 7 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (code == GMB_SC_SCENE_POSEBONE_TRS)
+    {
+        if (n >= 7)
+            (void)gmb_scene_posebone_trs((int64_t)vm_world_num(&a[0]), vm_world_num(&a[1]),
+                                         vm_world_num(&a[2]), vm_world_num(&a[3]),
+                                         vm_world_num(&a[4]), vm_world_num(&a[5]),
+                                         vm_world_num(&a[6]));
+        return;
+    }
+    if (n >= 5)
+        (void)gmb_scene_posebone((int64_t)vm_world_num(&a[0]), vm_world_num(&a[1]),
+                                 vm_world_num(&a[2]), vm_world_num(&a[3]),
+                                 vm_world_num(&a[4]));
+}
+/* SCENE WEIGHT o, v, bone, w (P5/M-SKIN): lega il vertice all'osso col peso.
+ * Range, massimo due influenze e normalizzazione li valida gmb_3d_skin.c. */
+static void vm_sys_scene_weight(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[4];
+    int n = argc > 4 ? 4 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n < 4) return;
+    (void)gmb_scene_weight((int64_t)vm_world_num(&a[0]), (int64_t)vm_world_num(&a[1]),
+                           (int64_t)vm_world_num(&a[2]), vm_world_num(&a[3]));
+}
 /* SCENE SMOOTH|ALPHA|TWOSIDED on|off (idea #5): un argomento 0/1, nessuna logica qui —
  * lo stato e il significato stanno nella facciata C. */
 static void vm_sys_scene_flag(gmb_vm_t* vm, gmb_task_t* task, int code, int argc, int which) {
@@ -7432,6 +7474,10 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_SCENE_TIME, vm_sys_scene_time },
     { GMB_SC_SCENE_LOD, vm_sys_scene_lod },
     { GMB_SC_SCENE_INSTANCE, vm_sys_scene_instance },
+    { GMB_SC_SCENE_BONES, vm_sys_scene_bones },
+    { GMB_SC_SCENE_POSEBONE, vm_sys_scene_posebone },
+    { GMB_SC_SCENE_POSEBONE_TRS, vm_sys_scene_posebone },
+    { GMB_SC_SCENE_WEIGHT, vm_sys_scene_weight },
     { GMB_SC_CLOCK_PAUSE, vm_sys_clock_pause },
     { GMB_SC_CLOCK_RESUME, vm_sys_clock_resume },
     { GMB_SC_CLOCK_SCALE, vm_sys_clock_scale },
