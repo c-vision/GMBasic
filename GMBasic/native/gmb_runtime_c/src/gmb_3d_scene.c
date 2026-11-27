@@ -78,6 +78,35 @@ void gmb_3d_m4_model(float* m, float x, float y, float z, float yaw_deg)
     m[12] = x; m[13] = y; m[14] = z; m[15] = 1.0f;
 }
 
+/* TRS completo per le piste KEY: R = Ry(yaw) * Rx(pitch) * Rz(roll), gradi,
+ * stessa convenzione column-major di gmb_3d_m4_model. Con pitch = roll = 0 si
+ * passa dalla funzione a sola yaw: stessi bit di prima, quindi le golden e il
+ * culling delle scene senza chiavi non cambiano. */
+void gmb_3d_m4_model_trs(float* m, float x, float y, float z,
+                         float yaw_deg, float pitch_deg, float roll_deg)
+{
+    if (pitch_deg == 0.0f && roll_deg == 0.0f)
+    {
+        gmb_3d_m4_model(m, x, y, z, yaw_deg);
+        return;
+    }
+    const float k = (float)(SC_PI / 180.0);
+    float cy = cosf(yaw_deg * k), sy = sinf(yaw_deg * k);
+    float cp = cosf(pitch_deg * k), sp = sinf(pitch_deg * k);
+    float cr = cosf(roll_deg * k), sr = sinf(roll_deg * k);
+
+    /* Righe di R = Ry*Rx*Rz (matematica, poi si scrivono le colonne). */
+    float r00 = cy * cr + sy * sp * sr, r01 = -cy * sr + sy * sp * cr, r02 = sy * cp;
+    float r10 = cp * sr,               r11 = cp * cr,                r12 = -sp;
+    float r20 = -sy * cr + cy * sp * sr, r21 = sy * sr + cy * sp * cr, r22 = cy * cp;
+
+    memset(m, 0, 16 * sizeof(float));
+    m[0] = r00; m[1] = r10; m[2] = r20;
+    m[4] = r01; m[5] = r11; m[6] = r21;
+    m[8] = r02; m[9] = r12; m[10] = r22;
+    m[12] = x; m[13] = y; m[14] = z; m[15] = 1.0f;
+}
+
 /* --- culling per oggetto (P5, M-CULL) ------------------------------------ */
 
 /* I sei piani del frustum in coordinate MONDO, dalle righe della view-projection

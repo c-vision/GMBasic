@@ -63,6 +63,12 @@ public static partial class IlRuntime
     public static void SceneObjectFlags(long r, long g, long b, long flags, long light)
         => CommonLib.Scene3DNative.ObjectFlags(r, g, b, flags, light);
 
+    // P5/M-KEY: chiave TRS dell'oggetto e tempo di scena (RENDER campiona le piste).
+    public static void SceneKey(long o, double t, double x, double y, double z,
+                                double yaw, double pitch, double roll)
+        => CommonLib.Scene3DNative.Key(o, t, x, y, z, yaw, pitch, roll);
+    public static void SceneTime(double t) => CommonLib.Scene3DNative.SceneTime(t);
+
     // SCENE PRESENT: target 3D → pagina 2D corrente (il present vero resta al main thread).
     public static void ScenePresent() => CommonLib.Scene3DNative.Present();
 

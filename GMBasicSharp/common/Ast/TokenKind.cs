@@ -2568,4 +2568,8 @@ public enum TokenKind
     // P5/M-STATS — `SCENE.STATS("tris" | "draw" | …)`: le misure della scena con
     // un nome (triangoli, oggetti, byte riservati, allocazioni, RENDER per frame).
     SceneStats,
+    // P5/M-KEY — keyframe TRS: `SCENE KEY o, t, x, y, z, yaw, pitch, roll` e il tempo di
+    // scena (`SCENE TIME t`) che RENDER usa per campionare le piste. In coda.
+    SceneKey,
+    SceneTime,
   }

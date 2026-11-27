@@ -1012,6 +1012,18 @@ internal sealed partial class PCodeProcessor
                 CommonLib.Scene3DNative.LampSpot(n, x, y, z, radius, amount, dx, dy, dz, angle);
                 break;
             }
+            // P5/M-KEY: chiave TRS (8 argomenti, l'oggetto per primo) e tempo di scena.
+            case SysCall.SCENE_KEY:
+            {
+                var roll = PopNum(task); var pitch = PopNum(task); var yaw = PopNum(task);
+                var z = PopNum(task); var y = PopNum(task); var x = PopNum(task);
+                var t = PopNum(task); var o = (long)PopNum(task);
+                CommonLib.Scene3DNative.Key(o, t, x, y, z, yaw, pitch, roll);
+                break;
+            }
+            case SysCall.SCENE_TIME:
+                CommonLib.Scene3DNative.SceneTime(PopNum(task));
+                break;
             case SysCall.SCENE_FOG:
                 CommonLib.Scene3DNative.Fog(PopNum(task));
                 break;
@@ -6508,14 +6520,27 @@ internal sealed partial class PCodeProcessor
             }
             case SysCall.TICK_PROCESS:
             {{
-                // DISPATCH NEL WORKER (sicuro): le collisioni del SYNC precedente vengono
-                // processate QUI (il task è in esecuzione). DispatchEventHandler dal MAIN
-                // thread su un task bloccato congelava il loop (sprite fermi).
+                // TICK (argCount 0) = INIZIO frame: solo il dispatch delle collisioni del frame
+                // precedente (nel worker, sicuro: il task è in esecuzione).
+                // END TICK (argCount 1) = FINE frame: il rate è sul top dello stack (0 = nessun
+                // limiter) → attesa a SCADENZA, con la stessa formula di gmb_tick_pace. L'attesa
+                // NON è un Thread.Sleep: dormire qui bloccherebbe un P dello scheduler (regola
+                // GPM §0ter), quindi il task verde parcheggia su un wait Timer fino al confine
+                // del frame. Il present NON è qui: il compilatore emette subito dopo il SYNC
+                // (VisitTickEndStmtC), che al risveglio presenta una volta sola — attesa e poi
+                // present, come gmb_tick_pace + gmb_gfx_present_frame di C99Native.
                 DispatchSpriteCollisions(task);
-                ParkGraphics(task,
-                    cb => PCodeGraphics.Instance.SYNC_GPM(cb),
-                    _ => _pendingSpriteCollisions = PCodeGraphics.Instance.TakeLastCollisions());
-                return;
+                if (argCount > 0)
+                {
+                    var rate = task.PopNum();
+                    var waitMs = TickPacing.Advance(ref task.TickDeadlineMs, rate);
+                    if (waitMs > 0)
+                    {
+                        var tickWait = task.BeginWait(PCodeWaitKind.Timer, () => task.SleepUntilMs = 0);
+                        task.ParkUntil(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + waitMs, tickWait);
+                    }
+                }
+                break;
             }}
             case SysCall.ON_WINDOW_EVENT:
             {

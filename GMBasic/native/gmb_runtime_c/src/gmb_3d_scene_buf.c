@@ -149,11 +149,16 @@ int gmb_3d_scene_reserve_objs(int need)
     return GMB_3D_OK;
 }
 
-/* AABB MONDO dell'oggetto `oi`: il modello è traslazione + rotazione su y,
- * quindi bastano gli 8 angoli (la rotazione non produce un volume più grande). */
+/* AABB MONDO dell'oggetto `oi`: gli 8 angoli dell'AABB locale, trasformati.
+ * Con solo yaw la rotazione è chiusa (il volume non cresce); con pitch/roll
+ * delle piste KEY si passa dal modello TRS completo. Il percorso a sola yaw
+ * resta quello di sempre: stessi bit, quindi culling e golden invariati. */
 static void obj_aabb_world(const gmb_scene_obj_t* o, gmb_3d_aabb_t* b)
 {
+    float m[16];
+    int trs = (o->pitch != 0.0f || o->roll != 0.0f);
     float a = o->yaw * (float)(SC_BUF_PI / 180.0), c = cosf(a), s = sinf(a);
+    if (trs) gmb_3d_m4_model_trs(m, o->x, o->y, o->z, o->yaw, o->pitch, o->roll);
     b->min[0] = b->min[1] = b->min[2] = 3.0e38f;
     b->max[0] = b->max[1] = b->max[2] = -3.0e38f;
     for (int k = 0; k < 8; k++)
@@ -161,9 +166,19 @@ static void obj_aabb_world(const gmb_scene_obj_t* o, gmb_3d_aabb_t* b)
         float lx = (k & 1) ? o->bmax[0] : o->bmin[0];
         float ly = (k & 2) ? o->bmax[1] : o->bmin[1];
         float lz = (k & 4) ? o->bmax[2] : o->bmin[2];
-        float wx = o->x + c * lx + s * lz;
-        float wy = o->y + ly;
-        float wz = o->z - s * lx + c * lz;
+        float wx, wy, wz;
+        if (trs)
+        {
+            wx = m[0] * lx + m[4] * ly + m[8] * lz + m[12];
+            wy = m[1] * lx + m[5] * ly + m[9] * lz + m[13];
+            wz = m[2] * lx + m[6] * ly + m[10] * lz + m[14];
+        }
+        else
+        {
+            wx = o->x + c * lx + s * lz;
+            wy = o->y + ly;
+            wz = o->z - s * lx + c * lz;
+        }
         if (wx < b->min[0]) b->min[0] = wx;
         if (wx > b->max[0]) b->max[0] = wx;
         if (wy < b->min[1]) b->min[1] = wy;
@@ -172,6 +187,20 @@ static void obj_aabb_world(const gmb_scene_obj_t* o, gmb_3d_aabb_t* b)
         if (wz > b->max[2]) b->max[2] = wz;
     }
     b->flags = o->flags;
+}
+
+/* Memoria riservata dalla geometria, in byte: 11 float per vertice (posizione,
+ * UV, normale, normale mondo), 3 interi + 2 byte per triangolo, un oggetto e i
+ * tre scratch dimensionati sugli oggetti (ordine, distanza, AABB mondo). La
+ * formula sta qui perché qui stanno i passi: chi aggiunge un buffer lo vede qui.
+ * `SCENE.STATS("bytes")` la legge e basta. */
+double gmb_3d_scene_bytes(void)
+{
+    size_t v = (size_t)g_geom.cap_v * 11u * sizeof(float);
+    size_t t = (size_t)g_geom.cap_t * (3u * sizeof(int) + 2u);
+    size_t o = (size_t)g_geom.cap_o * (sizeof(gmb_scene_obj_t) + sizeof(int) + sizeof(float)
+                                       + sizeof(gmb_3d_aabb_t));
+    return (double)(v + t + o);
 }
 
 /* Gli AABB mondo di tutti gli oggetti con geometria, in un buffer PERSISTENTE

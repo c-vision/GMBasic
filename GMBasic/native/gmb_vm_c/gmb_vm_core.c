@@ -6024,7 +6024,30 @@ static void vm_sys_scene_present(gmb_vm_t* vm, gmb_task_t* task, int code, int a
     if (gmb_scene_present_check() != GMB_3D_OK) return;   /* guardia GPM + frame */
     int w = 0, h = 0;
     const uint32_t* px = gmb_scene_frame(&w, &h);
-    if (px != NULL) (void)gmb_gfx_present_argb(px, w, h);  /* copia nel modulo delle pagine */
+    /* copia nel modulo delle pagine; il frame si chiude solo se la copia riesce (M-STATS) */
+    if (px != NULL && gmb_gfx_present_argb(px, w, h) >= 0) gmb_scene_present_done();
+}
+/* SCENE KEY o, t, x, y, z, yaw, pitch, roll (M-KEY): chiave TRS dell'oggetto al tempo t.
+ * Otto argomenti in ordine di arrivo (l'oggetto per primo); lo stato e il campionamento
+ * vivono nella facciata C (gmb_3d_key.c). */
+static void vm_sys_scene_key(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[8];
+    int n = argc > 8 ? 8 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n < 8) return;
+    (void)gmb_scene_key((int64_t)vm_world_num(&a[0]), vm_world_num(&a[1]), vm_world_num(&a[2]),
+                        vm_world_num(&a[3]), vm_world_num(&a[4]), vm_world_num(&a[5]),
+                        vm_world_num(&a[6]), vm_world_num(&a[7]));
+}
+/* SCENE TIME t (M-KEY): il tempo di scena che RENDER usa per campionare le piste. */
+static void vm_sys_scene_time(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[1];
+    int n = argc > 1 ? 1 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n < 1) return;
+    (void)gmb_scene_time(vm_world_num(&a[0]));
 }
 /* SCENE SMOOTH|ALPHA|TWOSIDED on|off (idea #5): un argomento 0/1, nessuna logica qui —
  * lo stato e il significato stanno nella facciata C. */
@@ -7382,6 +7405,9 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_SCENE_MOVE, vm_sys_scene_move },
     { GMB_SC_SCENE_TURN, vm_sys_scene_turn },
     { GMB_SC_SCENE_LIFT, vm_sys_scene_lift },
+    /* P5/M-KEY: keyframe TRS e tempo di scena. */
+    { GMB_SC_SCENE_KEY, vm_sys_scene_key },
+    { GMB_SC_SCENE_TIME, vm_sys_scene_time },
     { GMB_SC_CLOCK_PAUSE, vm_sys_clock_pause },
     { GMB_SC_CLOCK_RESUME, vm_sys_clock_resume },
     { GMB_SC_CLOCK_SCALE, vm_sys_clock_scale },

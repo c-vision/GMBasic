@@ -183,11 +183,29 @@ public static class Scene3DNative
     private static extern long TwoSidedRaw(long on);
     public static long TwoSided(long on) { var rc = TwoSidedRaw(on); Check(rc); return rc; }
 
+    // SCENE KEY o, t, x, y, z, yaw, pitch, roll — chiave TRS dell'oggetto (P5/M-KEY).
+    // RENDER campiona le piste al tempo di scena: la trasformazione finisce nell'oggetto.
+    [DllImport(Lib, EntryPoint = "gmb_scene_key", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long KeyRaw(long o, double t, double x, double y, double z,
+                                     double yaw, double pitch, double roll);
+    public static long Key(long o, double t, double x, double y, double z,
+                          double yaw, double pitch, double roll)
+    { var rc = KeyRaw(o, t, x, y, z, yaw, pitch, roll); Check(rc); return rc; }
+
+    [DllImport(Lib, EntryPoint = "gmb_scene_time", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long SceneTimeRaw(double t);
+    public static long SceneTime(double t) { var rc = SceneTimeRaw(t); Check(rc); return rc; }
+
     // SCENE PRESENT, lato 3D: guardia GPM e frame corrente. La COPIA nella pagina vive in
     // `gmb_gfx` (`gmb_gfx_present_argb`), perché le pagine 2D appartengono a quel modulo:
     // qui e lì c'è una copia ciascuno del runtime, quindi si passa il puntatore del frame.
     [DllImport(Lib, EntryPoint = "gmb_scene_present_check", CallingConvention = CallingConvention.Cdecl)]
     private static extern long PresentCheckRaw();
+
+    // Seconda metà di PRESENT dopo la copia riuscita: chiude il frame per
+    // `SCENE.STATS("renders")` (il modulo 3D non può saperlo da solo, la copia è qui).
+    [DllImport(Lib, EntryPoint = "gmb_scene_present_done", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void PresentDoneRaw();
 
     [DllImport(Lib, EntryPoint = "gmb_scene_frame", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr SceneFrame(ref long w, ref long h);
@@ -209,6 +227,7 @@ public static class Scene3DNative
         if (px == IntPtr.Zero || w <= 0 || h <= 0) Fail("SCENE PRESENT: nessun frame (manca VIEW o RENDER)");
         if (GfxPresentArgb(px, (int)w, (int)h) < 0)
             Fail("SCENE PRESENT: nessuna pagina 2D attiva (SCREEN o CANVAS USE prima)");
+        PresentDoneRaw();
         return 0;
     }
 

@@ -407,6 +407,7 @@ set(GMB_ALL_SRCS
     src/gmb_3d_ray.c
     # P5/M-STATS: SCENE.STATS — contatori del frame (R4/R6) e memoria riservata.
     src/gmb_3d_stats.c
+    src/gmb_3d_key.c
     # SCENE PICK (buffer di id additivo, spento di default): stato del flag e
     # superficie, separati per non superare le 1200 righe del dominio.
     src/gmb_3d_pick.c
@@ -859,6 +860,7 @@ add_library(gmb_3d SHARED
     src/gmb_3d_scene_tex.c
     src/gmb_3d_ray.c
     src/gmb_3d_stats.c
+    src/gmb_3d_key.c
     # gmb_3d_io.o (dentro gmb_runtime) usa gm_tex_* e il raster della suite: le stesse
     # sorgenti che compila l'oracolo, così la dylib non resta con simboli irrisolti e
     # un dlopen dal C# non muore al primo WORLD LOAD.

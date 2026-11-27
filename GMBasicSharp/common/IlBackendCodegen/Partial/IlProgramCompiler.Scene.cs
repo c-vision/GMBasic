@@ -171,6 +171,21 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneLift)));
                 return;
 
+            // P5/M-KEY: chiave TRS (primo argomento = indice oggetto, poi sei numeri)
+            // e tempo di scena.
+            case TokenKind.SceneKey:
+                RequireSceneArgs(stmt, 8, "SCENE KEY o, t, x, y, z, yaw, pitch, roll");
+                EmitInt64Argument(a[0]);
+                for (int i = 1; i < 8; i++) EmitDoubleArgument(a[i]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneKey)));
+                return;
+
+            case TokenKind.SceneTime:
+                RequireSceneArgs(stmt, 1, "SCENE TIME t");
+                EmitDoubleArgument(a[0]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneTime)));
+                return;
+
             case TokenKind.ScenePresent:
                 RequireSceneArgs(stmt, 0, "SCENE PRESENT non accetta argomenti");
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ScenePresent)));

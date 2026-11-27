@@ -584,6 +584,9 @@ public enum SysCall : ushort
     SCENE_MOVE = 512,       // (avanti, destra)                        → gmb_scene_move
     SCENE_TURN = 513,       // (dyaw, dpitch)                          → gmb_scene_turn
     SCENE_LIFT = 514,       // (dy)                                    → gmb_scene_lift
+    // P5/M-KEY — keyframe TRS degli oggetti e tempo di scena. In coda (codici canonici).
+    SCENE_KEY = 515,        // (o, t, x, y, z, yaw, pitch, roll)       → gmb_scene_key
+    SCENE_TIME = 516,       // (t)                                     → gmb_scene_time
 }
 
 /// <summary>

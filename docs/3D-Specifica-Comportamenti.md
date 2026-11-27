@@ -210,7 +210,7 @@ thing colpito a `z − w/2`, `SEES` 1/0/`−1`, argomento nullo o `NaN` = nessun
 | `M-STATS` | `SCENE.STATS(nome$)` | **una lettura, un nome**: il valore è il contatore già presente nel motore (`SCENE.TRIS/DRAWN/CULLED/PIXELS` restano le stesse letture, non una seconda copia). Chiavi: `"tris"`, `"draw"`, `"culled"`, `"pixels"`, `"objs"`, `"bytes"`, `"allocs"`, `"renders"`, `"renders_max"` |
 | `M-STATS-GEOM` | `"tris"`, `"objs"`, `"bytes"` | geometria **dichiarata**: triangoli e oggetti correnti; `bytes` = memoria **riservata** (capacità, non uso: 11 float per vertice, indici e luci per triangolo, oggetti e i tre scratch) e quindi **non** scende con `RESET`, che conserva la capacità (`M-CAP`) |
 | `M-STATS-PASS` | `"draw"`, `"culled"`, `"pixels"` | contatori dell'**ultimo `RENDER`**, gli stessi di `SCENE.DRAWN/CULLED/PIXELS`. Non sono una partizione della geometria: un triangolo tagliato dal frustum finisce in `CULLED` **e** in `DRAWN` (guida §3) |
-| `M-STATS-FRAME` | `"renders"`, `"renders_max"` | `renders` = `RENDER` chiamati nel **frame aperto**: `PRESENT` chiude il frame e lo azzera, `RESET` azzera tutto; un programma che non presenta mai legge il totale dall'ultimo `RESET`. `renders_max` = il massimo raggiunto dopo `RESET`: **> 1 = più `RENDER` nello stesso giro** (`R6` della nota tecnica) |
+| `M-STATS-FRAME` | `"renders"`, `"renders_max"` | `renders` = `RENDER` chiamati nel **frame aperto**: `PRESENT` chiude il frame e lo azzera, `RESET` azzera tutto; un programma che non presenta mai legge il totale dall'ultimo `RESET`. `renders_max` = il massimo raggiunto dopo `RESET`: **> 1 = più `RENDER` nello stesso giro** (`R6` della nota tecnica). La chiusura del frame ha **un punto solo**, `gmb_scene_present_done()`: la chiama `gmb_scene_present()` e la chiamano le gambe che copiano il frame fuori da essa (IL/PCode via `Scene3DNative.Present`, VM/C) dopo una copia riuscita — senza quella chiamata `renders` non riparte, ed è la divergenza che il MiniTest sorveglia |
 | `M-STATS-ALLOC` | `"allocs"` | allocazioni del modulo 3D **dall'avvio del processo** (`gmb_3d_alloc_count`): non si azzera mai, `RESET` compreso — è la prova di `R4` («nessuna allocazione per frame»), non una statistica della scena |
 | `M-STATS-SENT` | chiave ignota o `NULL` | `−1` (`C-SENTINEL`): è una lettura, non alza errori di superficie e non inventa un valore. Le chiavi **non distinguono maiuscole** (`"TRIS"` = `"tris"`), come tutto il linguaggio |
 | `M-STATS-MS` | perché non c'è `frame_ms` | **divergenza dichiarata** da piano §4.3 (`"ms"`) e nota tecnica (`"frame_ms"`): un orologio dentro `RENDER` è esattamente ciò che §0septies vieta («il costo si legge dai contatori, non da un cronometro sotto contesa»). Il tempo di un frame lo misura fuori il banco (`tools/sh/bench_3d.sh`), che non entra nel motore; `renders`/`allocs` sono i due numeri che il motore può garantire deterministici |
@@ -218,8 +218,25 @@ thing colpito a `z − w/2`, `SEES` 1/0/`−1`, argomento nullo o `NaN` = nessun
 Verifica: `gmb_3d_oracle --statscheck` (**P5-STATS ok=22 fail=0**, dentro `check_3d_oracle.sh`, gate
 A/B `cc`+`zcc` su `gmb_3d_stats.c`) e `shared/minitests/3d/scene_stats.bas` con gli **stessi
 valori** su C99Native, IL, PCode e VM/C (geometria dichiarata, pass a zero prima del `RENDER`,
-due `RENDER` nello stesso frame con `renders_max = 2`, chiave ignota `−1`, `RESET` che azzera i
-contatori e conserva `bytes`).
+due `RENDER` nello stesso frame con `renders_max = 2`, **`PRESENT` che azzera `renders` lasciando
+`renders_max`**, chiave ignota `−1`, `RESET` che azzera i contatori e conserva `bytes`).
+
+#### Keyframe TRS: `SCENE KEY` / `SCENE TIME` (P5, M-KEY)
+
+| codice | regola | comportamento |
+|---|---|---|
+| `M-KEY` | `SCENE KEY o, t, x, y, z, yaw, pitch, roll` | dichiara una chiave TRS dell'oggetto `o` (`1..nobj`, ordine di dichiarazione come `SCENE.PICK`) al tempo `t` in secondi (`>= 0`). Il comando **non muove niente**: è una dichiarazione, e la campiona `RENDER`. Tetti dichiarati: **32 chiavi per oggetto**, **65536 per scena**; oltre, `E_ARG` con messaggio |
+| `M-KEY-SAMPLE` | quando si campiona | **`RENDER`**, al tempo di scena fissato da `SCENE TIME`. Il campione è scritto **nell'oggetto**: modello, culling, quote e raggi lo leggono come se venisse da `OBJPOS`. Un oggetto con piste viene quindi riportato al campione a ogni frame: `OBJPOS` su quella pista non ha effetto visibile |
+| `M-KEY-INTERP` | fra due chiavi | interpolazione **lineare** su tutte e sei le componenti, gradi compresi e **senza avvolgimento** (350 → 10 passa per 180: scelta dichiarata, non un caso). Due chiavi allo stesso tempo: vince la seconda, quella scritta per ultima |
+| `M-KEY-CLAMP` | fuori dall'intervallo | prima della prima chiave vale la prima, dopo l'ultima vale l'ultima: **nessuna estrapolazione** |
+| `M-KEY-TRS` | pitch e roll | ruotano davvero, ordine **Y→X→Z** (`gmb_3d_m4_model_trs`). Con pitch = roll = 0 si passa da `gmb_3d_m4_model`: modello **bit-identico**, quindi culling, quote e golden delle scene senza chiavi non cambiano |
+| `M-KEY-CLOCK` | `SCENE TIME t` | tempo di scena in secondi (`>= 0`). **Non avanza da sé** (T-FIXED): lo muove il programma, quindi lo stesso programma dà sempre gli stessi frame. `RESET` lo riporta a 0 e cancella le piste |
+| `M-KEY-ALLOC` | costo per frame | **zero allocazioni**: il campionamento legge array già riservati e scrive negli oggetti (le chiavi allocano alla dichiarazione; `P5-KEY` tiene `allocs` fermo su 50 frame) |
+
+Verifica: `gmb_3d_oracle --keycheck` (**P5-KEY ok=49 fail=0**, dentro `check_3d_oracle.sh`, gate
+A/B `cc`+`zcc` su `gmb_3d_key.c`) e `shared/minitests/3d/scene_key.bas` con gli **stessi valori**
+su C99Native, IL, PCode e VM/C: posizione interpolata e clamp letti dal buffer di `PICK`, yaw e
+pitch a 90° che mettono il quad di taglio, roll che cambia il frame, `RESET` che azzera le piste.
 
 ### 3.3 Collisione, raggi, zone
 
@@ -228,6 +245,7 @@ contatori e conserva `bytes`).
 | `M-PLAYER` | Capsula verticale: default **raggio 14, altezza 56, occhio 46, step 24**; `PLAYER raggio, altezza, occhio, step` li cambia. `CAMERA x,y,z,yaw[,pitch]` posiziona l'**occhio** (P3: le golden restano `diff=0`), quindi i **piedi** stanno `EYE` sotto: `SCENE.X/Y/Z` leggono l'occhio e `SCENE.EYE` è l'altezza dell'occhio sui piedi. |
 | `M-COLLIDE` | Stessa semantica di `W-MOVE`, sul piano (x, z) e con `y` come altezza: scivola, sale gradini ≤ step, bloccato da soffitto basso. `MOVE avanti, destra` (unità del mondo), `TURN dyaw[, dpitch]` (gradi), `LIFT dy`. `HIT` è una maschera: **1** parete, **2** fermo (la richiesta non ha spostato nulla), **4** quota cambiata. |
 | `M-RAYS` | `SHOOT(range)` contro thing e oggetti (`SHOTKIND` 0/1 oggetto/2 thing, `SHOTOBJ`, `SHOTDIST`, `SHOTX/Y/Z`); `USE(reach)` l'oggetto davanti **qualunque siano i flag**; `SEES(n)` linea di vista del thing verso l'occhio. Passano solo i flag 8 (non 4) per vista/colpi. |
+| `M-KEY` | `KEY o, t, …` dichiara una chiave TRS e `TIME t` fissa il tempo di scena; `RENDER` campiona (lineare, clamp fuori intervallo, pitch/roll applicati, zero allocazioni per frame); `RESET` azzera piste e tempo. |
 | `M-STATS` | `STATS(nome$)` = una misura per nome: `tris`/`objs`/`bytes` (geometria dichiarata e memoria riservata), `draw`/`culled`/`pixels` (ultimo `RENDER`), `renders`/`renders_max` (`RENDER` per frame), `allocs` (allocazioni dall'avvio). Chiave ignota `−1`; il tempo di un frame si misura fuori dal motore. |
 | `M-FLOOR` | `FLOORAT(x,y,z)` = **superficie più alta a o sotto `y`**, sul punto (x, z); `CEILAT` l'analogo sopra. `−1000000` = nessuna superficie. È ciò che permette di stare su un mobile senza una fisica generale. |
 | `M-ZONE` | `ZONE id,x1,y1,x2,y2,z1,z2[,tag]` (`y` = altezza): `ZONE(x,y,z)` = id della **prima** zona che contiene il punto (`y` entro `y1−2 … y2`, `x` in `x1…x2` e `z` in `z1…z2`, estremi inclusi), `−1` se nessuna; `ZONETAG(id)` = il tag (`""` se l'id non esiste). **L'ordine di creazione conta**: le zone dei piani superiori e dei mobili calpestabili vanno create **prima** di quelle sotto. Il renderer non usa le zone. |

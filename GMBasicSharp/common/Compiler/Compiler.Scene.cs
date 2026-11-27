@@ -42,6 +42,9 @@ public sealed partial class Compiler
         TokenKind.SceneMove => SysCall.SCENE_MOVE,
         TokenKind.SceneTurn => SysCall.SCENE_TURN,
         TokenKind.SceneLift => SysCall.SCENE_LIFT,
+        // P5/M-KEY: keyframe TRS e tempo di scena.
+        TokenKind.SceneKey => SysCall.SCENE_KEY,
+        TokenKind.SceneTime => SysCall.SCENE_TIME,
         _ => throw new NotImplementedException($"SCENE: verbo '{kind}' non supportato dalla PCodeVM.")
     };
 

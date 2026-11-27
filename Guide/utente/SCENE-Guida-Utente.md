@@ -44,6 +44,8 @@ Il dominio segue la regola del linguaggio: **il comando scrive, la funzione legg
 | Comando | `SCENE ALPHA on\|off` | alpha-test: i texel trasparenti si scartano o si disegnano |
 | Comando | `SCENE TWOSIDED on\|off` | facce visibili da entrambi i lati (niente back-face cull) |
 | Comando | `SCENE PICK on\|off` | buffer di id per pixel per `SCENE.PICK` (additivo, default off) |
+| Comando | `SCENE KEY o, t, x, y, z, yaw, pitch, roll` | keyframe TRS dell'oggetto al tempo `t` (secondi) |
+| Comando | `SCENE TIME t` | tempo di scena: quello che `RENDER` usa per campionare le chiavi |
 | Comando | `SCENE RENDER` | rasterizza la scena nel target |
 | Comando | `SCENE PRESENT` | copia il target 3D nella pagina 2D corrente |
 | Comando | `SCENE SAVE path$` | salva il frame corrente in PNG |
@@ -471,7 +473,9 @@ la scena non ha oggetti/triangoli. **Non** è un errore chiamarlo più volte: è
 
 È il **ponte** fra il 3D e il 2D: copia il **target 3D** (quello di `SCENE VIEW`/`SCENE RENDER`)
 nella **pagina 2D corrente** — la stessa pagina in cui scrivono `PSET`, `LINE`, `PRINT` — e non
-tocca né la geometria né il frame 3D, che restano quelli dell'ultimo `RENDER`.
+tocca né la geometria né l'immagine del frame 3D, che restano quelli dell'ultimo `RENDER`. Quello
+che chiude è il **giro**: `SCENE.STATS("renders")` riparte da zero (vedi `SCENE.STATS`), mentre
+`renders_max` conserva il massimo.
 
 ```basic
 SCENE VIEW 320, 180, 55
@@ -666,6 +670,53 @@ IF SCENE.SEES(7) = 1 THEN PRINT "il thing 7 ti vede"
 Disponibili su **C99Native, IL, PCode e VM/C** con gli stessi valori (MiniTest
 `shared/minitests/3d/scene_rays.bas`; il gate `tools/sh/check_3d_oracle.sh` verifica
 `SHOOT`/`USE`/`SEES` con 22 controlli headless).
+
+### Animazione dichiarativa: `SCENE KEY` e `SCENE TIME`
+
+Un oggetto può avere una **pista di chiavi**: invece di spostarlo a mano a ogni frame, dichiari
+dove deve stare in certi istanti e il motore interpola.
+
+```
+SCENE OBJECT 255, 0, 0
+SCENE BOX -1, -1, 0, 1, 1, 2          ' oggetto 1
+SCENE KEY 1, 0, -20, 0, 60, 0, 0, 0   ' al tempo 0: x = -20, yaw 0
+SCENE KEY 1, 2,  20, 0, 60, 0, 0, 0   ' al tempo 2: x = +20
+
+SCENE TIME 1
+SCENE RENDER                          ' l'oggetto è a x = 0: metà strada
+```
+
+| argomento | significato |
+|---|---|
+| `o` | numero dell'oggetto (`1..n`): l'ordine in cui hai dichiarato gli `SCENE OBJECT`, lo stesso di `SCENE.PICK` |
+| `t` | istante della chiave, in **secondi** (`>= 0`) |
+| `x, y, z` | posizione dell'oggetto |
+| `yaw, pitch, roll` | rotazione in gradi (ordine Y→X→Z) |
+
+**Chi campiona: `RENDER`.** `SCENE KEY` non muove niente — è una dichiarazione. Il campione si
+calcola a ogni `RENDER` al tempo fissato da `SCENE TIME t` e viene scritto nell'oggetto, che da lì
+si comporta come se avessi usato `SCENE OBJPOS`. Le chiavi si possono dichiarare in qualunque
+ordine: si ordinano da sole.
+
+**Fra due chiavi** si interpola linearmente, su tutte e sei le componenti, gradi compresi e senza
+avvolgimento: da `yaw` 350 a 10 si passa per 180, non per 0 (se vuoi il giro corto, dichiara una
+chiave intermedia a 360). **Fuori dall'intervallo** vale la chiave più vicina: prima della prima
+vale la prima, dopo l'ultima vale l'ultima, nessuna estrapolazione. Due chiavi con lo stesso
+tempo: vince la seconda che hai scritto.
+
+**Il tempo lo muovi tu.** `SCENE TIME t` è un tempo assoluto in secondi e non avanza da solo (come
+il `TICK` a passo fisso del mondo): lo stesso programma, con gli stessi `SCENE TIME`, produce
+sempre gli stessi frame — condizione necessaria perché le golden restino valide. `SCENE RESET`
+riporta il tempo a 0 e cancella tutte le piste.
+
+**Tetti e limiti**, dichiarati e non sorprese: 32 chiavi per oggetto, 65536 per scena; oltre, il
+comando è rifiutato con un errore (non ignorato). Un oggetto con pista è riportato al campione a
+ogni `RENDER`: se lo sposti con `OBJPOS` e ha delle chiavi, vince la chiave. Il campionamento non
+alloca: le piste crescono quando le dichiari, non mentre disegni.
+
+MiniTest: `shared/minitests/3d/scene_key.bas` (posizione e clamp letti dal buffer di `PICK`, yaw e
+pitch a 90° che mettono il quad di taglio, roll che cambia il frame). Oracolo:
+`gmb_3d_oracle --keycheck` (49 controlli headless, dentro `tools/sh/check_3d_oracle.sh`).
 
 ### Statistiche per nome: `SCENE.STATS(nome$)`
 

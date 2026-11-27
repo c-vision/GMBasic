@@ -444,6 +444,23 @@ int64_t gmb_scene_quad(int64_t a, int64_t b, int64_t c, int64_t d);
 int64_t gmb_scene_box(double x0, double y0, double z0,
                       double x1, double y1, double z1);         /* 24 vertici, 12 triangoli */
 int64_t gmb_scene_objpos(double x, double y, double z, double yaw_deg);
+/* SCENE KEY o, t, x, y, z, yaw, pitch, roll — chiave TRS dell'oggetto `o`
+ * (1..nobj, ordine di dichiarazione come SCENE.PICK) al tempo `t` in secondi.
+ * Le chiavi di un oggetto si ordinano da sole per tempo; RENDER le campiona al
+ * tempo di scena (SCENE TIME) e scrive la trasformazione NELL'oggetto, che da
+ * lì il frame legge come se venisse da OBJPOS. Fuori dall'intervallo vince la
+ * chiave più vicina (prima/ultima, nessuna estrapolazione); fra due chiavi si
+ * interpola linearmente su tutte e sei le componenti, gradi compresi e senza
+ * avvolgimento (350 → 10 passa per 180). Tetti: 32 chiavi per oggetto, 65536
+ * per scena. Pitch e roll ruotano davvero (ordine Y→X→Z); con loro a zero il
+ * modello è quello di sempre, bit per bit. E_ARG = oggetto inesistente,
+ * tempo negativo, tetto raggiunto. */
+int64_t gmb_scene_key(int64_t o, double t, double x, double y, double z,
+                      double yaw, double pitch, double roll);
+/* SCENE TIME t — tempo di scena in secondi (>= 0), quello che RENDER usa per
+ * campionare le chiavi. Non avanza da sé: lo muove il programma, così lo stesso
+ * programma dà sempre gli stessi frame. RESET lo riporta a 0. */
+int64_t gmb_scene_time(double t);
 int64_t gmb_scene_camera(double x, double y, double z,
                          double yaw_deg, double pitch_deg);
 /* SCENE LIGHT dx, dy, dz, livello: luce direzionale per faccia. (dx,dy,dz) punta VERSO
@@ -503,6 +520,11 @@ int64_t gmb_scene_present(void);
  * modulo che possiede la pagina. OK = si può presentare, E_NO_TASK = fuori dal task GPM,
  * E_ARG = nessun frame. */
 int64_t gmb_scene_present_check(void);
+/* Seconda metà di PRESENT per le gambe a DUE immagini (IL/PCode, VM/C): chi ha copiato il
+ * frame chiama questa DOPO una copia riuscita, e il frame si chiude come in
+ * `gmb_scene_present` (che lo fa da sé). Senza questa chiamata `SCENE.STATS("renders")` non
+ * riparte da zero: è la sola parte di PRESENT che non si può dedurre dal target. */
+void gmb_scene_present_done(void);
 /* Frame corrente del target 3D (0x00RRGGBB, riga 0 in alto) e sue dimensioni. NULL quando
  * non c'è ancora un target (manca VIEW/RENDER). Sola lettura: nessuna copia, nessun lock. */
 const uint32_t* gmb_scene_frame(int* w, int* h);

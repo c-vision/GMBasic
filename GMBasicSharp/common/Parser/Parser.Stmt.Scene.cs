@@ -95,6 +95,10 @@ public sealed partial class Parser
             TokenKind.SceneMove => SceneCmd(command, SceneArgs(parser, 2, 2, "SCENE MOVE avanti, destra")),
             TokenKind.SceneTurn => SceneCmd(command, SceneArgs(parser, 1, 2, "SCENE TURN dyaw [, dpitch]")),
             TokenKind.SceneLift => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE LIFT dy")),
+            // P5/M-KEY: keyframe TRS e tempo di scena (quello che RENDER campiona).
+            TokenKind.SceneKey => SceneCmd(command, SceneArgs(parser, 8, 8,
+                "SCENE KEY o, t, x, y, z, yaw, pitch, roll")),
+            TokenKind.SceneTime => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE TIME t")),
             TokenKind.ScenePresent => SceneCmd(command, SceneNoArgs(parser, "SCENE PRESENT non accetta argomenti")),
             TokenKind.SceneRender => SceneCmd(command, SceneNoArgs(parser, "SCENE RENDER non accetta argomenti")),
             TokenKind.SceneSave => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE SAVE: manca il percorso del PNG")),
@@ -135,6 +139,8 @@ public sealed partial class Parser
         "MOVE" => TokenKind.SceneMove,
         "TURN" => TokenKind.SceneTurn,
         "LIFT" => TokenKind.SceneLift,
+        "KEY" => TokenKind.SceneKey,
+        "TIME" => TokenKind.SceneTime,
         "RENDER" => TokenKind.SceneRender,
         "SAVE" => TokenKind.SceneSave,
         _ => TokenKind.Unknown

@@ -57,6 +57,10 @@ void gmb_3d_m4_mul(float* out, const float* a, const float* b);            /* ou
 void gmb_3d_m4_perspective(float* m, float fovy, float aspect, float zn, float zf);
 void gmb_3d_m4_look_at(float* m, const float eye[3], const float at[3], const float up[3]);
 void gmb_3d_m4_model(float* m, float x, float y, float z, float yaw_deg);
+/* Come sopra, più pitch e roll (gradi, ordine Y→X→Z). Con pitch = roll = 0
+ * chiama gmb_3d_m4_model: le scene senza chiavi restano bit-identiche. */
+void gmb_3d_m4_model_trs(float* m, float x, float y, float z,
+                         float yaw_deg, float pitch_deg, float roll_deg);
 /* Sei piani del frustum in coordinate MONDO dalla view-projection (column-major). */
 void gmb_3d_frustum_planes(const float* vp, float planes[6][4]);
 /* 1 = l'oggetto (AABB nello spazio oggetto + modello) è interamente fuori da almeno
@@ -97,9 +101,14 @@ void gmb_3d_ray_reset(void);
 void gmb_3d_stats_reset(void);
 void gmb_3d_stats_note_render(void);
 void gmb_3d_stats_note_present(void);
-/* Contatori dell'ultimo pass di RENDER, sola lettura: STATS li espone senza
- * duplicare la struct in un secondo file. */
-const gmb_3d_draw_stats_t* gmb_3d_scene_draw_stats(void);
+
+/* Piste keyframe TRS (gmb_3d_key.c, M-KEY) — `SCENE KEY` e `SCENE TIME`.
+ * Le chiavi sono ordinate per (oggetto, tempo); RENDER le campiona al tempo di
+ * scena e scrive la trasformazione negli oggetti. RESET azzera piste e tempo. */
+void gmb_3d_key_reset(void);
+void gmb_3d_key_sample(void);
+int  gmb_3d_key_count(int obj);            /* chiavi dichiarate per un oggetto */
+double gmb_scene_time_now(void);           /* tempo di scena corrente */
 
 /* --- buffer della scena a capacità dinamica (gmb_3d_scene_buf.c, P5) -------
  * Il primo blocco di P5 aveva tetti statici (32768 vertici, 16384 triangoli,
@@ -114,11 +123,13 @@ const gmb_3d_draw_stats_t* gmb_3d_scene_draw_stats(void);
 #define GMB_SCENE_TRIS_MAX   (1 << 21)   /* 2.097.152 triangoli */
 #define GMB_SCENE_OBJS_MAX   (1 << 16)   /* 65.536 oggetti */
 
-/* Un oggetto della scena: run di vertici/triangoli, trasformazione (traslazione
- * + rotazione su y), tinta, flag di materiale e AABB nello spazio oggetto. */
+/* Un oggetto della scena: run di vertici/triangoli, trasformazione TRS
+ * (traslazione + yaw, più pitch/roll che solo le piste KEY muovono), tinta,
+ * flag di materiale e AABB nello spazio oggetto. */
 typedef struct gmb_scene_obj {
     int first_vert, nvert, first_tri, ntri;
     float x, y, z, yaw;
+    float pitch, roll;     /* M-KEY: 0 = solo yaw (percorso di sempre, bit-identico) */
     unsigned char r, g, b;
     unsigned char flags;   /* M-FLAGS: 1 masked, 2 traslucido, 4 passabile, 8 see-through, 16 due lati */
     unsigned char light;   /* luce base dell'oggetto 0..255 */
@@ -150,6 +161,10 @@ int  gmb_3d_scene_reserve_tris(int need);
 int  gmb_3d_scene_reserve_objs(int need);
 /* AABB mondo di tutti gli oggetti con geometria, buffer persistente. */
 const gmb_3d_aabb_t* gmb_3d_scene_bounds_all(int* count);
+/* Memoria RISERVATA dalla geometria (capacità, non uso), in byte: la sa il file
+ * che possiede i buffer e i loro passi, così `SCENE.STATS("bytes")` non ripete
+ * la formula in un secondo posto. RESET conserva la capacità: il numero non cala. */
+double gmb_3d_scene_bytes(void);
 void gmb_3d_scene_set_texture(unsigned char* buf, int w, int h);
 void gmb_3d_scene_camera_get(float eye[3], float* yaw, float* pitch);
 void gmb_3d_scene_camera_set(float x, float y, float z, float yaw, float pitch);

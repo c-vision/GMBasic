@@ -1727,6 +1727,131 @@ static int run_p5_stats(void)
     return fail == 0 ? 0 : 1;
 }
 
+/* P5 — keyframe TRS (`SCENE KEY` / `SCENE TIME`, specifica M-KEY). Il test
+ * guarda il RISULTATO nel frame (buffer di PICK: quale pixel copre l'oggetto),
+ * non lo stato interno: legge solo la facciata C, come le altre gambe. Copre
+ * interpolazione, clamp fuori intervallo, pitch/roll applicati davvero, tetto di
+ * 32 chiavi per oggetto, errori di argomento, nessuna allocazione per frame e
+ * RESET che azzera piste e tempo. */
+static int run_p5_key(void)
+{
+    int ok = 0, fail = 0;
+#define P5K_CHECK(cond, ...) do { if (cond) ok++; else { fail++; printf("P5-KEY fail: "); printf(__VA_ARGS__); printf("\n"); } } while (0)
+
+    /* Un quad 20×20 davanti alla camera, interamente nel frustum. */
+#define P5K_SCENE() do { \
+        P5K_CHECK(gmb_scene_reset() == GMB_3D_OK, "RESET"); \
+        P5K_CHECK(gmb_scene_view(32, 32, 60.0) == GMB_3D_OK, "VIEW"); \
+        P5K_CHECK(gmb_scene_camera(0.0, 0.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "CAMERA"); \
+        P5K_CHECK(gmb_scene_object(255, 0, 0) == GMB_3D_OK \
+                  && gmb_scene_vertex(-10.0, -10.0, 0.0, 0.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(10.0, -10.0, 0.0, 1.0, 1.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(10.0, 10.0, 0.0, 1.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_vertex(-10.0, 10.0, 0.0, 0.0, 0.0) == GMB_3D_OK \
+                  && gmb_scene_quad(0, 3, 2, 1) == GMB_3D_OK, "dichiarazione del quad"); \
+        P5K_CHECK(gmb_scene_pick_enable(1) == GMB_3D_OK, "PICK on"); \
+    } while (0)
+
+    P5K_SCENE();
+    /* Errori di argomento: oggetto inesistente, tempo negativo, tempo non finito. */
+    P5K_CHECK(gmb_scene_key(0, 0.0, 0.0, 0.0, 60.0, 0.0, 0.0, 0.0) == GMB_3D_E_ARG
+              && gmb_scene_key(2, 0.0, 0.0, 0.0, 60.0, 0.0, 0.0, 0.0) == GMB_3D_E_ARG,
+              "KEY su oggetto 0 o 2 (esiste solo l'1) non rifiutata");
+    P5K_CHECK(gmb_scene_key(1, -1.0, 0.0, 0.0, 60.0, 0.0, 0.0, 0.0) == GMB_3D_E_ARG
+              && gmb_scene_time(-1.0) == GMB_3D_E_ARG,
+              "tempo negativo non rifiutato");
+    P5K_CHECK(gmb_3d_last_error()[0] != 0, "errore di KEY senza messaggio");
+
+    /* Tetto dichiarato: 32 chiavi per oggetto, la 33a è un errore esplicito. */
+    int keys_ok = 1;
+    for (int i = 0; i < 32; i++)
+        if (gmb_scene_key(1, (double)i, 0.0, 0.0, 60.0, 0.0, 0.0, 0.0) != GMB_3D_OK) keys_ok = 0;
+    P5K_CHECK(keys_ok, "32 chiavi su un oggetto non accettate");
+    P5K_CHECK(gmb_scene_key(1, 40.0, 0.0, 0.0, 60.0, 0.0, 0.0, 0.0) == GMB_3D_E_ARG,
+              "la 33a chiave non è stata rifiutata");
+
+    /* Interpolazione lineare e clamp, letti dal buffer di PICK (id 1 = quad).
+     * Con lo sguardo verso +z le x positive cadono a SINISTRA: il pixel 6 è
+     * x ≈ +22, il 25 è x ≈ -22, il 16 è il centro. */
+    P5K_SCENE();
+    P5K_CHECK(gmb_scene_key(1, 0.0, -20.0, 0.0, 60.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && gmb_scene_key(1, 1.0, 20.0, 0.0, 60.0, 0.0, 0.0, 0.0) == GMB_3D_OK,
+              "due chiavi di posizione");
+    P5K_CHECK(gmb_scene_time(0.0) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_pick(25, 16) == 1 && gmb_scene_pick(6, 16) == 0,
+              "t=0: pick 25/6 = %lld/%lld (attesi 1/0)",
+              (long long)gmb_scene_pick(25, 16), (long long)gmb_scene_pick(6, 16));
+    P5K_CHECK(gmb_scene_time(0.5) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_pick(16, 16) == 1 && gmb_scene_pick(6, 16) == 0,
+              "t=0.5: il centro non è coperto (pick 16 = %lld)", (long long)gmb_scene_pick(16, 16));
+    P5K_CHECK(gmb_scene_time(1.0) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_pick(6, 16) == 1 && gmb_scene_pick(25, 16) == 0,
+              "t=1: pick 6/25 = %lld/%lld (attesi 1/0)",
+              (long long)gmb_scene_pick(6, 16), (long long)gmb_scene_pick(25, 16));
+    /* Oltre l'ultima chiave vince l'ultima: nessuna estrapolazione. */
+    P5K_CHECK(gmb_scene_time(5.0) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_pick(6, 16) == 1 && gmb_scene_pick(25, 16) == 0,
+              "t=5 (clamp): pick 6/25 = %lld/%lld (attesi 1/0)",
+              (long long)gmb_scene_pick(6, 16), (long long)gmb_scene_pick(25, 16));
+
+    /* Nessuna allocazione per frame: il campionamento legge solo array riservati. */
+    unsigned long a0 = gmb_3d_alloc_count();
+    for (int i = 0; i < 50; i++)
+    {
+        (void)gmb_scene_time((double)i * 0.02);
+        (void)gmb_scene_render();
+    }
+    P5K_CHECK(gmb_3d_alloc_count() == a0, "50 frame con chiavi hanno allocato %lu",
+              gmb_3d_alloc_count() - a0);
+
+    /* Pitch e roll arrivano al rasterizzatore: 90° di pitch mette il quad di
+     * taglio (nessun triangolo disegnato), 90° di roll su un quad non quadrato
+     * cambia il frame. */
+    P5K_SCENE();
+    P5K_CHECK(gmb_scene_key(1, 0.0, 0.0, 0.0, 60.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && gmb_scene_key(1, 1.0, 0.0, 0.0, 60.0, 0.0, 90.0, 0.0) == GMB_3D_OK,
+              "due chiavi di pitch");
+    P5K_CHECK(gmb_scene_time(1.0) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_drawn() == 0,
+              "pitch 90: triangoli disegnati = %lld (attesi 0)", (long long)gmb_scene_drawn());
+
+    /* Quad 20×8 (non quadrato): con 90° di roll l'immagine cambia davvero. */
+    P5K_CHECK(gmb_scene_reset() == GMB_3D_OK, "RESET roll");
+    P5K_CHECK(gmb_scene_view(32, 32, 60.0) == GMB_3D_OK, "VIEW roll");
+    P5K_CHECK(gmb_scene_camera(0.0, 0.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "CAMERA roll");
+    P5K_CHECK(gmb_scene_object(255, 0, 0) == GMB_3D_OK
+              && gmb_scene_vertex(-10.0, -4.0, 0.0, 0.0, 1.0) == GMB_3D_OK
+              && gmb_scene_vertex(10.0, -4.0, 0.0, 1.0, 1.0) == GMB_3D_OK
+              && gmb_scene_vertex(10.0, 4.0, 0.0, 1.0, 0.0) == GMB_3D_OK
+              && gmb_scene_vertex(-10.0, 4.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && gmb_scene_quad(0, 3, 2, 1) == GMB_3D_OK, "quad 20x8 per il roll");
+    P5K_CHECK(gmb_scene_key(1, 0.0, 0.0, 0.0, 60.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+              && gmb_scene_key(1, 1.0, 0.0, 0.0, 60.0, 0.0, 0.0, 90.0) == GMB_3D_OK,
+              "due chiavi di roll");
+    P5K_CHECK(gmb_scene_time(0.0) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK, "RENDER roll t=0");
+    long long h0 = gmb_scene_hash();
+    P5K_CHECK(gmb_scene_time(1.0) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_hash() != h0,
+              "roll 90 non ha cambiato il frame (hash %lld)", (long long)gmb_scene_hash());
+
+    /* RESET: piste e tempo a zero, l'oggetto torna alla trasformazione dichiarata
+     * (OBJPOS; senza chiavi niente lo sposta, quindi resta centrato). */
+    P5K_SCENE();
+    P5K_CHECK(gmb_scene_objpos(0.0, 0.0, 60.0, 0.0) == GMB_3D_OK, "OBJPOS pre-RESET");
+    P5K_CHECK(gmb_scene_time(3.0) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK, "RENDER pre-RESET");
+    P5K_SCENE();
+    P5K_CHECK(gmb_scene_objpos(0.0, 0.0, 60.0, 0.0) == GMB_3D_OK, "OBJPOS dopo RESET");
+    P5K_CHECK(gmb_scene_time(0.0) == GMB_3D_OK && gmb_scene_render() == GMB_3D_OK
+              && gmb_scene_pick(16, 16) == 1,
+              "dopo RESET l'oggetto non è più al centro (pick 16 = %lld)",
+              (long long)gmb_scene_pick(16, 16));
+
+#undef P5K_SCENE
+#undef P5K_CHECK
+    printf("P5-KEY ok=%d fail=%d\n", ok, fail);
+    return fail == 0 ? 0 : 1;
+}
+
 static int cmp_double(const void* a, const void* b)
 {
     double x = *(const double*)a, y = *(const double*)b;
@@ -1838,6 +1963,7 @@ static void usage(void)
            "     gmb_3d_oracle --interactcheck\n"
            "     gmb_3d_oracle --raycheck\n"
            "     gmb_3d_oracle --statscheck\n"
+           "     gmb_3d_oracle --keycheck\n"
            "     gmb_3d_oracle --bench-scene [--objects N | --tris N] [--size WxH] [--frames N]\n"
            "  DIR   = cartella delle golden (<scena>.<rid>.png)\n"
            "  --demo MAPPA = mappa demo (.gmbscene): scena `demo`, T-* e bench\n"
@@ -1846,6 +1972,7 @@ static void usage(void)
            "  --interactcheck = corpo, MOVE, quote e zone della superficie SCENE (P5)\n"
            "  --raycheck = SHOOT/USE/SEES e stato dell'ultimo colpo (P5, M-RAYS)\n"
            "  --statscheck = SCENE.STATS: contatori del frame e memoria riservata (P5)\n"
+           "  --keycheck = SCENE KEY/TIME: piste TRS, clamp, tetto, pitch/roll (P5, M-KEY)\n"
            "  --bench-scene = N oggetti (default 500) a --size (default 640x360)\n"
            "  --tris N = N triangoli dichiarati (12 per box) in griglia frontale\n");
 }
@@ -1858,7 +1985,7 @@ int main(int argc, char** argv)
     const char* demo = NULL;
     double tol = 0.0;
     int bench = 0, frames = 120;
-    int cullcheck = 0, interactcheck = 0, raycheck = 0, statscheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
+    int cullcheck = 0, interactcheck = 0, raycheck = 0, statscheck = 0, keycheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
     int tris_target = 0;   /* --tris N: 0 = griglia storica a oggetti */
 
     for (int i = 1; i < argc; i++)
@@ -1882,6 +2009,7 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "--interactcheck")) interactcheck = 1;
         else if (!strcmp(argv[i], "--raycheck")) raycheck = 1;
         else if (!strcmp(argv[i], "--statscheck")) statscheck = 1;
+        else if (!strcmp(argv[i], "--keycheck")) keycheck = 1;
         else if (!strcmp(argv[i], "--bench-scene")) bench_scene = 1;
         else if (!strcmp(argv[i], "--objects") && i + 1 < argc) objects = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--tris") && i + 1 < argc) tris_target = atoi(argv[++i]);
@@ -1898,6 +2026,7 @@ int main(int argc, char** argv)
     if (interactcheck) return run_p5_interact();
     if (raycheck) return run_p5_rays();
     if (statscheck) return run_p5_stats();
+    if (keycheck) return run_p5_key();
     if (bench_scene)
     {
         /* --tris N: 12 triangoli per box, griglia quadrata (vedi p5_scene_bench). */

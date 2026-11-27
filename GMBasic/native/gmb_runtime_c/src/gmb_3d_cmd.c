@@ -365,6 +365,7 @@ int64_t gmb_scene_reset(void)
     memset(g_scene_thing, 0, sizeof(g_scene_thing));
     gmb_3d_ray_reset();
     gmb_3d_stats_reset();   /* renders/renders_max del frame (M-STATS) */
+    gmb_3d_key_reset();     /* piste keyframe e tempo di scena (M-KEY) */
     free(g_scene_sky);
     g_scene_sky = NULL;
     g_scene_sky_w = g_scene_sky_h = 0;
@@ -658,6 +659,7 @@ int64_t gmb_scene_object(int64_t r, int64_t g, int64_t b)
     o->ntri = 0;
     o->x = o->y = o->z = 0.0f;
     o->yaw = 0.0f;
+    o->pitch = o->roll = 0.0f;
     o->r = (unsigned char)g_scene_clampi(r);
     o->g = (unsigned char)g_scene_clampi(g);
     o->b = (unsigned char)g_scene_clampi(b);
@@ -801,7 +803,7 @@ static int scene_draw_object(int oi, const float* vp, const float planes[6][4],
     if (o->ntri <= 0 || o->nvert <= 0) return GMB_3D_OK;
 
     float model[16], mvp[16];
-    gmb_3d_m4_model(model, o->x, o->y, o->z, o->yaw);
+    gmb_3d_m4_model_trs(model, o->x, o->y, o->z, o->yaw, o->pitch, o->roll);
 
     /* P5 — culling per oggetto (M-CULL): interamente fuori dal frustum non entra nel
      * rasterizzatore. I suoi triangoli finiscono in CULLED esattamente come li avrebbe
@@ -932,6 +934,10 @@ int64_t gmb_scene_render(void)
 {
     if (g_scene_target.argb == NULL)
         return g_scene_err("SCENE RENDER: nessun target (SCENE VIEW prima)");
+    /* M-KEY: le piste si campionano qui, al tempo di scena (SCENE TIME), e
+     * scrivono la trasformazione negli oggetti: il resto del frame legge quella,
+     * come se fosse stata data con OBJPOS. Nessuna allocazione. */
+    gmb_3d_key_sample();
     /* Una scena può essere fatta di solo cielo o di soli thing: il render non
      * deve pretendere una mesh (M-ORDER/M-SKY/M-THINGS). */
     if (g_scene.nobj <= 0 && g_scene.nt <= 0 && g_scene_sky == NULL)
@@ -1136,6 +1142,8 @@ const uint32_t* gmb_scene_frame(int* w, int* h)
     return g_scene_target.argb;
 }
 
+void gmb_scene_present_done(void) { gmb_3d_stats_note_present(); }
+
 int64_t gmb_scene_present(void)
 {
     int64_t rc = gmb_scene_present_check();
@@ -1151,7 +1159,7 @@ int64_t gmb_scene_present(void)
         gmb_3d_set_error("SCENE PRESENT: nessuna pagina 2D attiva (SCREEN o CANVAS USE prima)");
         return GMB_3D_E_ARG;
     }
-    gmb_3d_stats_note_present();   /* il frame si chiude qui (M-STATS) */
+    gmb_scene_present_done();   /* il frame si chiude qui (M-STATS) */
     return GMB_3D_OK;
 }
 
@@ -1177,8 +1185,6 @@ int64_t gmb_scene_checked(int64_t rc, int64_t line)
 }
 
 gmb_3d_target_t* gmb_scene_target_ref(void) { return &g_scene_target; }
-
-const gmb_3d_draw_stats_t* gmb_3d_scene_draw_stats(void) { return &g_scene_stats; }
 
 int64_t gmb_scene_pixel(int64_t x, int64_t y)
 {

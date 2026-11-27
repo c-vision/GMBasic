@@ -2786,9 +2786,13 @@ typedef enum gmb_tokenkind {
     GMB_TOK_SceneUse,
     GMB_TOK_SceneSees,
     GMB_TOK_SceneStats,
+    /* P5/M-KEY — keyframe TRS degli oggetti: KEY (8 argomenti) e il tempo di scena
+     * che RENDER campiona. Stessi TokenKind del lato C#, nello stesso ordine. */
+    GMB_TOK_SceneKey,
+    GMB_TOK_SceneTime,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2749
+  #define GMB_TOK_COUNT 2751
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

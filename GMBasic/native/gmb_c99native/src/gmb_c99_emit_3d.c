@@ -231,6 +231,20 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
         wscene(c, "gmb_scene_objpos", a, 4, s->line);
         return;
     }
+    if (tk == GMB_TOK_SceneKey)
+    {
+        /* M-KEY: oggetto, tempo e sei componenti TRS. L'indice è il primo argomento
+         * (come SCENE THING/ZONE): la facciata C converte e valida. */
+        if (n != 8) { c99_fail(c, s->line, "SCENE KEY o, t, x, y, z, yaw, pitch, roll"); return; }
+        wscene(c, "gmb_scene_key", a, 8, s->line);
+        return;
+    }
+    if (tk == GMB_TOK_SceneTime)
+    {
+        if (n != 1) { c99_fail(c, s->line, "SCENE TIME t"); return; }
+        wscene(c, "gmb_scene_time", a, 1, s->line);
+        return;
+    }
     if (tk == GMB_TOK_SceneCamera)
     {
         if (n != 5) { c99_fail(c, s->line, "SCENE CAMERA x, y, z, yaw, pitch"); return; }
