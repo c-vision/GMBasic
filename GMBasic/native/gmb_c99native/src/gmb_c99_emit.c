@@ -3003,11 +3003,8 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                          * collections/stack_push_pop.bas). Il tipo è quello dell'elemento. */
                         return _erxv->elem_str ? TY_STR : TY_NUM;
                     if (!_erx_dict_scalar) {
-                        /* GET di chiave assente → NIL: emissione del gmb_val_t nudo. Per i dict
-                         * a VALORI STRINGA l'emissione resta una stringa (TY_STR). */
-                        if ((gmb_member_tok(_erxdot + 1) == GMB_TOK_Get || strcasecmp(_erxdot + 1, "Get") == 0)
-                            && _erxv->elem_str)
-                            return TY_STR;
+                        /* GET di chiave assente → NIL: emissione del gmb_val_t nudo anche per
+                         * i dict a VALORI STRINGA (il consumatore STRING converte val→string). */
                         /* req.Query/Params/Headers.Get("k") → STRINGA (typing gestito più sotto):
                          * NON forzare TY_VAL, altrimenti l'assegnazione a STRING ri-avvolgeva in
                          * gmb_val_to_string l'accessor (già stringa) → doppio wrap
@@ -3385,9 +3382,9 @@ int etype(ctx_t* c, gmb_expr_t* e) {
                     if (dmv && dmv->gkind && gk_is_dict(dmv->gkind)) {
                         gmb_tokenkind_t dmt = gmb_member_tok(dmd + 1);
                         if (dmt == GMB_TOK_Get)
-                            /* GET: emissione gmb_val_t nudo (chiave assente → NIL) per i valori
-                             * non-stringa; stringa vera per elem_str. */
-                            return dmv->elem_str ? TY_STR : TY_VAL;
+                            /* GET: emissione gmb_val_t nudo (chiave assente → NIL) per ogni
+                             * tipo di valore; il consumatore STRING converte val→string. */
+                            return TY_VAL;
                         if (dmt == GMB_TOK_Count || dmt == GMB_TOK_ContainsKey) return TY_NUM;
                     }
                 }
@@ -10628,7 +10625,7 @@ static void emit_arr_call_arg(ctx_t* c, fn_info_t* fn, int i, gmb_expr_t* arg, i
             gmb_expr_t* el = arg->args[k];
             int ety = el ? etype(c, el) : TY_NUM;
             if (pstrl && ety != TY_STR) {
-                sb_put(&c->out, ety == TY_VAL ? "gmb_val_to_string(" : "gmb_double_to_string(");
+                sb_put(&c->out, ety == TY_VAL ? "gmb_val_to_string_or_empty(" : "gmb_double_to_string(");
                 emit_expr(c, el);
                 sb_put(&c->out, ")");
             } else if (!pstrl && ety == TY_STR) {
@@ -11078,7 +11075,7 @@ static void emit_eff_arg(ctx_t* c, gmb_stmt_t* fs, fn_info_t* f, gmb_expr_t** ar
             if (pstr && aty != TY_STR) {
                 /* val dinamico (rs("col"), getter RDD, …): conversione dal VAL, non cast a
                  * double (gmb_double_to_string(gmb_val_t) non compila — bug Masume). */
-                if (aty == TY_VAL) { sb_put(&c->out, "gmb_val_to_string("); emit_expr(c, a); sb_put(&c->out, ")"); return; }
+                if (aty == TY_VAL) { sb_put(&c->out, "gmb_val_to_string_or_empty("); emit_expr(c, a); sb_put(&c->out, ")"); return; }
                 sb_put(&c->out, "gmb_double_to_string("); emit_expr(c, a); sb_put(&c->out, ")"); return;
             }
             if (!pstr && aty == TY_STR) { sb_put(&c->out, "gmb_string_to_double("); emit_expr(c, a); sb_put(&c->out, ")"); return; }
@@ -12981,21 +12978,14 @@ static void emit_call(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_
                                 sb_put(&c->out, ")");
                                 return;
                                 }
-                                if (cv->elem_str) {
-                                    sb_put(&c->out, "gmb_string_alloc(gmb_dict_get(");
-                                    sb_ident(&c->out, cv->name);
-                                    sb_put(&c->out, ", ");
-                                    emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, cv->name));
-                                    sb_put(&c->out, ").v_string.data)");
-                                } else {
-                                    /* gmb_val_t nudo: chiave assente → NIL (PRINT vuoto /
-                                     * JSON null, canone IL/PCode/VM/C). */
-                                    sb_put(&c->out, "gmb_dict_get(");
-                                    sb_ident(&c->out, cv->name);
-                                    sb_put(&c->out, ", ");
-                                    emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, cv->name));
-                                    sb_put(&c->out, ")");
-                                }
+                                /* gmb_val_t nudo: chiave assente → NIL (PRINT vuoto /
+                                 * JSON null, canone IL/PCode/VM/C), anche per elem_str
+                                 * (il consumatore STRING converte val→string). */
+                                sb_put(&c->out, "gmb_dict_get(");
+                                sb_ident(&c->out, cv->name);
+                                sb_put(&c->out, ", ");
+                                emit_dict_key_v(c, args[0], !gmb_c99_var_coll_sorted(c, cv->name));
+                                sb_put(&c->out, ")");
                                 return;
                             }
                         }
@@ -16564,14 +16554,14 @@ void emit_expr(ctx_t* c, gmb_expr_t* e) {
              * double_to_string (bug BspModelAuthDemo: `"user=" + gUser("name")`). */
             if (ls == TY_STR && (_rbox || rs == TY_VAL)) {
                 emit_expr(c, e->left);
-                sb_put(&c->out, is_str_temp_expr(c, e->left) ? ", 1, gmb_val_to_string(" : ", 0, gmb_val_to_string(");
+                sb_put(&c->out, is_str_temp_expr(c, e->left) ? ", 1, gmb_val_to_string_or_empty(" : ", 0, gmb_val_to_string_or_empty(");
                 emit_expr(c, e->right); sb_put(&c->out, "), 1)");
             } else if (ls == TY_STR) {
                 emit_expr(c, e->left);
                 sb_put(&c->out, is_str_temp_expr(c, e->left) ? ", 1, gmb_double_to_string(" : ", 0, gmb_double_to_string(");
                 emit_expr(c, e->right); sb_put(&c->out, "), 1)");
             } else if (_lbox || ls == TY_VAL) {
-                sb_put(&c->out, "gmb_val_to_string("); emit_expr(c, e->left);
+                sb_put(&c->out, "gmb_val_to_string_or_empty("); emit_expr(c, e->left);
                 sb_put(&c->out, "), 1, ");
                 emit_expr(c, e->right);
                 sb_put(&c->out, is_str_temp_expr(c, e->right) ? ", 1)" : ", 0)");
@@ -26363,6 +26353,19 @@ static void st_window(ctx_t* c, gmb_stmt_t* s) {
         sb_put(&c->out, "gmb_ui_frame((int)("); emit_expr_dflt(c, s->channel, "16"); sb_put(&c->out, "));\n"); return;
     case GMB_STMT_WINDOW_CLOSE:
         sb_put(&c->out, "gmb_form_request_close();\n"); return;
+    case GMB_STMT_WINDOW_RESIZE:
+        /* WINDOW RESIZE w, h — ridimensiona la pagina LOGICA (come il resize della
+         * finestra) e riapplica il LAYOUT (EXPAND/ANCHOR/ALIGN) sui due percorsi:
+         * gfx = pixel, tui = celle. È il comando che rende il layout verificabile
+         * in modo deterministico e headless. */
+        sb_put(&c->out, "gmb_gfx_resize_screen((int)(");
+        emit_expr_dflt(c, s->win_coords[0], "0"); sb_put(&c->out, "), (int)(");
+        emit_expr_dflt(c, s->win_coords[1], "0"); sb_put(&c->out, ")); ");
+        sb_put(&c->out, "gmb_tui_resize_screen((int)(");
+        emit_expr_dflt(c, s->win_coords[0], "0"); sb_put(&c->out, "), (int)(");
+        emit_expr_dflt(c, s->win_coords[1], "0"); sb_put(&c->out, ")); ");
+        sb_put(&c->out, "gmb_form_layout_reflow();\n");
+        return;
     case GMB_STMT_WINDOW_THEME:
         if (s->channel && etype(c, s->channel) == TY_STR) {
             sb_put(&c->out, "gmb_winstmt_theme_name("); emit_str_operand(c, s->channel); sb_put(&c->out, ".data);\n");
@@ -33152,6 +33155,7 @@ static const ST_EMIT_TBL_row ST_EMIT_TBL[] = {
     { GMB_STMT_SET, st_set },
     { GMB_STMT_WINDOW_PUMP, st_window },
     { GMB_STMT_WINDOW_CLOSE, st_window },
+    { GMB_STMT_WINDOW_RESIZE, st_window },
     { GMB_STMT_WINDOW_THEME, st_window },
     { GMB_STMT_WINDOW_DESKTOP, st_window },
     { GMB_STMT_WINDOW_FRAME, st_window },
