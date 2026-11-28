@@ -171,6 +171,29 @@ gmb_stmt_t* gmb_p_parse_print(gmb_parser_t* p, int line)
     if (gmb_p_check(p, GMB_TOK_Newline) || gmb_p_check(p, GMB_TOK_Colon)
         || gmb_p_check(p, GMB_TOK_RightBrace) || gmb_p_check(p, GMB_TOK_Else)
         || gmb_p_check(p, GMB_TOK_ElseIf) || gmb_p_at_end(p)) return s;
+    /* PRINT USING <fmt>; v1; v2 … (riferimento: GW-BASIC). Il formato è un'espressione
+     * (di solito un letterale) e i valori restano in print_args, quindi staged print,
+     * print_hold e separatori valgono identici a PRINT; `;` (o `,` come sinonimo) separa
+     * formato e valori, obbligatorio: senza, il programma sarebbe ambiguo e si ferma con
+     * un errore esplicito invece di stampare qualcosa di casuale. Nessun valore è
+     * ammesso (PRINT USING "solo testo"). */
+    if (gmb_p_check(p, GMB_TOK_Using)) {
+        bool pu_end;
+        gmb_p_adv(p);
+        s->print_using = gmb_p_parse_expr(p);
+        if (p->error) return s;
+        pu_end = gmb_p_check(p, GMB_TOK_Newline) || gmb_p_check(p, GMB_TOK_Colon)
+              || gmb_p_check(p, GMB_TOK_RightBrace) || gmb_p_check(p, GMB_TOK_Else)
+              || gmb_p_check(p, GMB_TOK_ElseIf) || gmb_p_at_end(p);
+        if (pu_end) return s;
+        if (!(gmb_p_match(p, GMB_TOK_Semicolon) || gmb_p_match(p, GMB_TOK_Comma))) {
+            gmb_p_set_err(p, "PRINT USING: manca ';' dopo il formato", line);
+            return s;
+        }
+        if (gmb_p_check(p, GMB_TOK_Newline) || gmb_p_check(p, GMB_TOK_Colon)
+            || gmb_p_check(p, GMB_TOK_RightBrace) || gmb_p_check(p, GMB_TOK_Else)
+            || gmb_p_check(p, GMB_TOK_ElseIf) || gmb_p_at_end(p)) return s;
+    }
     for (;;) {
         if (s->nprint >= cap) {
             cap = cap ? cap * 2 : 4;
