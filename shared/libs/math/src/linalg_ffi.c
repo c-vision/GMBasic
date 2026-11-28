@@ -7,9 +7,12 @@
  * viaggia su **buffer piatti row-major** + dimensioni esplicite, il contratto già usato da
  * VEC/MULTIVARIATE/TIMESERIES.
  *
- * ABI FFI (importante): per OGNI parametro array il motore passa il puntatore seguito
- * dalla LUNGHEZZA (int64), come in `ofx_vec_*`. Il DECLARE BASIC non scrive la lunghezza
- * (la aggiunge il motore): la firma C qui sotto la riceve accanto a ogni `double*`.
+ * ABI FFI (importante): per un parametro array 1-D il motore passa il puntatore seguito
+ * dalla LUNGHEZZA (int64), come in `ofx_vec_*`; un array a rango >1 passa UNA lunghezza
+ * PER DIMENSIONE (contratto FFI esistente, vedi ffi/ffi_dims_*). Le funzioni di questo
+ * shim prendono matrici come **buffer 1-D piatto row-major** + righe/colonne esplicite:
+ * una matrice DIM a(r,c) non va passata qui (arriverebbe con due lunghezze).
+ * Il DECLARE BASIC non scrive la lunghezza (la aggiunge il motore).
  *
  * Una sola implementazione (§0bis): i kernel sono `gm_linalg_*` di gmbmath (la stessa
  * libreria in cui vive questo shim).
