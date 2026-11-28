@@ -1,8 +1,9 @@
 ' EXPECT: orth= 0.707107
+IMPORT LINALG
 SUB Main()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)
-  h = MATRIX.SETVALUE(h, 1, 0, 1) : h = MATRIX.SETVALUE(h, 1, 1, 2)
-  DIM r = LINALG_MATRIX.ORTH(h)
-  PRINT "orth="; MATH.ROUND(ABS(MATRIX.GETVALUE(r, 0, 0)), 6)
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
+  DIM r(3) AS DOUBLE
+  LINALG.ORTH(a, 2, 2, r)
+  PRINT "orth="; MATH.ROUND(ABS(r(0)), 6)
 END SUB

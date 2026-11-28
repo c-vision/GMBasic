@@ -3,6 +3,8 @@
 ' che il generatore non può distinguere da un numero. Qui si usano matrici VERE.
 ' EXPECT: rowcount:  2|colcount:  2|max:  3|min:  0|frobenius:  3.74165738677394|onenorm:  5|infnorm:  3|symmetric: no|upper: si|lower: no|orthogonal: no|csv: [1,2|0,3|]|symmetric2: si|clone:  3|reshape_rows:  1|reshape_cols:  4|slice:  1|concatrows:  4|concatcols:  4
 
+IMPORT LINALG
+
 SUB Main()
     ' A = [[1,2],[0,3]]  (triangolare superiore, non simmetrica)
     h = MATRIX.CREATE(2, 2)
@@ -13,9 +15,11 @@ SUB Main()
     PRINT "colcount: "; MATRIX.COLUMNCOUNT(h)
     PRINT "max: "; MATRIX.MAXVALUE(h)
     PRINT "min: "; MATRIX.MINVALUE(h)
-    PRINT "frobenius: "; LINALG_MATRIX.FROBENIUSNORM(h)
-    PRINT "onenorm: "; LINALG_MATRIX.ONENORM(h)
-    PRINT "infnorm: "; LINALG_MATRIX.INFINITYNORM(h)
+    DIM fa(3) AS DOUBLE
+    fa(0)=1 : fa(1)=2 : fa(2)=0 : fa(3)=3
+    PRINT "frobenius: "; LINALG.FROBENIUSNORM(fa, 2, 2)
+    PRINT "onenorm: "; LINALG.ONENORM(fa, 2, 2)
+    PRINT "infnorm: "; LINALG.INFINITYNORM(fa, 2, 2)
 
     IF MATRIX.ISSYMMETRIC(h) THEN PRINT "symmetric: si" ELSE PRINT "symmetric: no"
     IF MATRIX.ISUPPERTRIANGULAR(h) THEN PRINT "upper: si" ELSE PRINT "upper: no"

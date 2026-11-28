@@ -143,7 +143,8 @@ public sealed partial class StdLib : IParserRegistry
         CreateWorldNamespace();   // motore 3D: WORLD (comando) + MOVING/LIGHTNOW/TIME/FLOORZ/CEILZ
         CreateSceneNamespace();   // motore 3D: SCENE (comando) + VERTS/TRIS/DRAWN/CULLED/PIXELS/HASH/PIXEL
         CreateClockNamespace();   // tempo a passo fisso: CLOCK (comando) + DT/ALPHA/FPS/SCALE
-        CreateLinalgNamespace();
+        // LINALG è solo FFI su array (shared/include/linalg.inc, gmbmath):
+        // il vecchio builtin a valori MATRIX è stato ritirato (le funzioni sono in FFI).
         // SPECIAL: namespace LIBERATO — ri-esposto via FFI (shared/include/special.inc, libgmbmath).
         CreateSignalNamespace();
         CreateVectorNamespace();

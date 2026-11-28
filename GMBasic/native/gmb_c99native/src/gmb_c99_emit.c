@@ -2584,15 +2584,13 @@ static int ci_istr(const char* s, const char* needle)
 static int call_ns_is_matrix(gmb_expr_t* e) {
     if (!e) return 1;
     if (e->ns && e->ns[0])
-        return !strcasecmp(e->ns, "MATRIX") || !strcasecmp(e->ns, "LINALG")
-            || !strcasecmp(e->ns, "LINALG_MATRIX");
+        return !strcasecmp(e->ns, "MATRIX") || !strcasecmp(e->ns, "LINALG");
     if (e->var && e->var[0]) {
         const char* dot = strrchr(e->var, '.');
         if (dot) {
             size_t n = (size_t)(dot - e->var);
             return (n == 6 && !strncasecmp(e->var, "MATRIX", 6))
-                || (n == 6 && !strncasecmp(e->var, "LINALG", 6))
-                || (n == 13 && !strncasecmp(e->var, "LINALG_MATRIX", 13));
+                || (n == 6 && !strncasecmp(e->var, "LINALG", 6));
         }
     }
     return 1;
@@ -2607,13 +2605,11 @@ static int is_matrix_factor_call(gmb_expr_t* e) {
     if (e->var && e->var[0]) {
         const char* dot = strrchr(e->var, '.');
         if (dot && !strcasecmp(dot + 1, "FACTOR")
-            && (strncasecmp(e->var, "LINALG.", 7) == 0 || strncasecmp(e->var, "MATRIX.", 7) == 0
-                || strncasecmp(e->var, "LINALG_MATRIX.", 14) == 0))
+            && (strncasecmp(e->var, "LINALG.", 7) == 0 || strncasecmp(e->var, "MATRIX.", 7) == 0))
             return 1;
     }
     if (e->tk == GMB_TOK_Get
-        && ((e->ns && (!strcasecmp(e->ns, "LINALG") || !strcasecmp(e->ns, "MATRIX")
-                       || !strcasecmp(e->ns, "LINALG_MATRIX")))
+        && ((e->ns && (!strcasecmp(e->ns, "LINALG") || !strcasecmp(e->ns, "MATRIX")))
             || (e->args[0] && e->args[0]->kind == GMB_EXPR_CALL
                 && (e->args[0]->tk == GMB_TOK_Cholesky || e->args[0]->tk == GMB_TOK_Lu
                     || e->args[0]->tk == GMB_TOK_Qr || e->args[0]->tk == GMB_TOK_Svd
@@ -3425,6 +3421,12 @@ int etype(ctx_t* c, gmb_expr_t* e) {
             var_t* lav = lookup_var(c, e->var);
             if (lav && lav->is_array) return lav->type;
         }
+        /* PEEK(addr) a UN argomento: byte della memoria VIRTUALE del programma
+         * (gmb_peek, NUMERO; -1 fuori area). La forma a DUE argomenti resta NET.PEEK
+         * (handle, n) → STRINGA, tipata dalla tabella ns qui sotto: senza questa
+         * eccezione la tabella diceva STRINGA anche per la forma a un argomento e
+         * PRINT emetteva gmb_print_string_tmp(<double>) (C invalido). */
+        if (e->tk == GMB_TOK_Peek && e->nargs == 1) return TY_NUM;
         /* Builtin StdLib string-return (keyword-builtin, var NULL): tipo dal DispatchToken
          * (es. SQL.DFSCHEMA → StringType). Senza, la call restava TY_NUM → gmb_print_double. */
         if (gmb_ns_type_is_str(e->tk)) return TY_STR;
@@ -7384,9 +7386,20 @@ static int ld_len_val(ctx_t* c, gmb_expr_t** a, int n)
     sb_put(&c->out, "))");
     return 1;
 }
+/* PEEK(addr) — byte della memoria VIRTUALE del programma (src/gmb_peek.c). Fuori area
+ * ritorna -1 (stesso valore di gmb_peek), mai una lettura fuori dai limiti. Con arità
+ * diversa da 1 il token resta al percorso namespace (NET.PEEK(handle, n)). */
+static int bf_peek(ctx_t* c, gmb_expr_t** a, int n){
+    if (n != 1 || !a[0]) return 0;
+    sb_put(&c->out, "((gmb_double_t)gmb_peek((unsigned)(");
+    emit_num_operand(c, a[0]);
+    sb_put(&c->out, ")))");
+    return 1;
+}
 static const struct { gmb_tokenkind_t tk; int (*fn)(ctx_t*, gmb_expr_t**, int); } gmb_bf_prim[] = {
     { GMB_TOK_Abs, bf_m_abs }, { GMB_TOK_Sqr, bf_m_sqr }, { GMB_TOK_Int, bf_m_int }, { GMB_TOK_Len, bf_m_len },
     { GMB_TOK_LenB, bf_m_lenb },
+    { GMB_TOK_Peek, bf_peek },
 };
 
 /* GENERATO OFFLINE — dispatch composito (ns?, GMB_TOK) per dominio C99Native. */
@@ -27392,6 +27405,15 @@ static void st_gfx(ctx_t* c, gmb_stmt_t* s) {
             c->indent--; ind(c); sb_put(&c->out, "}\n");
             break;
         }
+        case 65: { /* DESIGN id, righe$ — immagine da righe ASCII (gmb_gfx_design) */
+            ind(c);
+            sb_put(&c->out, "if (gmb_gfx_design((int)(");
+            emit_expr(c, ga[0]);
+            sb_put(&c->out, "), (");
+            emit_str_operand(c, ga[1]);
+            sb_printf(&c->out, ").data) != 0) gmb_raise_error(5, gmb_gfx_design_error(), %dL);\n", s->line);
+            break;
+        }
         case 26: /* UNLOAD TEXTURE id / UNLOAD FONT */
             if (ga[0]) {
                 ind(c);
@@ -33107,6 +33129,18 @@ static void st_mmap_poke(ctx_t* c, gmb_stmt_t* s) {
     else sb_put(&c->out, "0");
     sb_put(&c->out, "));\n");
 }
+static void st_memory_poke(ctx_t* c, gmb_stmt_t* s) {
+    /* POKE indirizzo, valore — memoria VIRTUALE del programma (gmb_peek.c). Un indirizzo
+     * fuori area e' un errore runtime esplicito: gmb_poke ritorna -1 invece di scrivere
+     * fuori dai limiti (nessun clamp silenzioso). */
+    ind(c);
+    sb_put(&c->out, "if (gmb_poke((unsigned)(");
+    emit_expr(c, s->file_num);
+    sb_put(&c->out, "), (int)(");
+    if (s->nprint >= 1 && s->print_args && s->print_args[0]) emit_expr(c, s->print_args[0]);
+    else sb_put(&c->out, "0");
+    sb_printf(&c->out, ")) != 0) gmb_raise_error(5, \"POKE: indirizzo fuori dall'area di memoria del programma (0..65535)\", %dL);\n", s->line);
+}
 static void st_mmap_writebytes(ctx_t* c, gmb_stmt_t* s) {
     /* `buf()` arriva come CALL con var (nargs 0) o VAR: entrambi hanno ->var. */
     if (!s->print_args || s->nprint < 1 || !s->print_args[0]->var) {
@@ -33191,6 +33225,7 @@ static void st_yield(ctx_t* c, gmb_stmt_t* s);   /* YIELD: coroutine del generat
 static const ST_EMIT_TBL_row ST_EMIT_TBL[] = {
     { GMB_STMT_PRINT, st_print },
     { GMB_STMT_MMAP_POKE, st_mmap_poke },
+    { GMB_STMT_MEMORY_POKE, st_memory_poke },
     { GMB_STMT_MMAP_WRITEBYTES, st_mmap_writebytes },
     { GMB_STMT_LET, st_let_assign },
     { GMB_STMT_ASSIGN, st_let_assign },
@@ -38613,7 +38648,7 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
     /* Parita' bit-exact (K6): niente contrazione FMA (`a*b+c` = mul poi add), indipendentemente dai flag
      * con cui il C generato viene compilato (clang su arm64 contrae di default). */
     sb_put(&fin, "#pragma STDC FP_CONTRACT OFF\n");
-    sb_put(&fin, "#include \"gmb_runtime.h\"\n#include \"gmb_collections.h\"\n#include \"gmb_finance.h\"\n#include \"gmb_commonlib.h\"\n#include \"gmb_eval_scope.h\"\n#include \"gmb_c99gpm.h\"\n#include \"gmb_network.h\"\n#include \"gmb_msg.h\"\n#include \"gmb_signal.h\"\n#include \"gmb_connector.h\"\n#include \"gmb_graphics.h\"\n#include \"gmb_compress.h\"\n#include \"gmb_grep.h\"\n#include \"gmb_moestream.h\"\n#include \"gmb_cua_runtime.h\"\n#include \"tool_registry.h\"\n#include \"gmb_codegen.h\"\n#include \"gmb_graph.h\"\n#include \"gmb_db.h\"\n#include \"gmb_ml.h\"\n#include \"gmb_torch.h\"\n#include \"llmmodelio_model.h\"\n#include \"gmb_print_using.h\"\n#include \"gmb_dscope.h\"\n"
+    sb_put(&fin, "#include \"gmb_runtime.h\"\n#include \"gmb_collections.h\"\n#include \"gmb_finance.h\"\n#include \"gmb_commonlib.h\"\n#include \"gmb_eval_scope.h\"\n#include \"gmb_c99gpm.h\"\n#include \"gmb_network.h\"\n#include \"gmb_msg.h\"\n#include \"gmb_signal.h\"\n#include \"gmb_connector.h\"\n#include \"gmb_graphics.h\"\n#include \"gmb_compress.h\"\n#include \"gmb_grep.h\"\n#include \"gmb_moestream.h\"\n#include \"gmb_cua_runtime.h\"\n#include \"tool_registry.h\"\n#include \"gmb_codegen.h\"\n#include \"gmb_graph.h\"\n#include \"gmb_db.h\"\n#include \"gmb_ml.h\"\n#include \"gmb_torch.h\"\n#include \"llmmodelio_model.h\"\n#include \"gmb_print_using.h\"\n#include \"gmb_peek.h\"\n#include \"gmb_dscope.h\"\n"
                     "#include \"gmb_uncertainty.h\"\n"
                     /* P1/P2/P3 runtime AI: OBSERVE/CONTEXT/WORKER. Senza questi header il C
                      * generato non compila ("call to undeclared function gmb_ctx_view"): le

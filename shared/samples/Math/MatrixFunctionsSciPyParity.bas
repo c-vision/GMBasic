@@ -1,35 +1,39 @@
-' scipy.linalg completato: sqrtm, logm, hessenberg, block_diag + SETVALUE/GETVALUE.
+' scipy.linalg: sqrtm, logm, hessenberg, pinv (LINALG FFI) + block_diag MATRIX.
 ' Oracoli: scipy 1.18 (sqrtm([[2,1],[1,2]]) diag 1.3660, logm diag 0.5493, hessenberg[2,0]=0).
-
+IMPORT LINALG
 SUB Main()
-  ' A = [[2,1],[1,2]]
-  h = MATRIX.CREATE(2, 2)
-  h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)
-  h = MATRIX.SETVALUE(h, 1, 0, 1) : h = MATRIX.SETVALUE(h, 1, 1, 2)
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
 
-  s = LINALG_MATRIX.SQRTM(h)
-  PRINT "sqrtm00  ="; MATRIX.GETVALUE(s, 0, 0)
-  PRINT "sqrtm01  ="; MATRIX.GETVALUE(s, 0, 1)
+  DIM s(3) AS DOUBLE
+  LINALG.SQRTM(a, 2, s)
+  PRINT "sqrtm00  ="; s(0)
+  PRINT "sqrtm01  ="; s(1)
 
-  l = LINALG_MATRIX.LOGM(h)
-  PRINT "logm00   ="; MATRIX.GETVALUE(l, 0, 0)
-  PRINT "logm11   ="; MATRIX.GETVALUE(l, 1, 1)
+  DIM l(3) AS DOUBLE
+  LINALG.LOGM(a, 2, l)
+  PRINT "logm00   ="; l(0)
+  PRINT "logm11   ="; l(3)
 
   ' Hessenberg di una 3x3: Hh[2,0] deve essere ~0
-  h3 = MATRIX.CREATE(3, 3)
-  h3 = MATRIX.SETVALUE(h3, 0, 0, 1) : h3 = MATRIX.SETVALUE(h3, 0, 1, 2) : h3 = MATRIX.SETVALUE(h3, 0, 2, 3)
-  h3 = MATRIX.SETVALUE(h3, 1, 0, 4) : h3 = MATRIX.SETVALUE(h3, 1, 1, 5) : h3 = MATRIX.SETVALUE(h3, 1, 2, 6)
-  h3 = MATRIX.SETVALUE(h3, 2, 0, 7) : h3 = MATRIX.SETVALUE(h3, 2, 1, 8) : h3 = MATRIX.SETVALUE(h3, 2, 2, 10)
-  hh = LINALG_MATRIX.HESSENBERG(h3)
-  PRINT "hess20   ="; MATRIX.GETVALUE(hh, 2, 0)
+  DIM h3(8) AS DOUBLE
+  h3(0)=1 : h3(1)=2 : h3(2)=3
+  h3(3)=4 : h3(4)=5 : h3(5)=6
+  h3(6)=7 : h3(7)=8 : h3(8)=10
+  DIM hh(8) AS DOUBLE
+  LINALG.HESSENBERG(h3, 3, hh)
+  PRINT "hess20   ="; hh(6)
 
-  ' block_diag
-  bd = MATRIX.BLOCKDIAG(h, h)
+  ' block_diag (MATRIX)
+  DIM h = MATRIX.CREATE(2, 2)
+  h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)
+  h = MATRIX.SETVALUE(h, 1, 0, 1) : h = MATRIX.SETVALUE(h, 1, 1, 2)
+  DIM bd = MATRIX.BLOCKDIAG(h, h)
   PRINT "bd00     ="; MATRIX.GETVALUE(bd, 0, 0)
   PRINT "bd22     ="; MATRIX.GETVALUE(bd, 2, 2)
 
-  ' Pseudoinversa Moore-Penrose (per A invertibile coincide con l'inversa)
-  p = LINALG_MATRIX.PINVERSE(h)
-  PRINT "pinv00   ="; MATRIX.GETVALUE(p, 0, 0)
-  PRINT "pinv11   ="; MATRIX.GETVALUE(p, 1, 1)
+  DIM p(3) AS DOUBLE
+  LINALG.PINVERSE(a, 2, 2, p)
+  PRINT "pinv00   ="; p(0)
+  PRINT "pinv11   ="; p(3)
 END SUB

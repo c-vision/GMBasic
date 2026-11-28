@@ -133,3 +133,8 @@ DECLARE FUNCTION CG LIB "gmbmath" ALIAS "ofx_linalg_cg" (a() AS DOUBLE, n AS LON
 DECLARE FUNCTION GMRES LIB "gmbmath" ALIAS "ofx_linalg_gmres" (a() AS DOUBLE, n AS LONG, b() AS DOUBLE, x() AS DOUBLE, restart AS LONG, maxit AS LONG, tol AS DOUBLE) AS LONG
 ' Autovalore dominante e autovettore (power iteration).
 DECLARE FUNCTION POWER LIB "gmbmath" ALIAS "ofx_linalg_power" (a() AS DOUBLE, n AS LONG, iters AS LONG, tol AS DOUBLE, lambda_() AS DOUBLE, v() AS DOUBLE) AS LONG
+
+' Accessore FFI dei fattori: calcola la decomposizione di a (rows×cols) e scrive il
+' fattore `kind` in out_ (meta(0..1) = righe/colonne del fattore). Kind: LU.L/U/P,
+' QR.Q/R, SVD.U/S/VT, CHOL.L, EVD.D/V, SCHUR.T/Z, POLAR.U/P, EIG.DREAL/DIMAG/VREAL/VIMAG.
+DECLARE FUNCTION FACTOR LIB "gmbmath" ALIAS "ofx_linalg_factor" (a() AS DOUBLE, rows AS LONG, cols AS LONG, kind AS STRING, out_() AS DOUBLE, meta() AS LONG) AS LONG

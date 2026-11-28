@@ -1,9 +1,9 @@
 ' EXPECT: ev= 3
+IMPORT LINALG
 SUB Main()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h,0,0,2) : h = MATRIX.SETVALUE(h,0,1,1)
-  h = MATRIX.SETVALUE(h,1,0,1) : h = MATRIX.SETVALUE(h,1,1,2)
-  DIM ed = LINALG_MATRIX.EVD(h)
-  DIM ev   = LINALG_MATRIX.FACTOR(ed, "D")
-  PRINT "ev="; MATH.ROUND(MATRIX.GETVALUE(ev,1,1),6)
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
+  DIM d(1) AS DOUBLE, v(3) AS DOUBLE
+  LINALG.EVD(a, 2, d, v)
+  PRINT "ev="; MATH.ROUND(d(1),6)
 END SUB

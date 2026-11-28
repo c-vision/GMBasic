@@ -1,65 +1,84 @@
 ' FILE: samples/Matrix/MatrixDecompositions.bas
-' Sample COMPLETO delle funzioni MATRIX (decomposizioni + operazioni matriciali).
+' Sample COMPLETO delle decomposizioni via FFI (LINALG su array piatti) + operazioni MATRIX.
 ' A = [[4,2],[2,3]] simmetrica definita positiva; I = identità.
 ' Copre: CHOLESKY/SVD/EVD/LU/QR/EIG/FACTOR, INVERSE/PINVERSE/TRANSPOSE/MULTIPLY,
 ' TRACE/DETERMINANT/RANK/COND/NORM, EXPM/LOGM/SQRTM/COSM/SINM/TANM/SIGNM/
 ' FRACTIONALPOWER, HESSENBERG/SCHUR/POLAR/ORTH, BLOCKDIAG/CIRCULANT/HANKEL/
 ' KRONECKER/TOEPLITZ, NUCLEARNORM/NULLSPACE/SUBSPACEANGLES, SOLVE/SOLVETRIANGULAR.
+IMPORT LINALG
 
 SUB Main()
+    ' A piatta row-major 2×2
+    DIM fa(3) AS DOUBLE
+    fa(0)=4 : fa(1)=2 : fa(2)=2 : fa(3)=3
+
+    ' A come valore MATRIX (per le operazioni MATRIX.*)
     DIM a = MATRIX.CREATE(2, 2)
     a = MATRIX.SETVALUE(a, 0, 0, 4) : a = MATRIX.SETVALUE(a, 0, 1, 2)
     a = MATRIX.SETVALUE(a, 1, 0, 2) : a = MATRIX.SETVALUE(a, 1, 1, 3)
 
-    PRINT "det="; MATH.ROUND(LINALG_MATRIX.DETERMINANT(a), 6)
+    PRINT "det="; MATH.ROUND(LINALG.DETERMINANT(fa, 2), 6)
     PRINT "trace="; MATH.ROUND(MATRIX.TRACE(a), 6)
-    PRINT "rank="; LINALG_MATRIX.RANK(a)
-    PRINT "norm="; MATH.ROUND(LINALG_MATRIX.NORM(a), 6)
-    PRINT "cond="; MATH.ROUND(LINALG_MATRIX.COND(a), 4)
+    PRINT "rank="; LINALG.RANK(fa, 2, 2)
+    PRINT "norm="; MATH.ROUND(LINALG.NORM(fa, 2, 2), 6)
+    PRINT "cond="; MATH.ROUND(LINALG.COND(fa, 2, 2), 4)
 
-    DIM inv = LINALG_MATRIX.INVERSE(a)
-    PRINT "inv00="; MATH.ROUND(MATRIX.GETVALUE(inv, 0, 0), 6)
-    DIM pinv = LINALG_MATRIX.PINVERSE(a)
-    PRINT "pinv00="; MATH.ROUND(MATRIX.GETVALUE(pinv, 0, 0), 6)
+    DIM inv(3) AS DOUBLE
+    LINALG.INVERSE(fa, 2, inv)
+    PRINT "inv00="; MATH.ROUND(inv(0), 6)
+    DIM pinv(3) AS DOUBLE
+    LINALG.PINVERSE(fa, 2, 2, pinv)
+    PRINT "pinv00="; MATH.ROUND(pinv(0), 6)
     DIM tr = MATRIX.TRANSPOSE(a)
     PRINT "tr01="; MATH.ROUND(MATRIX.GETVALUE(tr, 0, 1), 6)
     DIM mul = MATRIX.MULTIPLY(a, a)
     PRINT "mul00="; MATH.ROUND(MATRIX.GETVALUE(mul, 0, 0), 6)
 
-    ' decomposizioni + FACTOR
-    DIM ch = LINALG_MATRIX.CHOLESKY(a)
-    DIM cl   = LINALG_MATRIX.FACTOR(ch, "L")
-    PRINT "chol_l00="; MATH.ROUND(MATRIX.GETVALUE(cl, 0, 0), 6)
-    DIM svd = LINALG_MATRIX.SVD(a)
-    DIM ss   = LINALG_MATRIX.FACTOR(svd, "S")
-    PRINT "svd_s00="; MATH.ROUND(MATRIX.GETVALUE(ss, 0, 0), 6)
-    DIM evd = LINALG_MATRIX.EVD(a)
-    DIM ed   = LINALG_MATRIX.FACTOR(evd, "D")
-    PRINT "evd_d00="; MATH.ROUND(MATRIX.GETVALUE(ed, 0, 0), 6)
-    DIM lu = LINALG_MATRIX.LU(a)
-    DIM luu   = LINALG_MATRIX.FACTOR(lu, "U")
-    PRINT "lu_u00="; MATH.ROUND(MATRIX.GETVALUE(luu, 0, 0), 6)
-    DIM qr = LINALG_MATRIX.QR(a)
-    DIM qrq   = LINALG_MATRIX.FACTOR(qr, "Q")
-    PRINT "qr_q00="; MATH.ROUND(MATRIX.GETVALUE(qrq, 0, 0), 6)
-    DIM eig = LINALG_MATRIX.FACTOR(LINALG_MATRIX.EIG(a), "DREAL")
-    PRINT "eig="; MATH.ROUND(MATRIX.GETVALUE(eig, 0, 0), 4)
+    ' decomposizioni + FACTOR (accessore FFI)
+    DIM out(3) AS DOUBLE, meta(1) AS LONG
+    LINALG.FACTOR(fa, 2, 2, "CHOL.L", out, meta)
+    PRINT "chol_l00="; MATH.ROUND(out(0), 6)
+    LINALG.FACTOR(fa, 2, 2, "SVD.S", out, meta)
+    PRINT "svd_s00="; MATH.ROUND(out(0), 6)
+    LINALG.FACTOR(fa, 2, 2, "EVD.D", out, meta)
+    PRINT "evd_d00="; MATH.ROUND(out(0), 6)
+    LINALG.FACTOR(fa, 2, 2, "LU.U", out, meta)
+    PRINT "lu_u00="; MATH.ROUND(out(0), 6)
+    LINALG.FACTOR(fa, 2, 2, "QR.Q", out, meta)
+    PRINT "qr_q00="; MATH.ROUND(out(0), 6)
+    LINALG.FACTOR(fa, 2, 2, "EIG.DREAL", out, meta)
+    PRINT "eig="; MATH.ROUND(out(0), 4)
 
     ' funzioni matriciali
-    PRINT "expm00="; MATH.ROUND(MATRIX.GETVALUE(LINALG_MATRIX.EXPM(a), 0, 0), 4)
-    PRINT "logm00="; MATH.ROUND(MATRIX.GETVALUE(LINALG_MATRIX.LOGM(a), 0, 0), 4)
-    PRINT "sqrtm00="; MATH.ROUND(MATRIX.GETVALUE(LINALG_MATRIX.SQRTM(a), 0, 0), 4)
-    PRINT "cosm00="; MATH.ROUND(MATRIX.GETVALUE(LINALG_MATRIX.COSM(a), 0, 0), 4)
-    PRINT "sinm00="; MATH.ROUND(MATRIX.GETVALUE(LINALG_MATRIX.SINM(a), 0, 0), 4)
-    PRINT "tanm00="; MATH.ROUND(MATRIX.GETVALUE(LINALG_MATRIX.TANM(a), 0, 0), 4)
-    PRINT "signm00="; MATH.ROUND(MATRIX.GETVALUE(LINALG_MATRIX.SIGNM(a), 0, 0), 4)
-    PRINT "fracpow00="; MATH.ROUND(MATRIX.GETVALUE(LINALG_MATRIX.FRACTIONALPOWER(a, 0.5), 0, 0), 4)
+    DIM mf(3) AS DOUBLE
+    LINALG.EXPM(fa, 2, mf)
+    PRINT "expm00="; MATH.ROUND(mf(0), 4)
+    LINALG.LOGM(fa, 2, mf)
+    PRINT "logm00="; MATH.ROUND(mf(0), 4)
+    LINALG.SQRTM(fa, 2, mf)
+    PRINT "sqrtm00="; MATH.ROUND(mf(0), 4)
+    LINALG.COSM(fa, 2, mf)
+    PRINT "cosm00="; MATH.ROUND(mf(0), 4)
+    LINALG.SINM(fa, 2, mf)
+    PRINT "sinm00="; MATH.ROUND(mf(0), 4)
+    LINALG.TANM(fa, 2, mf)
+    PRINT "tanm00="; MATH.ROUND(mf(0), 4)
+    LINALG.SIGNM(fa, 2, mf)
+    PRINT "signm00="; MATH.ROUND(mf(0), 4)
+    LINALG.FRACTIONALPOWER(fa, 2, 0.5, mf)
+    PRINT "fracpow00="; MATH.ROUND(mf(0), 4)
 
     ' fattorizzazioni avanzate
-    PRINT "hess00="; MATH.ROUND(MATRIX.GETVALUE(LINALG_MATRIX.HESSENBERG(a), 0, 0), 4)
-    PRINT "schur00="; MATH.ROUND(MATRIX.GETVALUE(LINALG_MATRIX.FACTOR(LINALG_MATRIX.SCHUR(a), "T"), 0, 0), 4)
-    PRINT "polar00="; MATH.ROUND(MATRIX.GETVALUE(LINALG_MATRIX.FACTOR(LINALG_MATRIX.POLAR(a), "U"), 0, 0), 4)
-    PRINT "orth00="; MATH.ROUND(MATRIX.GETVALUE(LINALG_MATRIX.ORTH(a), 0, 0), 4)
+    DIM hh(3) AS DOUBLE
+    LINALG.HESSENBERG(fa, 2, hh)
+    PRINT "hess00="; MATH.ROUND(hh(0), 4)
+    LINALG.FACTOR(fa, 2, 2, "SCHUR.T", out, meta)
+    PRINT "schur00="; MATH.ROUND(out(0), 4)
+    LINALG.FACTOR(fa, 2, 2, "POLAR.U", out, meta)
+    PRINT "polar00="; MATH.ROUND(out(0), 4)
+    DIM o(3) AS DOUBLE
+    LINALG.ORTH(fa, 2, 2, o)
+    PRINT "orth00="; MATH.ROUND(o(0), 4)
 
     ' costruzione matrici (CIRCULANT/HANKEL/TOEPLITZ prendono array grezzi)
     PRINT "blockdiag00="; MATH.ROUND(MATRIX.GETVALUE(MATRIX.BLOCKDIAG(a, a), 0, 0), 4)
@@ -81,24 +100,32 @@ SUB Main()
     PRINT "kron00="; MATH.ROUND(MATRIX.GETVALUE(kr, 0, 0), 4)
 
     ' norme / spazi nulli
-    PRINT "nuclearnorm="; MATH.ROUND(LINALG_MATRIX.NUCLEARNORM(a), 4)
-    ' NULLSPACE su matrice singolare (a è full-rank: lo spazio nullo è vuoto).
-    DIM sg = MATRIX.CREATE(2, 2)
-    sg = MATRIX.SETVALUE(sg, 0, 0, 1) : sg = MATRIX.SETVALUE(sg, 0, 1, 2)
-    sg = MATRIX.SETVALUE(sg, 1, 0, 2) : sg = MATRIX.SETVALUE(sg, 1, 1, 4)
-    DIM ns = LINALG_MATRIX.NULLSPACE(sg)
-    PRINT "nullspace00="; MATH.ROUND(MATRIX.GETVALUE(ns, 0, 0), 4)
-    DIM sa = LINALG_MATRIX.SUBSPACEANGLES(a, mul)
+    PRINT "nuclearnorm="; MATH.ROUND(LINALG.NUCLEARNORM(fa, 2, 2), 4)
+    ' NULLSPACE su matrice singolare
+    DIM sg(3) AS DOUBLE
+    sg(0) = 1 : sg(1) = 2
+    sg(2) = 2 : sg(3) = 4
+    DIM ns(1) AS DOUBLE
+    LINALG.NULLSPACE(sg, 2, 2, ns)
+    PRINT "nullspace00="; MATH.ROUND(ns(0), 4)
+    ' sottospazi: col(A) e col(A·A) coincidono -> angoli 0
+    DIM mulflat(3) AS DOUBLE
+    mulflat(0)=20 : mulflat(1)=14 : mulflat(2)=14 : mulflat(3)=10
+    DIM sa(1) AS DOUBLE
+    DIM nsa AS LONG
+    nsa = LINALG.SUBSPACEANGLES(fa, 2, 2, mulflat, 2, 2, sa)
     PRINT "subspace00="; MATH.ROUND(sa(0), 4)
 
     ' risoluzione sistemi
-    DIM b(1)
+    DIM b(1) AS DOUBLE
     b(0) = 8 : b(1) = 7
-    DIM xs() = LINALG_MATRIX.SOLVE(a, b)
+    DIM xs(1) AS DOUBLE
+    LINALG.SOLVE(fa, 2, b, xs)
     PRINT "solve0="; MATH.ROUND(xs(0), 4)
-    DIM at(1)
+    DIM at(1) AS DOUBLE
     at(0) = 4 : at(1) = 3
-    DIM xt() = LINALG_MATRIX.SOLVETRIANGULAR(a, at, 0)
+    DIM xt(1) AS DOUBLE
+    LINALG.SOLVETRIANGULAR(fa, 2, at, 0, xt)
     PRINT "solvetri0="; MATH.ROUND(xt(0), 4)
 
     PRINT "Sample MATRIX decomposizioni completato."

@@ -147,4 +147,8 @@ SUB Main()
   qp(0)=2 : qp(1)=0 : qp(2)=0 : qp(3)=1
   DIM qlam(0) AS DOUBLE, qv(1) AS DOUBLE
   PRINT "power="; LINALG.POWER(qp, 2, 200, 1e-10, qlam, qv); " lam="; ROUND(qlam(0), 6)
+
+  ' accessore dei fattori: FACTOR(a, rows, cols, kind, out, meta)
+  DIM fo(3) AS DOUBLE, fm(1) AS LONG
+  PRINT "factor="; LINALG.FACTOR(a, 2, 2, "LU.U", fo, fm); " u00="; ROUND(fo(0), 6); " r="; fm(0); " c="; fm(1)
 END SUB

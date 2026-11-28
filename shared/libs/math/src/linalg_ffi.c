@@ -962,3 +962,167 @@ i64 ofx_linalg_power(const double *a, i64 a_n, i64 n, i64 iters, double tol,
     if (!a || !lambda || !v || n <= 0 || n > 100000 || lambda_n < 1 || v_n < n) return -1;
     return gm_eig_power((int)n, a, lambda, v, (int)iters, tol) == GM_OK ? 0 : -1;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * FACTOR — accessore FFI dei fattori di decomposizione.
+ * Calcola la decomposizione della matrice piatta `a` (rows×cols) e scrive in
+ * `out` il fattore richiesto da `kind` (case-insensitive); `meta` riceve
+ * [righe, colonne] del fattore. Kind supportati:
+ *   LU.L / LU.U / LU.P              (n×n, n=rows=cols)
+ *   QR.Q (rows×cols) / QR.R (cols×cols)
+ *   SVD.U (rows×cols) / SVD.S (cols×cols diagonale) / SVD.VT (cols×cols)
+ *   CHOL.L (n×n)
+ *   EVD.D (n×n diagonale) / EVD.V (n×n)
+ *   SCHUR.T / SCHUR.Z (n×n)
+ *   POLAR.U / POLAR.P (n×n)
+ *   EIG.DREAL / EIG.DIMAG (n×n diagonali) / EIG.VREAL / EIG.VIMAG (n×n)
+ * Rende 0 = ok / -1 = errore (kind sconosciuto, dimensioni, buffer corto).
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+static int linalg_kind_is(const char *k, const char *tag)
+{
+    return k && strcasecmp(k, tag) == 0;
+}
+
+static void diag_to_matrix(i64 n, const double *d, double *out)
+{
+    for (i64 i = 0; i < n; i++)
+        for (i64 j = 0; j < n; j++) out[i * n + j] = (i == j) ? d[i] : 0.0;
+}
+
+i64 ofx_linalg_factor(const double *a, i64 a_n, i64 rows, i64 cols, const char *kind,
+                      double *out, i64 out_n, i64 *meta, i64 meta_n)
+{
+    (void)a_n;
+    if (!a || !kind || !out || !meta || meta_n < 2 || rows <= 0 || cols <= 0) return -1;
+    i64 n = rows < cols ? rows : cols;
+    if (rows != cols) n = cols;   /* per QR/SVD il lato "n" è cols; per LU/EVD serve quadrata */
+
+    if (linalg_kind_is(kind, "LU.L") || linalg_kind_is(kind, "LU.U") || linalg_kind_is(kind, "LU.P"))
+    {
+        if (rows != cols || out_n < rows * cols) return -1;
+        i64 nn = rows * cols;
+        double *L = (double *)malloc((size_t)nn * sizeof(double));
+        double *U = (double *)malloc((size_t)nn * sizeof(double));
+        double *P = (double *)malloc((size_t)nn * sizeof(double));
+        if (!L || !U || !P) { free(L); free(U); free(P); return -1; }
+        int rc = ofx_linalg_lu(a, a_n, rows, L, nn, U, nn, P, nn);
+        if (rc == 0)
+        {
+            const double *src = linalg_kind_is(kind, "LU.L") ? L
+                              : linalg_kind_is(kind, "LU.U") ? U : P;
+            memcpy(out, src, (size_t)nn * sizeof(double));
+            meta[0] = rows; meta[1] = cols;
+        }
+        free(L); free(U); free(P);
+        return rc;
+    }
+    if (linalg_kind_is(kind, "QR.Q") || linalg_kind_is(kind, "QR.R"))
+    {
+        i64 qn = rows * cols, rn = cols * cols;
+        i64 need = linalg_kind_is(kind, "QR.Q") ? qn : rn;
+        if (out_n < need || rows < cols) return -1;
+        double *Q = (double *)malloc((size_t)qn * sizeof(double));
+        double *R = (double *)malloc((size_t)rn * sizeof(double));
+        if (!Q || !R) { free(Q); free(R); return -1; }
+        int rc = ofx_linalg_qr(a, a_n, rows, cols, Q, qn, R, rn);
+        if (rc == 0)
+        {
+            if (linalg_kind_is(kind, "QR.Q")) { memcpy(out, Q, (size_t)qn * sizeof(double)); meta[0] = rows; meta[1] = cols; }
+            else { memcpy(out, R, (size_t)rn * sizeof(double)); meta[0] = cols; meta[1] = cols; }
+        }
+        free(Q); free(R);
+        return rc;
+    }
+    if (linalg_kind_is(kind, "SVD.U") || linalg_kind_is(kind, "SVD.S") || linalg_kind_is(kind, "SVD.VT"))
+    {
+        i64 un = rows * cols, sn = cols * cols, vn = cols * cols;
+        i64 need = linalg_kind_is(kind, "SVD.U") ? un : (linalg_kind_is(kind, "SVD.S") ? sn : vn);
+        if (out_n < need || rows < cols) return -1;
+        double *U = (double *)malloc((size_t)un * sizeof(double));
+        double *S = (double *)malloc((size_t)cols * sizeof(double));
+        double *VT = (double *)malloc((size_t)vn * sizeof(double));
+        if (!U || !S || !VT) { free(U); free(S); free(VT); return -1; }
+        int rc = ofx_linalg_svd(a, a_n, rows, cols, U, un, S, cols, VT, vn);
+        if (rc == 0)
+        {
+            if (linalg_kind_is(kind, "SVD.U")) { memcpy(out, U, (size_t)un * sizeof(double)); meta[0] = rows; meta[1] = cols; }
+            else if (linalg_kind_is(kind, "SVD.S")) { diag_to_matrix(cols, S, out); meta[0] = cols; meta[1] = cols; }
+            else { memcpy(out, VT, (size_t)vn * sizeof(double)); meta[0] = cols; meta[1] = cols; }
+        }
+        free(U); free(S); free(VT);
+        return rc;
+    }
+    if (rows != cols || out_n < rows * cols) return -1;
+    i64 nn = rows * cols;
+    if (linalg_kind_is(kind, "CHOL.L"))
+    {
+        int rc = ofx_linalg_cholesky(a, a_n, rows, out, nn);
+        if (rc == 0) { meta[0] = rows; meta[1] = cols; }
+        return rc;
+    }
+    if (linalg_kind_is(kind, "EVD.D") || linalg_kind_is(kind, "EVD.V"))
+    {
+        double *d = (double *)malloc((size_t)rows * sizeof(double));
+        double *V = (double *)malloc((size_t)nn * sizeof(double));
+        if (!d || !V) { free(d); free(V); return -1; }
+        int rc = ofx_linalg_evd(a, a_n, rows, d, rows, V, nn);
+        if (rc == 0)
+        {
+            if (linalg_kind_is(kind, "EVD.D")) diag_to_matrix(rows, d, out);
+            else memcpy(out, V, (size_t)nn * sizeof(double));
+            meta[0] = rows; meta[1] = cols;
+        }
+        free(d); free(V);
+        return rc;
+    }
+    if (linalg_kind_is(kind, "SCHUR.T") || linalg_kind_is(kind, "SCHUR.Z"))
+    {
+        double *T = (double *)malloc((size_t)nn * sizeof(double));
+        double *Z = (double *)malloc((size_t)nn * sizeof(double));
+        if (!T || !Z) { free(T); free(Z); return -1; }
+        int rc = ofx_linalg_schur(a, a_n, rows, T, nn, Z, nn);
+        if (rc == 0)
+        {
+            memcpy(out, linalg_kind_is(kind, "SCHUR.T") ? T : Z, (size_t)nn * sizeof(double));
+            meta[0] = rows; meta[1] = cols;
+        }
+        free(T); free(Z);
+        return rc;
+    }
+    if (linalg_kind_is(kind, "POLAR.U") || linalg_kind_is(kind, "POLAR.P"))
+    {
+        double *U = (double *)malloc((size_t)nn * sizeof(double));
+        double *P = (double *)malloc((size_t)nn * sizeof(double));
+        if (!U || !P) { free(U); free(P); return -1; }
+        int rc = ofx_linalg_polar(a, a_n, rows, U, nn, P, nn);
+        if (rc == 0)
+        {
+            memcpy(out, linalg_kind_is(kind, "POLAR.U") ? U : P, (size_t)nn * sizeof(double));
+            meta[0] = rows; meta[1] = cols;
+        }
+        free(U); free(P);
+        return rc;
+    }
+    if (strncasecmp(kind, "EIG.", 4) == 0)
+    {
+        double *wr = (double *)malloc((size_t)rows * sizeof(double));
+        double *wi = (double *)malloc((size_t)rows * sizeof(double));
+        double *vr = (double *)malloc((size_t)nn * sizeof(double));
+        double *vi = (double *)malloc((size_t)nn * sizeof(double));
+        if (!wr || !wi || !vr || !vi) { free(wr); free(wi); free(vr); free(vi); return -1; }
+        int rc = ofx_linalg_eig(a, a_n, rows, wr, rows, wi, rows, vr, nn, vi, nn);
+        if (rc == 0)
+        {
+            if (linalg_kind_is(kind, "EIG.DREAL")) diag_to_matrix(rows, wr, out);
+            else if (linalg_kind_is(kind, "EIG.DIMAG")) diag_to_matrix(rows, wi, out);
+            else if (linalg_kind_is(kind, "EIG.VREAL")) memcpy(out, vr, (size_t)nn * sizeof(double));
+            else if (linalg_kind_is(kind, "EIG.VIMAG")) memcpy(out, vi, (size_t)nn * sizeof(double));
+            else rc = -1;
+            if (rc == 0) { meta[0] = rows; meta[1] = cols; }
+        }
+        free(wr); free(wi); free(vr); free(vi);
+        return rc;
+    }
+    return -1;
+}

@@ -102,6 +102,10 @@
     ==== GMB-STDLIB-AUDIT-END ==== */
 
 
+// RETIRED (2026-11-28): la surface builtin LINALG a valori MATRIX non è più registrata.
+// Tutte le operazioni (incluse le decomposizioni e FACTOR) sono FFI in shared/include/linalg.inc.
+// Il file resta per i tipi di decomposizione (DataTypes.cs) e come riferimento storico.
+
 namespace Basic;
 
 public sealed partial class StdLib

@@ -5,45 +5,55 @@
 ' vettori, slice/reshape/concat, CSV/JSON e fattorizzazioni (FACTOR).
 ' Derivato dai MiniTest per-funzione (stessi input e oracoli) + ARGMAX/TRANSPOSE.
 ' Scopo: verificare la STESSA versione del namespace sui 4 backend, non un'applicazione.
-' EXPECT: det= 3|trace= 4|rank= 2|norm= 3|cond= 3|inv00= 0.666667|mul00= 5|sq00= 1.366025|lg00= 0.549306|ex00= 11.401909|hh00= 2|co00=-0.224845|si00= 0.491295|sg00= 1|rowcount:  2|colcount:  2|max:  3|min:  0|frobenius:  3.74165738677394|onenorm:  5|infnorm:  3|symmetric: no|upper: si|lower: no|orthogonal: no|csv: [1,2|0,3|]|symmetric2: si|clone:  3|reshape_rows:  1|reshape_cols:  4|slice:  1|concatrows:  4|concatcols:  4|rowsums:  3 , 3|colsums:  1 , 5|rowmeans:  1.5 , 1.5|colmeans:  0.5 , 2.5|rowvar:  0.25 , 2.25|colvar:  0.25 , 0.25|abovemask:  0 ,-1 , 0 ,-1|abovematrix:  0 ,-1 , 0 ,-1|argmin:  1 , 0|addcol:  11|addrow:  11|mulvec:  50 , 60|mulleft:  10 , 80|asjson: [[1,2],[0,3]]|sym=-1|orth=-1|upper=-1|lower=-1|nsym= 0|nupper= 0|nlower= 0|orth= 0.707107|p00=-24|v= 1|v= 3|slicenorm= 1.414214|slicerows= 2|slicecols= 2|tanm= 0.707431|v= 3|bd22= 2|l00= 1.414214|c01= 3|ev= 3|fp00= 1.366025|hk= 4|k00= 0|csv= 9|json= 1|u00= 3|nuc= 4|ns= 0.707107|r00=-3.162278|x0= 1|x0= 1|anglen= 2|angle0= 0|s00= 3|tp= 4|argmax= 1 , 1|transpose= 2
+' EXPECT: det= 3|trace= 4|rank= 2|norm= 3|cond= 3|inv00= 0.666667|mul00= 5|sq00= 1.366025|lg00= 0.549306|ex00= 11.401909|hh00= 2|co00=-0.224845|si00= 0.491295|sg00= 1|rowcount:  2|colcount:  2|max:  3|min:  0|frobenius:  3.74165738677394|onenorm:  5|infnorm:  3|symmetric: no|upper: si|lower: no|orthogonal: no|csv: [1,2|0,3|]|symmetric2: si|clone:  3|reshape_rows:  1|reshape_cols:  4|slice:  1|concatrows:  4|concatcols:  4|rowsums:  3 , 3|colsums:  1 , 5|rowmeans:  1.5 , 1.5|colmeans:  0.5 , 2.5|rowvar:  0.25 , 2.25|colvar:  0.25 , 0.25|abovemask:  0 ,-1 , 0 ,-1|abovematrix:  0 ,-1 , 0 ,-1|argmin:  1 , 0|addcol:  11|addrow:  11|mulvec:  50 , 60|mulleft:  10 , 80|asjson: [[1,2],[0,3]]|sym=-1|orth=-1|upper=-1|lower=-1|nsym= 0|nupper= 0|nlower= 0|orth= 0.707107|p00=-24|v= 1|v= 2|slicenorm= 1.414214|slicerows= 2|slicecols= 2|tanm= 0.707431|v= 3|bd22= 2|l00= 1.414214|c01= 3|ev= 3|fp00= 1.366025|hk= 4|k00= 0|csv= 9|json= 1|u00= 3|nuc= 4|ns= 0.707107|r00= 3.162278|x0= 1|x0= 1|anglen= 2|angle0= 0|s00= 3|tp= 4|argmax= 1 , 1|transpose= 2
 IMPORT ARRAYS
+IMPORT LINALG
 IMPORT SYSTEM
 
 
 SUB M_handles()
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
   DIM h = MATRIX.CREATE(2,2)
   h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)
   h = MATRIX.SETVALUE(h, 1, 0, 1) : h = MATRIX.SETVALUE(h, 1, 1, 2)
-  PRINT "det="; MATH.ROUND(LINALG_MATRIX.DETERMINANT(h), 6)
+  PRINT "det="; MATH.ROUND(LINALG.DETERMINANT(a, 2), 6)
   PRINT "trace="; MATH.ROUND(MATRIX.TRACE(h), 6)
-  PRINT "rank="; LINALG_MATRIX.RANK(h)
-  PRINT "norm="; MATH.ROUND(LINALG_MATRIX.NORM(h), 6)
-  PRINT "cond="; MATH.ROUND(LINALG_MATRIX.COND(h), 4)
-  DIM inv = LINALG_MATRIX.INVERSE(h)
-  PRINT "inv00="; MATH.ROUND(MATRIX.GETVALUE(inv, 0, 0), 6)
+  PRINT "rank="; LINALG.RANK(a, 2, 2)
+  PRINT "norm="; MATH.ROUND(LINALG.NORM(a, 2, 2), 6)
+  PRINT "cond="; MATH.ROUND(LINALG.COND(a, 2, 2), 4)
+  DIM inv(3) AS DOUBLE
+  LINALG.INVERSE(a, 2, inv)
+  PRINT "inv00="; MATH.ROUND(inv(0), 6)
   DIM mul = MATRIX.MULTIPLY(h, h)
   PRINT "mul00="; MATH.ROUND(MATRIX.GETVALUE(mul, 0, 0), 6)
-  DIM sq = LINALG_MATRIX.SQRTM(h)
-  PRINT "sq00="; MATH.ROUND(MATRIX.GETVALUE(sq, 0, 0), 6)
-  DIM lg = LINALG_MATRIX.LOGM(h)
-  PRINT "lg00="; MATH.ROUND(MATRIX.GETVALUE(lg, 0, 0), 6)
-  DIM ex = LINALG_MATRIX.EXPM(h)
-  PRINT "ex00="; MATH.ROUND(MATRIX.GETVALUE(ex, 0, 0), 6)
+  DIM sq(3) AS DOUBLE
+  LINALG.SQRTM(a, 2, sq)
+  PRINT "sq00="; MATH.ROUND(sq(0), 6)
+  DIM lg(3) AS DOUBLE
+  LINALG.LOGM(a, 2, lg)
+  PRINT "lg00="; MATH.ROUND(lg(0), 6)
+  DIM ex(3) AS DOUBLE
+  LINALG.EXPM(a, 2, ex)
+  PRINT "ex00="; MATH.ROUND(ex(0), 6)
 END SUB
 
 
 SUB M_handles2()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)
-  h = MATRIX.SETVALUE(h, 1, 0, 1) : h = MATRIX.SETVALUE(h, 1, 1, 2)
-  DIM hh = LINALG_MATRIX.HESSENBERG(h)
-  PRINT "hh00="; MATH.ROUND(MATRIX.GETVALUE(hh, 0, 0), 6)
-  DIM co = LINALG_MATRIX.COSM(h)
-  PRINT "co00="; MATH.ROUND(MATRIX.GETVALUE(co, 0, 0), 6)
-  DIM si = LINALG_MATRIX.SINM(h)
-  PRINT "si00="; MATH.ROUND(MATRIX.GETVALUE(si, 0, 0), 6)
-  DIM sg = LINALG_MATRIX.SIGNM(h)
-  PRINT "sg00="; MATH.ROUND(MATRIX.GETVALUE(sg, 0, 0), 6)
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
+  DIM hh(3) AS DOUBLE
+  LINALG.HESSENBERG(a, 2, hh)
+  PRINT "hh00="; MATH.ROUND(hh(0), 6)
+  DIM co(3) AS DOUBLE
+  LINALG.COSM(a, 2, co)
+  PRINT "co00="; MATH.ROUND(co(0), 6)
+  DIM si(3) AS DOUBLE
+  LINALG.SINM(a, 2, si)
+  PRINT "si00="; MATH.ROUND(si(0), 6)
+  DIM sg(3) AS DOUBLE
+  LINALG.SIGNM(a, 2, sg)
+  PRINT "sg00="; MATH.ROUND(sg(0), 6)
 END SUB
 
 
@@ -57,9 +67,11 @@ SUB M_matrix_ops()
     PRINT "colcount: "; MATRIX.COLUMNCOUNT(h)
     PRINT "max: "; MATRIX.MAXVALUE(h)
     PRINT "min: "; MATRIX.MINVALUE(h)
-    PRINT "frobenius: "; LINALG_MATRIX.FROBENIUSNORM(h)
-    PRINT "onenorm: "; LINALG_MATRIX.ONENORM(h)
-    PRINT "infnorm: "; LINALG_MATRIX.INFINITYNORM(h)
+    DIM fa(3) AS DOUBLE
+    fa(0)=1 : fa(1)=2 : fa(2)=0 : fa(3)=3
+    PRINT "frobenius: "; LINALG.FROBENIUSNORM(fa, 2, 2)
+    PRINT "onenorm: "; LINALG.ONENORM(fa, 2, 2)
+    PRINT "infnorm: "; LINALG.INFINITYNORM(fa, 2, 2)
 
     IF MATRIX.ISSYMMETRIC(h) THEN PRINT "symmetric: si" ELSE PRINT "symmetric: no"
     IF MATRIX.ISUPPERTRIANGULAR(h) THEN PRINT "upper: si" ELSE PRINT "upper: no"
@@ -163,39 +175,40 @@ END SUB
 
 
 SUB M_orth()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)
-  h = MATRIX.SETVALUE(h, 1, 0, 1) : h = MATRIX.SETVALUE(h, 1, 1, 2)
-  DIM r = LINALG_MATRIX.ORTH(h)
-  PRINT "orth="; MATH.ROUND(ABS(MATRIX.GETVALUE(r, 0, 0)), 6)
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
+  DIM r(3) AS DOUBLE
+  LINALG.ORTH(a, 2, 2, r)
+  PRINT "orth="; MATH.ROUND(ABS(r(0)), 6)
 END SUB
 
 
 SUB M_pinv()
-  DIM h = MATRIX.CREATE(3,3)
-  h = MATRIX.SETVALUE(h,0,0,1) : h = MATRIX.SETVALUE(h,0,1,2) : h = MATRIX.SETVALUE(h,0,2,3)
-  h = MATRIX.SETVALUE(h,1,0,0) : h = MATRIX.SETVALUE(h,1,1,1) : h = MATRIX.SETVALUE(h,1,2,4)
-  h = MATRIX.SETVALUE(h,2,0,5) : h = MATRIX.SETVALUE(h,2,1,6) : h = MATRIX.SETVALUE(h,2,2,0)
-  DIM p = LINALG_MATRIX.PINVERSE(h)
-  PRINT "p00="; MATH.ROUND(MATRIX.GETVALUE(p,0,0), 6)
+  DIM a(8) AS DOUBLE
+  a(0)=1 : a(1)=2 : a(2)=3
+  a(3)=0 : a(4)=1 : a(5)=4
+  a(6)=5 : a(7)=6 : a(8)=0
+  DIM p(8) AS DOUBLE
+  LINALG.PINVERSE(a, 3, 3, p)
+  PRINT "p00="; MATH.ROUND(p(0), 6)
 END SUB
 
 
 SUB M_polar()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h,0,0,2) : h = MATRIX.SETVALUE(h,0,1,1)
-  h = MATRIX.SETVALUE(h,1,0,1) : h = MATRIX.SETVALUE(h,1,1,2)
-  DIM ev   = LINALG_MATRIX.FACTOR(LINALG_MATRIX.POLAR(h), "U")
-  PRINT "v="; MATH.ROUND(MATRIX.GETVALUE(ev,0,0), 6)
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
+  DIM u(3) AS DOUBLE, p(3) AS DOUBLE
+  LINALG.POLAR(a, 2, u, p)
+  PRINT "v="; MATH.ROUND(u(0), 6)
 END SUB
 
 
 SUB M_schur()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h,0,0,2) : h = MATRIX.SETVALUE(h,0,1,1)
-  h = MATRIX.SETVALUE(h,1,0,1) : h = MATRIX.SETVALUE(h,1,1,2)
-  DIM ev   = LINALG_MATRIX.FACTOR(LINALG_MATRIX.SCHUR(h), "T")
-  PRINT "v="; MATH.ROUND(MATRIX.GETVALUE(ev,0,0), 6)
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
+  DIM t(3) AS DOUBLE, z(3) AS DOUBLE
+  LINALG.SCHUR(a, 2, t, z)
+  PRINT "v="; MATH.ROUND(t(0), 6)
 END SUB
 
 
@@ -203,27 +216,29 @@ SUB M_slice()
   DIM m = MATRIX.CREATE(3, 3)
   m = MATRIX.SETVALUE(m, 0, 0, 1) : m = MATRIX.SETVALUE(m, 1, 1, 1) : m = MATRIX.SETVALUE(m, 2, 2, 1)
   DIM s = MATRIX.SLICE(m, 0, 2, 0, 2)
-  PRINT "slicenorm="; MATH.ROUND(LINALG_MATRIX.FROBENIUSNORM(s), 6)
+  DIM fa(3) AS DOUBLE
+  fa(0)=1 : fa(1)=0 : fa(2)=0 : fa(3)=1
+  PRINT "slicenorm="; MATH.ROUND(LINALG.FROBENIUSNORM(fa, 2, 2), 6)
   PRINT "slicerows="; MATRIX.ROWCOUNT(s)
   PRINT "slicecols="; MATRIX.COLUMNCOUNT(s)
 END SUB
 
 
 SUB M_tanm()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)
-  h = MATRIX.SETVALUE(h, 1, 0, 1) : h = MATRIX.SETVALUE(h, 1, 1, 2)
-  DIM r = LINALG_MATRIX.TANM(h)
-  PRINT "tanm="; MATH.ROUND(ABS(MATRIX.GETVALUE(r, 0, 0)), 6)
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
+  DIM r(3) AS DOUBLE
+  LINALG.TANM(a, 2, r)
+  PRINT "tanm="; MATH.ROUND(ABS(r(0)), 6)
 END SUB
 
 
 SUB M_eig()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h,0,0,2) : h = MATRIX.SETVALUE(h,0,1,1)
-  h = MATRIX.SETVALUE(h,1,0,1) : h = MATRIX.SETVALUE(h,1,1,2)
-  DIM ev   = LINALG_MATRIX.FACTOR(LINALG_MATRIX.EIG(h), "DREAL")
-  PRINT "v="; MATH.ROUND(MATRIX.GETVALUE(ev,0,0), 6)
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
+  DIM wr(1) AS DOUBLE, wi(1) AS DOUBLE, vr(3) AS DOUBLE, vi(3) AS DOUBLE
+  LINALG.EIG(a, 2, wr, wi, vr, vi)
+  PRINT "v="; MATH.ROUND(wr(0), 6)
 END SUB
 
 
@@ -237,12 +252,11 @@ END SUB
 
 
 SUB M_gen_MATRIX_CHOLESKY()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h,0,0,2) : h = MATRIX.SETVALUE(h,0,1,1)
-  h = MATRIX.SETVALUE(h,1,0,1) : h = MATRIX.SETVALUE(h,1,1,2)
-  DIM dec = LINALG_MATRIX.CHOLESKY(h)
-  DIM l   = LINALG_MATRIX.FACTOR(dec, "L")
-  PRINT "l00="; MATH.ROUND(MATRIX.GETVALUE(l,0,0),6)
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
+  DIM l(3) AS DOUBLE
+  LINALG.CHOLESKY(a, 2, l)
+  PRINT "l00="; MATH.ROUND(l(0),6)
 END SUB
 
 
@@ -255,21 +269,20 @@ END SUB
 
 
 SUB M_gen_MATRIX_EVD()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h,0,0,2) : h = MATRIX.SETVALUE(h,0,1,1)
-  h = MATRIX.SETVALUE(h,1,0,1) : h = MATRIX.SETVALUE(h,1,1,2)
-  DIM ed = LINALG_MATRIX.EVD(h)
-  DIM ev   = LINALG_MATRIX.FACTOR(ed, "D")
-  PRINT "ev="; MATH.ROUND(MATRIX.GETVALUE(ev,1,1),6)
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
+  DIM d(1) AS DOUBLE, v(3) AS DOUBLE
+  LINALG.EVD(a, 2, d, v)
+  PRINT "ev="; MATH.ROUND(d(1),6)
 END SUB
 
 
 SUB M_gen_MATRIX_FRACTIONALPOWER()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h,0,0,2) : h = MATRIX.SETVALUE(h,0,1,1)
-  h = MATRIX.SETVALUE(h,1,0,1) : h = MATRIX.SETVALUE(h,1,1,2)
-  DIM fp = LINALG_MATRIX.FRACTIONALPOWER(h, 0.5)
-  PRINT "fp00="; MATH.ROUND(MATRIX.GETVALUE(fp,0,0),6)
+  DIM a(3) AS DOUBLE
+  a(0)=2 : a(1)=1 : a(2)=1 : a(3)=2
+  DIM fp(3) AS DOUBLE
+  LINALG.FRACTIONALPOWER(a, 2, 0.5, fp)
+  PRINT "fp00="; MATH.ROUND(fp(0),6)
 END SUB
 
 
@@ -307,84 +320,80 @@ END SUB
 
 
 SUB M_gen_MATRIX_LU()
-  DIM a = MATRIX.CREATE(2,2)
-  a = MATRIX.SETVALUE(a,0,0,1) : a = MATRIX.SETVALUE(a,0,1,2)
-  a = MATRIX.SETVALUE(a,1,0,3) : a = MATRIX.SETVALUE(a,1,1,4)
-  DIM lu = LINALG_MATRIX.LU(a)
-  DIM u   = LINALG_MATRIX.FACTOR(lu, "U")
-  PRINT "u00="; MATH.ROUND(MATRIX.GETVALUE(u,0,0),6)
+  DIM fa(3) AS DOUBLE
+  fa(0)=1 : fa(1)=2 : fa(2)=3 : fa(3)=4
+  DIM l(3) AS DOUBLE, u(3) AS DOUBLE, p(3) AS DOUBLE
+  LINALG.LU(fa, 2, l, u, p)
+  PRINT "u00="; MATH.ROUND(u(0),6)
 END SUB
 
 
 SUB M_gen_MATRIX_NUCLEARNORM()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h,0,0,2) : h = MATRIX.SETVALUE(h,0,1,1)
-  h = MATRIX.SETVALUE(h,1,0,1) : h = MATRIX.SETVALUE(h,1,1,2)
-  PRINT "nuc="; MATH.ROUND(LINALG_MATRIX.NUCLEARNORM(h),6)
+  DIM fa(3) AS DOUBLE
+  fa(0)=2 : fa(1)=1 : fa(2)=1 : fa(3)=2
+  PRINT "nuc="; MATH.ROUND(LINALG.NUCLEARNORM(fa,2,2),6)
 END SUB
 
 
 SUB M_gen_MATRIX_NULLSPACE()
-  DIM a = MATRIX.CREATE(2,2)
-  a = MATRIX.SETVALUE(a,0,0,1) : a = MATRIX.SETVALUE(a,0,1,1)
-  a = MATRIX.SETVALUE(a,1,0,1) : a = MATRIX.SETVALUE(a,1,1,1)
-  DIM ns = LINALG_MATRIX.NULLSPACE(a)
-  PRINT "ns="; MATH.ROUND(ABS(MATRIX.GETVALUE(ns,0,0)),6)
+  DIM fa(3) AS DOUBLE
+  fa(0)=1 : fa(1)=1 : fa(2)=1 : fa(3)=1
+  DIM ns(1) AS DOUBLE
+  LINALG.NULLSPACE(fa, 2, 2, ns)
+  PRINT "ns="; MATH.ROUND(ABS(ns(0)),6)
 END SUB
 
 
 SUB M_gen_MATRIX_QR()
-  DIM a = MATRIX.CREATE(2,2)
-  a = MATRIX.SETVALUE(a,0,0,1) : a = MATRIX.SETVALUE(a,0,1,2)
-  a = MATRIX.SETVALUE(a,1,0,3) : a = MATRIX.SETVALUE(a,1,1,4)
-  DIM qr = LINALG_MATRIX.QR(a)
-  DIM r   = LINALG_MATRIX.FACTOR(qr, "R")
-  PRINT "r00="; MATH.ROUND(MATRIX.GETVALUE(r,0,0),6)
+  DIM fa(3) AS DOUBLE
+  fa(0)=1 : fa(1)=2 : fa(2)=3 : fa(3)=4
+  DIM q(3) AS DOUBLE, r(3) AS DOUBLE
+  LINALG.QR(fa, 2, 2, q, r)
+  PRINT "r00="; MATH.ROUND(r(0),6)
 END SUB
 
 
 SUB M_gen_MATRIX_SOLVE()
-  DIM a = MATRIX.CREATE(2,2)
-  a = MATRIX.SETVALUE(a,0,0,2) : a = MATRIX.SETVALUE(a,0,1,1)
-  a = MATRIX.SETVALUE(a,1,0,1) : a = MATRIX.SETVALUE(a,1,1,2)
-  DIM b(1)
+  DIM fa(3) AS DOUBLE
+  fa(0)=2 : fa(1)=1 : fa(2)=1 : fa(3)=2
+  DIM b(1) AS DOUBLE
   b(0)=4 : b(1)=5
-  DIM xs() = LINALG_MATRIX.SOLVE(a, b)
+  DIM xs(1) AS DOUBLE
+  LINALG.SOLVE(fa, 2, b, xs)
   PRINT "x0="; MATH.ROUND(xs(0),6)
 END SUB
 
 
 SUB M_gen_MATRIX_SOLVETRIANGULAR()
-  DIM a = MATRIX.CREATE(2,2)
-  a = MATRIX.SETVALUE(a,0,0,2) : a = MATRIX.SETVALUE(a,0,1,1)
-  a = MATRIX.SETVALUE(a,1,0,0) : a = MATRIX.SETVALUE(a,1,1,3)
-  DIM b(1)
+  DIM fa(3) AS DOUBLE
+  fa(0)=2 : fa(1)=1 : fa(2)=0 : fa(3)=3
+  DIM b(1) AS DOUBLE
   b(0)=4 : b(1)=6
-  DIM xs() = LINALG_MATRIX.SOLVETRIANGULAR(a, b, 0)
+  DIM xs(1) AS DOUBLE
+  LINALG.SOLVETRIANGULAR(fa, 2, b, 0, xs)
   PRINT "x0="; MATH.ROUND(xs(0),6)
 END SUB
 
 
 SUB M_gen_MATRIX_SUBSPACEANGLES()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h,0,0,2) : h = MATRIX.SETVALUE(h,0,1,1)
-  h = MATRIX.SETVALUE(h,1,0,1) : h = MATRIX.SETVALUE(h,1,1,2)
-  DIM g = MATRIX.CREATE(2,2)
-  g = MATRIX.SETVALUE(g,0,0,1) : g = MATRIX.SETVALUE(g,0,1,2)
-  g = MATRIX.SETVALUE(g,1,0,2) : g = MATRIX.SETVALUE(g,1,1,3)
-  DIM ang() = LINALG_MATRIX.SUBSPACEANGLES(h, g)
-  PRINT "anglen="; UBOUND(ang)+1
+  DIM fa(3) AS DOUBLE
+  fa(0)=2 : fa(1)=1 : fa(2)=1 : fa(3)=2
+  DIM fb(3) AS DOUBLE
+  fb(0)=1 : fb(1)=2 : fb(2)=2 : fb(3)=3
+  DIM ang(1) AS DOUBLE
+  DIM nang AS LONG
+  nang = LINALG.SUBSPACEANGLES(fa, 2, 2, fb, 2, 2, ang)
+  PRINT "anglen="; nang
   PRINT "angle0="; MATH.ROUND(ang(0),6)
 END SUB
 
 
 SUB M_gen_MATRIX_SVD()
-  DIM h = MATRIX.CREATE(2,2)
-  h = MATRIX.SETVALUE(h,0,0,2) : h = MATRIX.SETVALUE(h,0,1,1)
-  h = MATRIX.SETVALUE(h,1,0,1) : h = MATRIX.SETVALUE(h,1,1,2)
-  DIM svd = LINALG_MATRIX.SVD(h)
-  DIM s   = LINALG_MATRIX.FACTOR(svd, "S")
-  PRINT "s00="; MATH.ROUND(MATRIX.GETVALUE(s,0,0),6)
+  DIM fa(3) AS DOUBLE
+  fa(0)=2 : fa(1)=1 : fa(2)=1 : fa(3)=2
+  DIM u(3) AS DOUBLE, s(1) AS DOUBLE, vt(3) AS DOUBLE
+  LINALG.SVD(fa, 2, 2, u, s, vt)
+  PRINT "s00="; MATH.ROUND(s(0),6)
 END SUB
 
 
