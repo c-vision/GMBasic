@@ -60,6 +60,8 @@ SUB Main()
   PLIM = 88        ' limite del pitch (TURN rifiuta ±89)
   GRAV = 2         ' unità per frame al quadrato
   JUMPV = 10       ' velocità verticale di partenza
+  EYESTAND = 46    ' altezza dell'occhio in piedi
+  EYECROUCH = 20   ' altezza dell'occhio accovacciato
   NF = 40          ' frame del copione
   LIVE = 0         ' 1 = pad e mouse veri (finestra), 0 = copione
 
@@ -146,8 +148,8 @@ SUB Main()
       SCENE MOVE fwd * SPD, strafe * SPD
     END IF
 
-    ' ── 6. Accovacciato: cambia l'occhio (20), non i piedi → una sola PLAYER ───────
-    SCENE PLAYER 14, 56, 46 - 26 * b5, 24
+    ' ── 6. Accovacciato: occhio più basso (EYECROUCH), i piedi fermi → una PLAYER ─────
+    SCENE PLAYER 14, 56, EYESTAND + (EYECROUCH - EYESTAND) * b5, 24
 
     ' ── 7. Disegno del frame (in una finestra qui va anche `SCENE PRESENT`) ────────
     SCENE RENDER
