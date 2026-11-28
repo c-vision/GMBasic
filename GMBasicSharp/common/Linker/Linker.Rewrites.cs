@@ -3706,6 +3706,19 @@ public static partial class Linker
         var argsCount = uce.Arguments.Length;
 
         var candidates = FindProcedureCandidatesInScope(functionName, context, program).ToList();
+        /* Chiamata QUALIFICATA (`NS.NOME(...)`): il parser può non aver materializzato lo scope
+         * del namespace (es. `NAMESPACE LINALG` utente con lo STESSO nome di un namespace
+         * builtin: la qualifica cade nel ramo builtin, che non ha un overload di quell'arità,
+         * e il nodo arriva qui come Unresolved). Il nome qualificato deve comunque essere
+         * cercato NELLE procedure del namespace indicato: senza, `LINALG.RANK(a,2,2)` (FFI
+         * su array) non risolveva mentre `RANK(a,2,2)` non qualificato sì. */
+        if (uce.QualifiedNamespace is { Length: > 0 } qualifiedNsHint)
+        {
+            foreach (var p in program.GetProceduresForNamespace(qualifiedNsHint)
+                         .Where(p => p.OriginalName.Lexeme.Equals(functionName, StringComparison.OrdinalIgnoreCase))
+                         .ToList())
+                if (!candidates.Contains(p)) candidates.Add(p);
+        }
         /* Chiamata QUALIFICATA (`NS.NOME(...)`): il parser ha già perso il namespace (risolve
          * prima che gli `.inc` siano registrati), quindi qui si filtra per qualificatore. Senza,
          * un omonimo case-insensitive in un altro namespace rendeva la chiamata ambigua

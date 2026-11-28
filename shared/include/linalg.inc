@@ -1,9 +1,9 @@
-' linalgx.inc — namespace LINALGX: algebra lineare su ARRAY (gmbmath, FFI).
+' linalg.inc — namespace LINALG: algebra lineare su ARRAY (gmbmath, FFI).
 '
-' Perché esiste: il namespace builtin `LINALG` lavora su HANDLE di MATRIX, che una
-' dylib FFI self-contained non può leggere. LINALGX offre le stesse operazioni su
-' **matrici piatte row-major** (`a() AS DOUBLE`) + dimensioni esplicite: è la forma
-' che sopravvive al passaggio a FFI e che le 4 gambe calcolano con gli STESSI kernel C
+' LINALG è la superficie di algebra lineare su **matrici piatte row-major**
+' (`a() AS DOUBLE`) + dimensioni esplicite, calcolata dalla dylib `gmbmath`: una
+' libreria self-contained non può leggere il registry degli handle `MATRIX`, quindi
+' le operazioni viaggiano su buffer DOUBLE e le 4 gambe usano gli STESSI kernel C
 ' (`gm_linalg_*`).
 '
 ' Contratto:
@@ -13,15 +13,12 @@
 '   - le funzioni scalari rendono il valore (-1 su input non valido, come il builtin);
 '   - le procedure rendono 0 = ok, -1 = errore (singolare, dimensioni, buffer corto).
 '
-' Questa è la prima ondata (scalari + solve/inversa), la seconda (decomposizioni e
-' funzioni matriciali con uscite piatte: LU/QR/SVD/Cholesky/Hessenberg/Schur,
-' PINVERSE, EXPM/LOGM/SQRTM, POLAR, ORTH, NULLSPACE) e la terza (autovalori e
-' autovettori EVD/EIG, funzioni matriciali eigenwise SINM/COSM/TANM/SIGNM/
-' FRACTIONALPOWER, SUBSPACEANGLES). Quando LINALGX copre l'intera superficie, il
-' namespace prende il nome `LINALG` e il builtin viene ritirato (stessa trafila di
-' TIMESERIESX→TIMESERIES).
+' Superficie completa: scalari/norme, sistemi lineari (anche triangolari),
+' decomposizioni (Cholesky/LU/QR/SVD/Hessenberg/Schur/pinv/orth/nullspace),
+' autovalori/autovettori (EVD/EIG), funzioni matriciali (exp/log/sqrt/sin/cos/tan/
+' sign/potenza frazionaria/polar) e angoli fra sottospazi.
 
-NAMESPACE LINALGX
+NAMESPACE LINALG
 
 ' ── scalari da una matrice ──────────────────────────────────────────────────
 ' Determinante di una matrice quadrata n×n.
