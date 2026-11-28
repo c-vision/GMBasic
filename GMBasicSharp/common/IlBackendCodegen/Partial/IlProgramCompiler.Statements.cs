@@ -402,9 +402,21 @@ public sealed partial class IlProgramCompiler
             ? PxStr(nm.Value) : $"px{_pxCounter}";
         _il.Emit(OpCodes.Ldstr, name);
         _il.Emit(OpCodes.Call, IlRuntimeFormAddControlMethod);
-        if (pc.Id != null) { _il.Emit(OpCodes.Call, IlRuntimeFormLastHandleMethod); EmitAssignTargetFromTop(pc.Id, new DoubleType()); }
+        /* Handle del controllo creato: UNA lettura dal runtime C (stessa sorgente di
+         * CONTROL GET "nome","handle"), poi la spec delle clausole viene applicata a QUEL
+         * controllo. Prima la spec veniva passata a FormSetLastStyle (l'ultimo in assoluto)
+         * mentre il controllo è già creato: con clausole LAYOUT (EXPAND/ANCHOR/ALIGN) e
+         * STYLE non-LAST il target poteva non essere il controllo appena creato. */
+        _il.Emit(OpCodes.Call, IlRuntimeFormLastHandleMethod);
+        var _hslot = _il.DeclareLocal(typeof(double));
+        _il.Emit(OpCodes.Stloc, _hslot);
+        if (pc.Id != null) { _il.Emit(OpCodes.Ldloc, _hslot); EmitAssignTargetFromTop(pc.Id, new DoubleType()); }
         var _spec = PxSpec(pc.Clauses);
-        if (_spec is not null) { _il.Emit(OpCodes.Ldstr, _spec); _il.Emit(OpCodes.Call, IlRuntimeFormSetLastStyleMethod); }
+        if (_spec is not null) {
+            _il.Emit(OpCodes.Ldloc, _hslot);
+            _il.Emit(OpCodes.Ldstr, _spec);
+            _il.Emit(OpCodes.Call, IlRuntimeFormSetLastStyleForHandleMethod);
+        }
         if (pc.Into is not null) _formControls.Add((name, pc.Into));
     }
 

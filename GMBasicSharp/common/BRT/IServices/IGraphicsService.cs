@@ -29,6 +29,9 @@ public interface IGraphicsService
     void UserControlDraw(int h, int op, double a, double b, double c, double d, string s) { }
     void FormFrame(int frameMs) { }
     void UiFrame(int frameMs) { }
+    /// <summary>WINDOW RESIZE w, h — pagina logica + reflow del LAYOUT (EXPAND/ANCHOR/ALIGN).
+    /// L'implementazione è UNA, nel runtime C (gmb_window_resize).</summary>
+    void WindowResize(int w, int h) { }
     void UiAddCheckbox(int x, int y, int w, string label) { }
     double UiLastHandle() => -1;
     void UiControlApplyProps(int handle, string? name, string? tag, string? tooltip, double? tabindex, double? visible, double? enabled, double? tabstop) { }
@@ -52,6 +55,9 @@ public interface IGraphicsService
     void UiAddDatepicker(int x,int y,int w) { }
     void UiAddColorpicker(int x,int y,int w,int h) { }
     void UiAddListbox(int x,int y,int w,int h,string csv) { }
+    /// <summary>LISTBOX forma con handle: crea il controllo (runtime C condiviso) e ritorna
+    /// il suo handle — è il valore che INTO collega alla variabile. -1 se non creato.</summary>
+    int UiAddListboxH(int x,int y,int w,int h,string csv) { UiAddListbox(x,y,w,h,csv); return -1; }
     void UiAddCombobox(int x,int y,int w,string csv) { }
     void UiAddRadiogroup(int x,int y,int w,int h,string csv) { }
     void UiAddToggle(int x,int y,int w,string caption) { }
@@ -81,6 +87,10 @@ public interface IGraphicsService
     bool FormClosed() => true;
     void FormClose() { }
     void FormSetLastStyle(string spec) { }
+    /// <summary>Clausole del controllo creato, indirizzate per HANDLE del runtime condiviso
+    /// (pixel o celle): è la forma usata dal percorso pixel, dove le clausole vanno applicate
+    /// al controllo appena creato e non all'"ultimo" in assoluto.</summary>
+    void FormSetLastStyleForHandle(int handle, string spec) { FormSetLastStyle(spec ?? ""); }
     double FormControlGet(string name, string prop) => 0;
     string FormControlGetStr(string name, string prop) => "";
     void FormControlSet(string name, string prop, double num, string str) { }

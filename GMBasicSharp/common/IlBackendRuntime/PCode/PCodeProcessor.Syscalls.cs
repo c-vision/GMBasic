@@ -6702,6 +6702,11 @@ internal sealed partial class PCodeProcessor
             case SysCall.FORM_CTRL_REMOVE: FormCtrlRemove(task); break;
             case SysCall.FORM_CTRL_DRAW:   FormCtrlDraw(task); break;
             case SysCall.FORM_LAST_HANDLE: FormLastHandle(task); break;
+            /* CONTROL_LAST_HANDLE: handle del controllo appena creato (stessa sorgente C
+             * di FORM_LAST_HANDLE/CONTROL GET "nome","handle"). Senza questo case la
+             * syscall restava sconosciuta e `LISTBOX … INTO v` su PCode riceveva un
+             * valore vuoto invece dell'handle (parità con IL/VM-C/C99Native). */
+            case SysCall.CONTROL_LAST_HANDLE: FormLastHandle(task); break;
             case SysCall.FORM_CLICKED: FormClicked(task); break;
             case SysCall.FORM_DBLCLICKED: FormDblClicked(task); break;
             case SysCall.FORM_CHANGED: FormChanged(task); break;

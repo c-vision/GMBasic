@@ -7,6 +7,7 @@
 #define GMB_TUI_WIDGETS_H
 
 #include "gmb_runtime.h"
+#include "gmb_layout.h"
 #include "gmb_tui.h"
 #include "gmb_tui_mouse.h"
 #include "gmb_tui_console.h"
@@ -221,6 +222,19 @@ typedef struct gmb_control {
      * Il programma ha dichiarato solo la posizione: la conversione celle→pixel non deve
      * toccare una dimensione che non ha scritto (altrimenti il controllo diventa enorme). */
     int coord_auto_w, coord_auto_h;
+    /* --- LAYOUT MANAGER (clausole EXPAND/ANCHOR/ALIGN) ---------------------------
+     * 0 = nessun layout: il controllo resta al rect dichiarato (compatibile con
+     * tutti i programmi esistenti). 1 = partecipa al re-layout sul resize. Il rect
+     * base e la dimensione della finestra alla creazione sono la reference del
+     * delta; vedi include/gmb_layout.h e src/gmb_layout.c. */
+    int layout_on;
+    int layout_is_tui;        /* 0 = pixel/graphics, 1 = celle/text (unità del rect) */
+    int layout_expand;        /* GMB_LAYOUT_EXPAND_* */
+    int layout_anchor;        /* bitmask GMB_LAYOUT_*; -1 = non specificato */
+    int layout_align_h;       /* GMB_LAYOUT_ALIGN_* */
+    int layout_align_v;       /* GMB_LAYOUT_ALIGN_* */
+    int layout_base_x, layout_base_y, layout_base_w, layout_base_h;
+    int layout_base_win_w, layout_base_win_h;
     /* Dimensione font ESPLICITA per il controllo (`STYLE "font=NN"`), 0 = dal tema.
      * Serve ai controlli che disegnano testo proprio (BIGTEXT, LABEL…): senza, la
      * dimensione era fissa/derivata e non regolabile dal programma. */
@@ -322,6 +336,11 @@ void gmb_widget_draw_cells(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf);
 void gmb_widget_draw_px(void* u, gmb_control_t* c);
 
 void gmb_control_apply_style(gmb_control_t* c, const char* spec);
+/* Clausole di LAYOUT (EXPAND/ANCHOR/ALIGN): memorizza il rect base + la finestra
+ * base e attiva il re-layout sul resize. `_spec` legge le chiavi da una spec
+ * CSS-like (`expand=… anchor=… align=…`). */
+void gmb_control_apply_layout(gmb_control_t* c, const gmb_layout_spec_t* ls);
+void gmb_control_apply_layout_spec(gmb_control_t* c, const char* spec);
 
 void gmb_control_init(gmb_control_t* c, const char* id, int x, int y, int w, int h,
                       void (*draw)(void*, gmb_control_t*, gmb_screen_buffer_t*),

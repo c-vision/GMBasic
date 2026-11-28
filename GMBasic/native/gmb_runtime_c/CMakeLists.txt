@@ -251,6 +251,7 @@ set(GMB_ALL_SRCS
     # ASR: entry-point P/Invoke `gmb_asr_cmd` (engine in LLMEnv/LLMEngine/asr, target llm_asr).
     src/gmb_workflow.c
     src/gmb_strings.c
+    src/gmb_layout.c   # LAYOUT MANAGER (EXPAND/ANCHOR/ALIGN) condiviso FORM/TUI
     src/gmb_stringbuilder.c
     # Accumulatore growable per il pattern s$=s$+expr riconosciuto dal codegen C99 (§11)
     src/gmb_strbuf.c

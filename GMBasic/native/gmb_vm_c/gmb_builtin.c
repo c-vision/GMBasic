@@ -4106,14 +4106,17 @@ static void gmb_bf_318(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func
             if (argc >= 1 && args[0].type == 2 && args[0].ref
                 && args[0].ref->kind == GMB_OBJ_STRING)
             {
+                /* Stringa: inverte i CARATTERI (code point), non i byte. Il vecchio
+                 * byte-loop spezzava le sequenze UTF-8 ("città" → 'à' rotta, "┌─┐"
+                 * → byte invertiti). Fonte unica: gmb_str_reverse del runtime
+                 * condiviso, la stessa usata dalla gamba C99Native. */
                 gmb_obj_string_t* s0 = (gmb_obj_string_t*)args[0].ref;
-                char* out = (char*)calloc((size_t)s0->length + 1, 1);
-                if (out)
+                gmb_string_t s;
+                s.data = s0->data; s.length = s0->length; s.ref_count = 1;
+                gmb_string_t out = gmb_str_reverse(s);
+                if (out.data)
                 {
-                    for (int i = 0; i < (int)s0->length; i++)
-                        out[i] = s0->data[s0->length - 1 - i];
-                    gmb_obj_string_t* r = gmb_str_cstr(out);
-                    free(out);
+                    gmb_obj_string_t* r = gmb_str_alloc(out.data, (uint32_t)out.length); gmb_string_free(&out);   /* out e' una stringa runtime appena allocata: copiata nella stringa VM, va liberata */
                     bout->is_num = 0; bout->result_ref = (gmb_obj_t*)r; bout->result_ref_bt = GMB_BT_STRING;
                 }
                 else { bout->is_num = 0; bout->result_ref = NULL; }

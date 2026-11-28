@@ -7306,6 +7306,8 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { 447, vm_sys_delegate_tui },
     { 448, vm_sys_delegate_tui }, { 449, vm_sys_delegate_tui },
     { 450, vm_sys_delegate_tui },
+    { GMB_SC_WINDOW_RESIZE, vm_sys_delegate_tui },
+    { GMB_SC_CONTROL_LAST_HANDLE, vm_sys_delegate_tui },
     { GMB_SC_TUI_SPLITTER, vm_sys_delegate_tui },
     { GMB_SC_TUI_CONTEXTMENU, vm_sys_delegate_tui },
     { 411, vm_sys_delegate_tui }, { 412, vm_sys_delegate_tui }, { 413, vm_sys_delegate_tui },

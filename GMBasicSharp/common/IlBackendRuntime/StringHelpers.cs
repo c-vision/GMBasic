@@ -60,7 +60,19 @@ public static class StringHelpers
     public static bool IsNumeric(string? value) => CommonLib.Numerics.IsNumeric(value);
     public static string Space(long count) => new string(' ', Math.Max(0, checked((int)count)));
     public static string Dup(long count, string? value) => CommonLib.StringUtils.DuplicateFirst(checked((int)count), value);
-    public static string Reverse(string? value) => new string((value ?? string.Empty).Reverse().ToArray());
+    /// <summary>REVERSE$(s): inverte i CARATTERI (code point Unicode), non le unità UTF-16.
+    /// Prima usava <c>.Reverse()</c> sulla stringa: invertiva le UNITÀ UTF-16, spezzando le
+    /// coppie surrogate ("😀b🙂" → surrogati orfani, LEN sbagliato). La gamba nativa fa lo
+    /// stesso per code point (<c>gmb_str_reverse</c>): stessa semantica di LEN/LEFT$/MID$.</summary>
+    public static string Reverse(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        var runes = new System.Collections.Generic.List<System.Text.Rune>(value.Length);
+        foreach (var r in value.EnumerateRunes()) runes.Add(r);
+        var sb = new System.Text.StringBuilder(value.Length);
+        for (var i = runes.Count - 1; i >= 0; i--) sb.Append(runes[i].ToString());
+        return sb.ToString();
+    }
     public static string Pascal(string? value) => CommonLib.StringUtils.Pascal(value);
     public static string Camel(string? value) => CommonLib.StringUtils.Camel(value);
     public static string Title(string? value) => CommonLib.StringUtils.Title(value);

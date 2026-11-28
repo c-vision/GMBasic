@@ -61,6 +61,7 @@ static gmb_form_btn_t g_btns[GMB_FORM_MAX_BUTTONS];
 static int g_nbtn = 0;
 static int g_closed = 0;   /* headless / richiesta di chiusura */
 static int g_dirty = 1;    /* ridisegna solo quando serve (niente repaint continuo) */
+int gmb_form_layout_reflow(void);   /* vedi definizione (LAYOUT: EXPAND/ANCHOR/ALIGN) */
 static int g_form_exclusive = 0;   /* il render del form non tocca la pagina (READ attivo) */
 static int g_last_added = -1;      /* ultimo widget/bottone aggiunto (per STYLE) */
 static int g_focus_wid = -1;       /* widget col focus (edit inline) */
@@ -234,6 +235,44 @@ static const char* form_stristr(const char* h, const char* n)
     return NULL;
 }
 static void apply_base_props(gmb_widget_t* wd, const char* spec, int idx);
+
+/* ---- LAYOUT MANAGER: EXPAND/ANCHOR/ALIGN dei controlli FORM (percorso PIXEL) ----
+ * Il rect e la finestra di riferimento sono in PIXEL (unità del form grafico). */
+static int layout_form_win_w(void) { int w = GMB_GFX_SCREEN_W(); return w > 0 ? w : gmb_gfx_screen_width(); }
+static int layout_form_win_h(void) { int h = GMB_GFX_SCREEN_H(); return h > 0 ? h : gmb_gfx_screen_height(); }
+static void layout_apply_btn(gmb_form_btn_t* b, const gmb_layout_spec_t* ls)
+{
+    gmb_layout_configure((struct gmb_control*)&b->base, 0, ls, layout_form_win_w(), layout_form_win_h());
+}
+static void layout_apply_wid(gmb_widget_t* wd, const gmb_layout_spec_t* ls)
+{
+    gmb_layout_configure((struct gmb_control*)&wd->base, 0, ls, layout_form_win_w(), layout_form_win_h());
+}
+/* Ricalcola il layout dei controlli FORM sulla dimensione CORRENTE della pagina.
+ * Idempotente: la si può chiamare a ogni frame. Ritorna quanti controlli mossi. */
+int gmb_form_layout_reflow(void)
+{
+    int n = 0, w = layout_form_win_w(), h = layout_form_win_h();
+    if (w <= 0 || h <= 0) return 0;
+    for (int i = 0; i < g_nbtn; i++)
+        if (g_btns[i].base.layout_on && gmb_layout_reflow((struct gmb_control*)&g_btns[i].base, 0, w, h)) n++;
+    for (int i = 0; i < g_nwid; i++)
+        if (g_wid[i].base.layout_on && gmb_layout_reflow((struct gmb_control*)&g_wid[i].base, 0, w, h)) n++;
+    if (n) g_dirty = 1;
+    return n;
+}
+
+/* WINDOW RESIZE w, h — porta la pagina LOGICA alla dimensione voluta su ENTRAMBI
+ * i percorsi (pixel + celle) e riapplica subito il LAYOUT. Unico punto di verità:
+ * l'emitter C e il P/Invoke delle gambe gestite chiamano questa, non le singole
+ * resize, così i due percorsi non possono divergere. */
+void gmb_window_resize(int w, int h)
+{
+    if (w <= 0 || h <= 0) return;
+    gmb_gfx_resize_screen(w, h);
+    { extern void gmb_tui_resize_screen(int, int); gmb_tui_resize_screen(w, h); }
+    gmb_form_layout_reflow();
+}
 
 static void fire_ev(int widx, int ev);
 /* ---- valore interno + coda eventi (pull) per le gambe gestite ---- */
@@ -1728,6 +1767,8 @@ static void apply_base_props(gmb_widget_t* wd, const char* spec, int idx)
     }
     for (const char* f = spec; (f = strstr(f, "focus")); f += 5)
         if ((f == spec || f[-1] == ' ') && (f[5] == 0 || f[5] == ' ')) { set_focus_wid(idx); break; }
+    /* LAYOUT (EXPAND/ANCHOR/ALIGN): proprietà del controllo come le altre. */
+    { gmb_layout_spec_t ls; if (gmb_layout_parse(spec, &ls)) layout_apply_wid(wd, &ls); }
 }
 
 static void apply_base_props_btn(gmb_form_btn_t* b, const char* spec)
@@ -1756,6 +1797,8 @@ static void apply_base_props_btn(gmb_form_btn_t* b, const char* spec)
             break;
         }
     }
+    /* LAYOUT (EXPAND/ANCHOR/ALIGN): proprietà del controllo come le altre. */
+    { gmb_layout_spec_t ls; if (gmb_layout_parse(spec, &ls)) layout_apply_btn(b, &ls); }
 }
 const char* gmb_form_button_name(int i)    { return (i >= 0 && i < g_nbtn) ? g_btns[i].name : ""; }
 const char* gmb_form_button_tooltip(int i) { return (i >= 0 && i < g_nbtn) ? g_btns[i].tooltip : ""; }
@@ -2293,6 +2336,9 @@ double gmb_form_control_get(const char* name, const char* prop)
     else if (!strcasecmp(prop, "tabindex"))                         return w ? w->base.tab_index : t->base.tab_index;
     else if (!strcasecmp(prop, "tabstop"))                          return w ? w->base.tab_stop : t->base.tab_stop;
     else if (!strcasecmp(prop, "metric") || !strcasecmp(prop, "coordmode")) return w ? w->base.coord_mode : t->base.coord_mode;
+    /* "handle" come nel percorso TUI (tui_ctrl_get): era l'unica proprietà comune ai
+     * due registry che il percorso pixel non esponeva → CONTROL GET … "handle" = 0. */
+    else if (!strcasecmp(prop, "handle"))                           return (double)(w ? w->base.handle : t->base.handle);
     else if (!strcasecmp(prop, "value") || !strcasecmp(prop, "selected") || !strcasecmp(prop, "index") || !strcasecmp(prop, "listindex")) return w ? wd_num(w) : 0;
     else if (!strcasecmp(prop, "listcount")) return w ? w->nitems : 0;
     else if (!strcasecmp(prop, "min") || !strcasecmp(prop, "minvalue")) return w ? w->vmin : 0;
@@ -3314,6 +3360,12 @@ int gmb_form_last_handle(void) { return g_last_handle; }
 int gmb_form_last_is_tui(void) { return g_last_is_tui; }
 void gmb_form_set_last_handle(int h) { g_last_handle = h; }
 
+/* Handle del controllo APPENA creato, qualunque registry l'abbia accolto. `g_last_handle`
+ * è aggiornato da gmb_form_note_handle (widget/button pixel e gmb_tui_control_add), ed è
+ * la stessa sorgente usata da CONTROL GET "nome","handle": così INTO e le clausole parlano
+ * sempre dello stesso controllo. */
+int gmb_control_last_handle(void) { return g_last_handle; }
+
 /* Dispatch di UN evento mouse (stessa logica del loop di gmb_form_poll).
  * Serve quando l'host (C# IL/PCode) drena lui la coda input: deve poter
  * consegnare l'evento al layer controlli C evento per evento. */
@@ -3596,6 +3648,11 @@ void gmb_form_render_if_dirty(void)
         }
         s_last_scale = sc;
     }
+    /* LAYOUT (EXPAND/ANCHOR/ALIGN): il rect dei controlli dichiarati segue la
+     * dimensione CORRENTE della pagina. La scala si applica qui, internamente
+     * (le unità del form sono quelle di SCREEN): il reflow va calcolato DOPO
+     * l'aggiornamento della scala, così il delta è quello vero. Idempotente. */
+    gmb_form_layout_reflow();
     if (g_modal)
     {
         /* ── FRAME MODALE ────────────────────────────────────────────────────

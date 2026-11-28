@@ -17,6 +17,7 @@ public sealed partial class Parser
         Expr? name=null,tag=null,tip=null,vis=null,en=null,ti=null,ts=null,sty=null; bool foc=false;
         Expr? color=null,colorfocus=null,colorsel=null,colorerr=null,haserr=null,upper=null;
         string? metric = null;   /* clausola USE CELLS|PIXELS → proprietà "metric" fusa nella spec */
+        string? layout = null;   /* clausole EXPAND/ANCHOR/ALIGN → "expand=…"/"anchor=…"/"align=…" */
         events = null;
         while (p.Peek().Kind != TokenKind.Newline && p.Peek().Kind != TokenKind.Eof)
         {
@@ -39,6 +40,16 @@ public sealed partial class Parser
                 throw CreateError(p.Peek(), "USE nel controllo: atteso CELLS o PIXELS.");
             }
             if (key == "STYLE") { p.Advance(); sty = p.ParseExpression(); continue; }
+            /* Clausole di LAYOUT: proprietà del controllo come NAME/TAG/STYLE, fuse nella
+             * stessa spec di stile che i backend passano già al runtime C (una sola fonte).
+             * Stessa grammatica del parser C dei controlli (gmb_parser_stmt_controls.c). */
+            if (key is "EXPAND" or "ANCHOR" or "ALIGN")
+            {
+                p.Advance();
+                var frag = ParseLayoutClause(p, key);
+                layout = layout is null ? frag : layout + " " + frag;
+                continue;
+            }
             if (key == "NAME" || key == "TAG" || key == "TOOLTIP" || key == "VISIBLE" || key == "ENABLED" || key == "TABINDEX" || key == "TABSTOP"
                 || key == "COLOR" || key == "COLORFOCUS" || key == "COLORSEL" || key == "COLORERROR" || key == "HASERROR" || key == "UPPERCASE")
             {
@@ -52,11 +63,15 @@ public sealed partial class Parser
             }
             break;
         }
-        if (metric != null)
+        /* Proprietà FUSE nella spec di stile: `metric=N` (USE CELLS|PIXELS) e le clausole di
+         * LAYOUT `expand=…`/`anchor=…`/`align=…`. Il runtime riceve UNA sola spec. */
+        string? fused = metric;
+        if (layout != null) fused = fused is null ? layout : fused + " " + layout;
+        if (fused != null)
         {
-            if (sty is StringExpr sspec) sty = new StringExpr(sspec.Value + " " + metric, sspec.Token);
-            else if (sty is null) sty = new StringExpr(metric, tok);
-            else throw CreateError(tok, "USE CELLS|PIXELS accanto a uno STYLE non letterale: usare una stringa costante.");
+            if (sty is StringExpr sspec) sty = new StringExpr(sspec.Value + " " + fused, sspec.Token);
+            else if (sty is null) sty = new StringExpr(fused, tok);
+            else throw CreateError(tok, "USE CELLS|PIXELS / EXPAND / ANCHOR / ALIGN accanto a uno STYLE non letterale: usare una stringa costante.");
         }
         if (name==null&&tag==null&&tip==null&&vis==null&&en==null&&ti==null&&ts==null&&!foc&&sty==null
             &&color==null&&colorfocus==null&&colorsel==null&&colorerr==null&&haserr==null&&upper==null) return null;
@@ -88,11 +103,20 @@ public sealed partial class Parser
     {
         var tok = p.Peek(); p.Advance();
         var (row, col, width, height, items) = ParseGrid(p, tok);
-        p.Consume(TokenKind.Into, "Expected 'INTO' after LISTBOX.");
-        var variable = p.ParseTarget();
+        /* `INTO v` collega la variabile al controllo: nella forma PIXEL è l'HANDLE del
+         * controllo (parità con `gmb_control_add_listbox` del nativo/C99Native), quindi
+         * la variabile resta SOLO il target di INTO. Prima veniva emessa come 6°
+         * argomento della lista per le clausole dello stile → `vm_tui_pos_chain` la leggeva
+         * come ulteriore argomento posizionale (nome inutile). */
+        Target? variable = null;
+        if (p.Peek().Kind == TokenKind.Into)
+        {
+            p.Advance();
+            variable = p.ParseTarget();
+        }
         Target? id = null;
         var props = ParseControlProps(p, ref id, out var events, tok);
-        return new ListBoxStmt(variable, row, col, width, height, items, tok, id, props, events);
+        return new ListBoxStmt(variable ?? new VariableTarget(-1, tok, tok), row, col, width, height, items, tok, id, props, events);
     }
 
     public static Stmt ParseComboBoxStandalone(Parser p, string? ns)

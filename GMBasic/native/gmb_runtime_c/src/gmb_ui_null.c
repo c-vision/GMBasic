@@ -44,6 +44,11 @@ int  gmb_control_coord_transform(const gmb_control_t* c) { (void)c; return 0; }
 bool gmb_control_handle_mouse(gmb_control_t* c, const gmb_mouse_action_t* a) { (void)c; (void)a; return false; }
 void gmb_gfx_clear_rect(int x1, int y1, int x2, int y2, int color) { (void)x1; (void)y1; (void)x2; (void)y2; (void)color; gmb_ui_null_warn("gmb_gfx_clear_rect"); }
 void gmb_gfx_dim_page(float factor) { (void)factor; gmb_ui_null_warn("gmb_gfx_dim_page"); }
+/* WINDOW RESIZE (gmb_window_resize in gmb_form.c, CORE) chiama questi due. Nella
+ * variante minima non c'è né pagina grafica né griglia a celle: il resize è no-op,
+ * come tutto il resto del layer UI. */
+void gmb_gfx_resize_screen(int w, int h) { (void)w; (void)h; gmb_ui_null_warn("gmb_gfx_resize_screen"); }
+void gmb_tui_resize_screen(int w, int h) { (void)w; (void)h; gmb_ui_null_warn("gmb_tui_resize_screen"); }
 void gmb_gfx_drop_shadow(int x, int y, int w, int h, int offset, unsigned int shadow_rgba, int radius) { (void)x; (void)y; (void)w; (void)h; (void)offset; (void)shadow_rgba; (void)radius; gmb_ui_null_warn("gmb_gfx_drop_shadow"); }
 
 /* Secondo giro (stessa causa: gmb_form.c/gmb_tui_controls_add.c sono nel core, il layer

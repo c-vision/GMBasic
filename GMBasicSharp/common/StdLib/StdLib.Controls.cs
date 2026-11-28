@@ -95,7 +95,11 @@ public sealed partial class StdLib
                 // Famiglia UNICA: i controlli condivisi usano sempre il percorso gmb_control_t
                 // (che rende celle in TEXT e pixel ricco in GRAPHICS via la finestra). Il ramo
                 // 'pixel' resta solo per i controlli pixel-only (text == null).
-                var parser = text ?? pixel;
+                // Pipeline UNICA C#/C: con SCREEN n != 0 la modalità è PIXEL, come il nativo
+                // (gui_mode in gmb_parser_stmt_controls.c) → parser PIXEL full-clause
+                // (x,y,w,h,items [INTO v] NAME/STYLE/EXPAND/ANCHOR/ALIGN). Prima una LISTBOX
+                // in modalità grafica passava dal parser testuale che pretendeva INTO.
+                var parser = (p.GuiMode ? pixel : null) ?? text ?? pixel;
                 if (parser == null)
                     throw new System.InvalidOperationException($"Il controllo {verb} non è disponibile in questa console.");
                 return parser(p, n);

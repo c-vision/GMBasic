@@ -210,6 +210,13 @@ void gmb_tui_dispatch_mouse_px(int type, int x, int y, int button, int wheel);
 int  gmb_tui_screen_width(void);
 int  gmb_tui_screen_height(void);
 void gmb_tui_show_cursor(void);
+/* Layout dei controlli TUI (clausole EXPAND/ANCHOR/ALIGN): riapplica il rect
+ * sulla dimensione corrente della griglia. Idempotente. Ritorna quanti mossi. */
+int  gmb_tui_layout_reflow(void);
+/* Ridimensiona la griglia a CELLE (controparte TUI di gmb_gfx_resize_screen):
+ * usata da WINDOW RESIZE per rendere il layout verificabile in modo deterministico.
+ * Riapplica subito il layout dei controlli dichiarati. */
+void gmb_tui_resize_screen(int w, int h);
 /* Focus del controllo (indice nel registry): imposta/legge. */
 void gmb_tui_control_focus(int i);
 long long gmb_tui_control_focused(void);

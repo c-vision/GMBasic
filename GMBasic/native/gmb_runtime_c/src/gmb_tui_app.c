@@ -805,11 +805,24 @@ static void apply_style_kv(gmb_control_t* c, const char* spec)
 void gmb_control_apply_style_handle(int handle, const char* spec)
 {
     gmb_control_t* c = ctrl_by_handle(handle);
-    if (c && spec) apply_style_kv(c, spec);
+    if (c && spec) { apply_style_kv(c, spec); gmb_control_apply_layout_spec(c, spec); }
 }
 void gmb_control_apply_style(gmb_control_t* c, const char* spec)
 {
-    if (c && spec) apply_style_kv(c, spec);
+    if (c && spec) { apply_style_kv(c, spec); gmb_control_apply_layout_spec(c, spec); }
+}
+
+/* Clausole di LAYOUT (EXPAND/ANCHOR/ALIGN) di un controllo TUI: base = rect
+ * dichiarato + dimensione corrente della griglia a CELLE. */
+void gmb_control_apply_layout(gmb_control_t* c, const gmb_layout_spec_t* ls)
+{
+    if (!c || !ls) return;
+    gmb_layout_configure(c, 1, ls, gmb_tui_screen_width(), gmb_tui_screen_height());
+}
+void gmb_control_apply_layout_spec(gmb_control_t* c, const char* spec)
+{
+    gmb_layout_spec_t ls;
+    if (gmb_layout_parse(spec, &ls)) gmb_control_apply_layout(c, &ls);
 }
 
 /* Fallback PIXEL per i controlli senza draw_px_fn: rende il controllo nel suo
@@ -1151,6 +1164,35 @@ void gmb_tui_sync_bindings(void)
         }
 }
 
+/* Ricalcola il layout dei controlli TUI (clausole EXPAND/ANCHOR/ALIGN) sulla
+ * dimensione CORRENTE della griglia a celle. Idempotente: se il delta rispetto
+ * alla base è invariato non cambia nulla, quindi la si può richiamare a ogni
+ * giro del loop senza costo (né rimbalzi). Ritorna il numero di controlli mossi. */
+int gmb_tui_layout_reflow(void)
+{
+    int n = 0;
+    int w = gmb_tui_screen_width(), h = gmb_tui_screen_height();
+    for (int i = 0; i < g_reg_n; i++) {
+        gmb_control_t* c = g_reg_ctrl[i];
+        if (!c || !c->layout_on) continue;
+        if (gmb_layout_reflow(c, 1, w, h)) { n++; s_px_dirty = 1; }
+    }
+    return n;
+}
+
+/* Ridimensiona la griglia a CELLE (controparte TUI di gmb_gfx_resize_screen).
+ * Usata da `WINDOW RESIZE` e dal resize del terminale: cambia il buffer di
+ * rendering e riapplica subito il LAYOUT dei controlli dichiarati. */
+void gmb_tui_resize_screen(int w, int h)
+{
+    if (w <= 0 || h <= 0) return;
+    gmb_screen_buffer_t* b = modal_target_buffer();
+    if (b && (gmb_screen_width(b) != w || gmb_screen_height(b) != h))
+        gmb_screen_resize(b, w, h);
+    gmb_tui_layout_reflow();
+    s_px_dirty = 1;
+}
+
 void gmb_tui_bind_value(int handle, double* out)
 {
     if (handle < 0 || handle >= g_reg_n) return;
@@ -1353,6 +1395,9 @@ int gmb_tui_controls_frame(int frame_ms)
         }
     gmb_screen_buffer_t* buf = modal_target_buffer();
     gmb_surface_set_autoattach(0);
+    /* LAYOUT: prima di disegnare, riallinea i controlli che hanno dichiarato
+     * EXPAND/ANCHOR/ALIGN sulla dimensione corrente della griglia. */
+    gmb_tui_layout_reflow();
     /* Desktop ad OGNI frame (prima restavano le celle vecchie, es. la dropdown di un menu
      * appena chiuso). UNICA implementazione: gmb_theme_paint_desktop -> desktop + retino
      * dal TEMA (prima fg e bg erano lo stesso colore: retino invisibile). */

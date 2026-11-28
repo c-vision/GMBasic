@@ -301,6 +301,7 @@ public sealed partial class Compiler
             case DefineWindowStmt dws: VisitDefineWindowStatement(dws); break;
             case WindowActionStmt was: VisitWindowActionStatement(was); break;
             case WindowPumpStmt wpu: VisitExpression(wpu.Ms); EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.FORM_FRAME); EmitByte((byte)1); EmitByte((byte)OpCode.OP_POP); break;
+            case WindowResizeStmt wrs: VisitExpression(wrs.Width); VisitExpression(wrs.Height); EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.WINDOW_RESIZE); EmitByte((byte)2); EmitByte((byte)OpCode.OP_POP); break;
             case WindowRequestCloseStmt: EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.FORM_CLOSE); EmitByte((byte)0); break;
             case WindowVisibilityStmt wvis: VisitWindowVisibilityStatement(wvis); break;
             case WindowSetTitleStmt wst: VisitWindowSetTitleStatement(wst); break;

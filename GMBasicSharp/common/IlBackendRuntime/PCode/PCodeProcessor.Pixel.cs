@@ -20,7 +20,10 @@ internal sealed partial class PCodeProcessor
         try
         {
             IlRuntime.FormAddControl(kind, args.ToArray(), name);
-            if (spec.Length > 0) IlRuntime.FormSetLastStyle(spec);
+            /* Clausole (NAME/TAG/STYLE/EXPAND/ANCHOR/ALIGN) sul controllo APPENA creato:
+             * l'handle viene dallo stesso runtime C usato da C99Native/VM-C, non
+             * dall'"ultimo in assoluto" (con più controlli il target poteva divergere). */
+            if (spec.Length > 0) IlRuntime.FormSetLastStyleForHandle(IlRuntime.FormLastHandle(), spec);
         }
         catch { }
     }
@@ -91,6 +94,7 @@ internal sealed partial class PCodeProcessor
     private void MousePressed(PCodeTask task) { task.PushRef(IlRuntime.MousePressed()); }
     private void KeyPressed(PCodeTask task) { task.PushRef(IlRuntime.KeyPressed()); }
     private void FormFrame(PCodeTask task) { var ms = PopI(task); IlRuntime.UiFrame(ms); }
+    private void WindowResize(PCodeTask task) { var h = task.PopNum(); var w = task.PopNum(); IlRuntime.WindowResize(w, h); }
     private void FormCtrlGet(PCodeTask task) { var prop = PopS(task); var name = PopS(task); task.PushRef(IlRuntime.FormControlGet(name, prop)); }
     private void FormCtrlGetS(PCodeTask task) { var prop = PopS(task); var name = PopS(task); task.PushRef(IlRuntime.FormControlGetStr(name, prop)); }
     private void FormCtrlSet(PCodeTask task) { var str = PopS(task); var num = PopI(task); var prop = PopS(task); var name = PopS(task); IlRuntime.FormControlSet(name, prop, num, str); }

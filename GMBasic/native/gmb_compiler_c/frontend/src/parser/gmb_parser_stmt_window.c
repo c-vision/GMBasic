@@ -51,6 +51,19 @@ gmb_stmt_t* gmb_p_parse_window(gmb_parser_t* p, int line)
         sp->channel = gmb_p_parse_expr(p);
         return sp;
     }
+    /* WINDOW RESIZE <w>, <h> — ridimensiona la pagina logica (come il resize della
+     * finestra): è ciò che fa scattare il LAYOUT dei controlli (EXPAND/ANCHOR/ALIGN).
+     * Comando, non funzione: due argomenti separati da virgola. */
+    if (gmb_p_tok_is_soft_keyword(t, "RESIZE")) {
+        gmb_p_adv(p);
+        gmb_stmt_t* sp = gmb_stmt_new(GMB_STMT_WINDOW_RESIZE, line);
+        sp->win_coords[0] = gmb_p_parse_expr(p);
+        gmb_p_match(p, GMB_TOK_Comma);
+        sp->win_coords[1] = gmb_p_parse_expr(p);
+        sp->win_coords[2] = NULL;
+        sp->win_coords[3] = NULL;
+        return sp;
+    }
 
     /* WINDOW da solo o SCREEN -> viewport (graphics); qui WINDOW THEME/DESKTOP/FRAME/SHADOW/... */
     if (t->kind == GMB_TOK_Theme) {

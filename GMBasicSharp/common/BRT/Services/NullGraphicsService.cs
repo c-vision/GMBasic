@@ -199,6 +199,11 @@ public class NullGraphicsService : IGraphicsService
     public bool FormClosed() => false;
     public void UiAddCheckbox(int x, int y, int w, string label) => Tui.UiAddCheckbox(x, y, w, label);
     public void FormReset() => Tui.FormReset();
+    /// <summary>Clausole del controllo creato (NAME/TAG/…/STYLE e LAYOUT EXPAND/ANCHOR/ALIGN):
+    /// in headless il runtime C le applica al registry reale, così le gambe gestite hanno la
+    /// stessa semantica di C99Native/VM-C (senza questo la spec andava persa nel default no-op).</summary>
+    public void FormSetLastStyle(string spec) => Tui.FormSetLastStyle(spec);
+    public void FormSetLastStyleForHandle(int handle, string spec) => Tui.FormSetLastStyleForHandle(handle, spec);
     public double UiLastHandle() => Tui.UiLastHandle();
     public void ChartFinancial(long handle, double[] ohlc, string plotType, string legend) => Tui.ChartFinancial(handle, ohlc, plotType, legend);
     public void ChartConfigSet(int handle, string prop, double num, string str) => Tui.ChartConfigSet(handle, prop, num, str);
@@ -307,6 +312,7 @@ public class NullGraphicsService : IGraphicsService
     public void UiAddDatepicker(int x,int y,int w) => Tui.UiAddDatepicker(x, y, w);
     public void UiAddColorpicker(int x,int y,int w,int h) => Tui.UiAddColorpicker(x, y, w, h);
     public void UiAddListbox(int x,int y,int w,int h,string csv) => Tui.UiAddListbox(x, y, w, h, csv);
+    public int UiAddListboxH(int x,int y,int w,int h,string csv) => Tui.UiAddListboxH(x, y, w, h, csv);
     public void UiAddCombobox(int x,int y,int w,string csv) => Tui.UiAddCombobox(x, y, w, csv);
     public void UiAddRadiogroup(int x,int y,int w,int h,string csv) => Tui.UiAddRadiogroup(x, y, w, h, csv);
     public void UiAddToggle(int x,int y,int w,string caption) => Tui.UiAddToggle(x, y, w, caption);
@@ -338,6 +344,7 @@ public class NullGraphicsService : IGraphicsService
     public void FormAddControl(string kind, object[] args, string name) => Tui.FormAddControl(kind, args, name);
     public void FormDispatchMouse(int type, int x, int y, int button, int wheel) => Tui.FormDispatchMouse(type, x, y, button, wheel);
     public void FormDispatchKey(string key) => Tui.FormDispatchKey(key);
+    public void WindowResize(int w, int h) => Tui.WindowResize(w, h);
     public void UiControlApplyProps(int handle, string? name, string? tag, string? tooltip, double? tabindex, double? visible, double? enabled, double? tabstop) => Tui.UiControlApplyProps(handle, name, tag, tooltip, tabindex, visible, enabled, tabstop);
     public void UiControlApplyFocus(int handle) => Tui.UiControlApplyFocus(handle);
     public void UiControlApplyStyle(int handle, string? spec) => Tui.UiControlApplyStyle(handle, spec);

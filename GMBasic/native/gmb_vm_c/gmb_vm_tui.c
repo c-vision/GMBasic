@@ -227,6 +227,22 @@ static void tui_spinner(gmb_vm_t* vm, gmb_task_t* task)
     tui_push_num(task, 0.0, GMB_BT_NUMBER);
 }
 
+/* ULTIMO HANDLE di controllo: su VM/C la creazione (PIXEL_CTRL / TUI_*) non lascia il
+ * valore sullo stack come nelle gambe gestite, ma aggiorna SEMPRE l'"ultimo controllo
+ * creato" del runtime condiviso (gmb_form_note_handle, chiamata dai due registry: TUI in
+ * gmb_tui_control_add, pixel in form_add_widget). CONTROL_APPLY_PROPS e CONTROL GET/SET …
+ * "handle" devono usare lo STESSO valore, altrimenti le clausole (NAME/STYLE/EXPAND) e il
+ * handle non si incontrano più. L'handle eventualmente sullo stack (emesso dai compilatori
+ * gestiti prima delle clausole) resta il preferito se è un handle vivo del registry. */
+/* Handle del controllo APPENA creato — unico punto per entrambi i registry del runtime
+ * condiviso: è lo stesso valore che CONTROL GET "nome","handle" restituisce. */
+static int tui_last_ctrl_handle(void)
+{
+    extern int gmb_control_last_handle(void);
+    int h = gmb_control_last_handle();
+    return h >= 0 ? h : gmb_tui_last_handle();
+}
+
 static void tui_control_apply_props(gmb_vm_t* vm, gmb_task_t* task)
 {
     (void)vm;
@@ -235,10 +251,30 @@ static void tui_control_apply_props(gmb_vm_t* vm, gmb_task_t* task)
     const char* style = tui_pop_str(task); double focus = tui_pop_num(task);
     double tabstop = tui_pop_num(task), enabled = tui_pop_num(task), visible = tui_pop_num(task), tabindex = tui_pop_num(task);
     const char* tooltip = tui_pop_str(task); const char* tag = tui_pop_str(task); const char* name = tui_pop_str(task);
+    /* Handle del controllo: è quello lasciato dalla CREAZIONE (TUI_LISTBOX/… o PIXEL_CTRL),
+     * non gmb_tui_last_handle() — su VM/C la creazione via syscall 400 non aggiorna il
+     * "last handle" TUI, che restava a un controllo precedente (o a -1) e le clausole
+     * (NAME/STYLE/EXPAND/…) finivano su un altro controllo o su nessuno.
+     * Fallback al last handle solo se lo stack non ne ha uno valido. */
+    int h = -1;
+    {   /* 13 = numero di argomenti del syscall: lo stack del task ha l'handle in cima
+         * prima di questi 13 valori (sp punta alla prima slot libera).
+         * `gmb_stack_entry_t` è { num, ref, type }: il numero sta in `.num` (non `.i`). */
+        int base = task->sp - 13;
+        if (base >= 0) {
+            gmb_stack_entry_t he = task->stack[base];
+            if (he.type == 1 && he.num >= 0) {
+                extern int gmb_form_last_is_tui(void);
+                extern gmb_control_t* gmb_tui_control_at(int);
+                int cand = (int)he.num;
+                if (!gmb_form_last_is_tui() || gmb_tui_control_at(cand)) h = cand;
+            }
+        }
+    }
+    if (h < 0) h = tui_last_ctrl_handle();
     unsigned flags = 1u|2u|4u|8u|16u|32u|64u; /* name/tag/tooltip/tabindex/visible/enabled/tabstop */
     if (focus != 0.0) flags |= 128u;
-    gmb_control_apply_props_handle(gmb_tui_last_handle(), flags, name, tag, tooltip, (int)tabindex, (int)visible, (int)enabled, (int)tabstop);
-    int h = gmb_tui_last_handle();
+    gmb_control_apply_props_handle(h, flags, name, tag, tooltip, (int)tabindex, (int)visible, (int)enabled, (int)tabstop);
     char buf[160];
     if (style && *style) gmb_control_apply_style_handle(h, style);
     if (color && *color) { snprintf(buf, sizeof(buf), "color=%s", color); gmb_control_apply_style_handle(h, buf); }
@@ -476,11 +512,17 @@ void tui_pop_str_into(gmb_task_t* task, char* dst, size_t cap)
     else dst[0] = 0;
     gmb_obj_release(e.ref);
 }
+/* PIXEL_CTRL — stack: `kind`(str) `name`(str) `spec`(str) e poi la LISTA delle voci del
+ * controllo (il compilatore la materializza con `VisitListLiteralExpression` + OP_MK_LIST).
+ * L'handler CONSUMA i quattro slot, senza valore di ritorno: l'handle del controllo creato
+ * si legge con la syscall CONTROL_LAST_HANDLE (526) o FORM_LAST_HANDLE (410). */
 static void vm_pixel_ctrl(gmb_vm_t* vm, gmb_task_t* task)
 {
     (void)vm;
+    if (task->sp < 4) return;
+    /* Ordine di push: kind, name, spec, LISTA(voci) → si poppa dal fondo verso l'alto. */
     gmb_stack_entry_t le = gmb_task_pop(task);
-    char spec[512], name[128], kind[40];
+    char kind[40], name[128], spec[2048];
     tui_pop_str_into(task, spec, sizeof(spec));
     tui_pop_str_into(task, name, sizeof(name));
     tui_pop_str_into(task, kind, sizeof(kind));
@@ -498,21 +540,26 @@ static void vm_pixel_ctrl(gmb_vm_t* vm, gmb_task_t* task)
         }
     }
     gmb_obj_release(le.ref);
+    if (!kind[0]) return;   /* nessun KIND: chunk malformato, nessuna registrazione */
 #define AI(i) ((i) < ac ? (int)av[i] : 0)
 #define AD(i) ((i) < ac ? av[i] : 0.0)
 #define AS(i) ((i) < ac ? ab[i] : "")
-    if      (!strcasecmp(kind, "CHECK") || !strcasecmp(kind, "CHECKBOX")) gmb_form_add_checkbox(AI(0), AI(1), AS(2), NULL);
-    else if (!strcasecmp(kind, "RADIO") || !strcasecmp(kind, "RADIOGROUP")) gmb_form_add_radio(AI(0), AI(1), AS(2), NULL);
+    if      (!strcasecmp(kind, "CHECK") || !strcasecmp(kind, "CHECKBOX")) gmb_control_add_checkbox(AI(0), AI(1), AI(2), AS(3), NULL);
+    else if (!strcasecmp(kind, "RADIO") || !strcasecmp(kind, "RADIOGROUP")) gmb_control_add_radio(AI(0), AI(1), AI(2), AS(3), NULL);
     else if (!strcasecmp(kind, "TRACK") || !strcasecmp(kind, "SLIDER"))     gmb_form_add_track(AI(0), AI(1), AI(2), AD(3), AD(4), NULL);
-    else if (!strcasecmp(kind, "DROPDOWN") || !strcasecmp(kind, "COMBOBOX")) gmb_form_add_dropdown(AI(0), AI(1), AI(2), AS(3), NULL);
+    else if (!strcasecmp(kind, "DROPDOWN") || !strcasecmp(kind, "COMBOBOX")) gmb_control_add_combobox(AI(0), AI(1), AI(2), AS(3), NULL);
     else if (!strcasecmp(kind, "PROGRESS"))    gmb_form_add_progress_v(AI(0), AI(1), AI(2), AD(3));
-    else if (!strcasecmp(kind, "TOGGLE"))      gmb_form_add_toggle(AI(0), AI(1), AS(2), NULL);
+    else if (!strcasecmp(kind, "TOGGLE"))      gmb_control_add_toggle(AI(0), AI(1), AI(2), AS(3), NULL);
     else if (!strcasecmp(kind, "SPINNER"))     gmb_form_add_spinner(AI(0), AI(1), AI(2), AD(3), AD(4), AD(5), NULL);
-    else if (!strcasecmp(kind, "TAB"))         gmb_form_add_tabs(AI(0), AI(1), AS(2), NULL);
-    else if (!strcasecmp(kind, "LISTBOX"))     gmb_form_add_listbox(AI(0), AI(1), AI(2), AI(3), AS(4), NULL);
-    else if (!strcasecmp(kind, "COLORPICKER")) gmb_form_add_colorpicker(AI(0), AI(1), NULL, NULL);
-    else if (!strcasecmp(kind, "GRID") || !strcasecmp(kind, "TBROWSE")) gmb_form_add_grid(AI(0), AI(1), AI(2), AI(3), AS(4), AS(5), NULL);
-    else if (!strcasecmp(kind, "TREEVIEW"))    gmb_form_add_tree(AI(0), AI(1), AI(2), AI(3), AS(4), NULL);
+    else if (!strcasecmp(kind, "TAB"))         gmb_control_add_tab(AI(0), AI(1), AI(2), AS(3), NULL);
+    /* LISTBOX: forma con RECT (x, y, w, h, items) — la stessa del C99Native, che passa per
+     * la factory POLIMORFICA (dispatch pixel/celle + handle condiviso). Prima usava
+     * gmb_form_add_listbox, che in headless registrava il controllo nel registry a CELLE
+     * senza aggiornare l'"ultimo handle": INTO e le clausole (NAME/EXPAND) si perdevano. */
+    else if (!strcasecmp(kind, "LISTBOX"))     gmb_control_add_listbox(AI(0), AI(1), AI(2), AI(3), AS(4), NULL);
+    else if (!strcasecmp(kind, "COLORPICKER")) gmb_control_add_colorpicker(AI(0), AI(1), AI(2), AS(3), NULL);
+    else if (!strcasecmp(kind, "GRID") || !strcasecmp(kind, "TBROWSE")) gmb_control_add_grid(AI(0), AI(1), AI(2), AI(3), AS(4), AS(5), NULL);
+    else if (!strcasecmp(kind, "TREEVIEW"))    gmb_control_add_tree(AI(0), AI(1), AI(2), AI(3), AS(4), NULL);
     else if (!strcasecmp(kind, "STATUSBAR"))   gmb_form_add_statusbar(AI(0), AI(1), AI(2), AS(3));
     else if (!strcasecmp(kind, "MENU"))        gmb_form_add_menubar(AI(0), AI(1), AS(2), NULL);
     else if (!strcasecmp(kind, "DATEPICKER"))  gmb_form_add_datepicker(AI(0), AI(1), NULL, ac > 2 ? ab[2] : "dd/mm/yyyy");
@@ -533,8 +580,10 @@ static void vm_pixel_ctrl(gmb_vm_t* vm, gmb_task_t* task)
 #undef AI
 #undef AD
 #undef AS
-    if (spec[0]) gmb_form_set_last_style(spec);
-    else if (name[0]) { char b[200]; snprintf(b, sizeof(b), "name=%s", name); gmb_form_set_last_style(b); }
+    /* Clausole della DICHIARAZIONE (NAME/STYLE/EXPAND/ANCHOR/ALIGN) sul controllo appena
+     * creato: stesso handle di INTO e di CONTROL GET "nome","handle". */
+    if (spec[0]) gmb_form_apply_last_style(spec);
+    else if (name[0]) { char b[200]; snprintf(b, sizeof(b), "name=%s", name); gmb_form_apply_last_style(b); }
 }
 static gmb_vm_t* g_ctrl_vm = NULL;
 static gmb_task_t* g_ctrl_task = NULL;
@@ -812,9 +861,21 @@ void gmb_vm_exec_tui_syscall(gmb_vm_t* vm, gmb_task_t* task, int code, int argc)
         case GMB_SC_ON_WINDOW_EVENT: vm_on_window_event(vm, task); return;
         case 400: vm_pixel_ctrl(vm, task); return;
         case 401: vm_form_frame(vm, task); return;
+        case GMB_SC_WINDOW_RESIZE: {
+            /* WINDOW RESIZE w, h — stesso runtime del C99Native: pagina pixel + griglia
+             * a celle, poi reflow del LAYOUT (EXPAND/ANCHOR/ALIGN).
+             * Ordine di push: w poi h → si poppa h, poi w (prima erano invertiti e la
+             * pagina veniva ridimensionata 320x640 invece di 640x320). Il compilatore
+             * emette un OP_POP dopo la syscall: qui si lascia il valore di ritorno. */
+            double hr = tui_pop_num(task);
+            double wr = tui_pop_num(task);
+            gmb_window_resize((int)wr, (int)hr);
+            tui_push_num(task, 1.0, GMB_BT_NUMBER);
+            return; }
         case 402: vm_form_closed(vm, task); return;
         case 403: vm_form_close(vm, task); return;
         case 404: vm_form_ctrl_get(vm, task); return;
+        case GMB_SC_CONTROL_LAST_HANDLE: tui_push_num(task, (double)tui_last_ctrl_handle(), GMB_BT_NUMBER); return;
         case 405: vm_form_ctrl_gets(vm, task); return;
         case 406: vm_form_ctrl_set(vm, task); return;
         case 407: vm_form_ctrl_move(vm, task); return;

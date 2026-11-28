@@ -75,6 +75,99 @@ static void ctl_append_attr(gmb_stmt_t* s, const char* txt)
     free(s->set_attr[0]); s->set_attr[0] = n;
 }
 
+/* Aggiunge testo alla spec locale (buffer a capacità fissa) del parser di
+ * BUTTON/PANEL: le clausole sono fuse in una sola stringa CSS-like. */
+static void ctl_append_attr_into(char* spec, size_t cap, const char* txt)
+{
+    if (!spec || !cap || !txt || !*txt) return;
+    size_t L = strlen(spec);
+    if (L + 1 >= cap) return;
+    snprintf(spec + L, cap - L, "%s", txt);
+}
+
+/* ---- LAYOUT del controllo: EXPAND [H|V|BOTH|NONE] | ANCHOR <bordi> | ALIGN <pos> ----
+ * Parser: riconosce la clausola, valida i valori e restituisce la coppia
+ * " chiave=valore" da FONDERE nella spec (canale unico verso il runtime).
+ * Ritorna 1 se la clausola è stata consumata, 0 se il token non è di layout,
+ * -1 su errore di valore (messaggio già impostato). */
+static int ctl_parse_layout_clause(gmb_parser_t* p, int line, char* out, size_t cap)
+{
+    const gmb_token_t* t = gmb_p_cur(p);
+    if (!t || !t->lexeme) return 0;
+
+    if (ctl_is_kw(t, "EXPAND")) {
+        gmb_p_adv(p);
+        const char* v = "both";
+        const gmb_token_t* n = gmb_p_cur(p);
+        if (n && n->lexeme) {
+            if      (ctl_is_kw(n, "H") || ctl_is_kw(n, "HORIZONTAL")) { v = "h"; gmb_p_adv(p); }
+            else if (ctl_is_kw(n, "V") || ctl_is_kw(n, "VERTICAL"))   { v = "v"; gmb_p_adv(p); }
+            else if (ctl_is_kw(n, "BOTH") || ctl_is_kw(n, "ALL"))     { v = "both"; gmb_p_adv(p); }
+            else if (ctl_is_kw(n, "NONE"))                            { v = "none"; gmb_p_adv(p); }
+        }
+        snprintf(out, cap, " expand=%s", v);
+        return 1;
+    }
+    if (ctl_is_kw(t, "ANCHOR")) {
+        gmb_p_adv(p);
+        char v[96]; v[0] = 0;
+        int got = 0;
+        for (;;) {
+            const gmb_token_t* w = gmb_p_cur(p);
+            if (!w || !w->lexeme) break;
+            const char* ok = NULL;
+            if      (ctl_is_kw(w, "LEFT"))   ok = "left";
+            else if (ctl_is_kw(w, "RIGHT"))  ok = "right";
+            else if (ctl_is_kw(w, "TOP"))    ok = "top";
+            else if (ctl_is_kw(w, "BOTTOM")) ok = "bottom";
+            else if (ctl_is_kw(w, "ALL") || ctl_is_kw(w, "FILL")) ok = "all";
+            else if (ctl_is_kw(w, "NONE"))   ok = "none";
+            else if (got) break;   /* '+' separatore eventualmente consumato sotto */
+            else { gmb_p_set_err(p, "ANCHOR nel controllo: atteso LEFT/RIGHT/TOP/BOTTOM/ALL/NONE", line); return -1; }
+            size_t Lv = strlen(v);
+            snprintf(v + Lv, sizeof(v) - Lv, "%s%s", Lv ? "+" : "", ok);
+            got = 1;
+            gmb_p_adv(p);
+            /* separatori ammessi: '+' oppure ',' (es. ANCHOR LEFT+RIGHT) */
+            if (gmb_p_check(p, GMB_TOK_Plus)) { gmb_p_adv(p); continue; }
+            if (gmb_p_check(p, GMB_TOK_Comma)) { gmb_p_adv(p); continue; }
+            break;
+        }
+        if (!got) { gmb_p_set_err(p, "ANCHOR nel controllo: attesa almeno un bordo", line); return -1; }
+        snprintf(out, cap, " anchor=%s", v);
+        return 1;
+    }
+    if (ctl_is_kw(t, "ALIGN")) {
+        gmb_p_adv(p);
+        char v[96]; v[0] = 0;
+        int got = 0;
+        for (;;) {
+            const gmb_token_t* w = gmb_p_cur(p);
+            if (!w || !w->lexeme) break;
+            const char* ok = NULL;
+            if      (ctl_is_kw(w, "LEFT") || ctl_is_kw(w, "START"))   ok = "left";
+            else if (ctl_is_kw(w, "CENTER") || ctl_is_kw(w, "CENTRE")) ok = "center";
+            else if (ctl_is_kw(w, "RIGHT") || ctl_is_kw(w, "END"))     ok = "right";
+            else if (ctl_is_kw(w, "TOP"))                              ok = "top";
+            else if (ctl_is_kw(w, "MIDDLE") || ctl_is_kw(w, "VCENTER"))ok = "middle";
+            else if (ctl_is_kw(w, "BOTTOM"))                           ok = "bottom";
+            else if (got) break;
+            else { gmb_p_set_err(p, "ALIGN nel controllo: atteso LEFT/CENTER/RIGHT/TOP/MIDDLE/BOTTOM", line); return -1; }
+            size_t Lv = strlen(v);
+            snprintf(v + Lv, sizeof(v) - Lv, "%s%s", Lv ? "+" : "", ok);
+            got = 1;
+            gmb_p_adv(p);
+            if (gmb_p_check(p, GMB_TOK_Plus)) { gmb_p_adv(p); continue; }
+            if (gmb_p_check(p, GMB_TOK_Comma)) { gmb_p_adv(p); continue; }
+            break;
+        }
+        if (!got) { gmb_p_set_err(p, "ALIGN nel controllo: attesa una posizione", line); return -1; }
+        snprintf(out, cap, " align=%s", v);
+        return 1;
+    }
+    return 0;
+}
+
 gmb_stmt_t* gmb_p_parse_control(gmb_parser_t* p, int line)
 {
     /* `NOME = espressione` dove NOME è ANCHE il nome di un CONTROLLO (es. `DIM tab AS LONG :
@@ -150,6 +243,11 @@ gmb_stmt_t* gmb_p_parse_control(gmb_parser_t* p, int line)
          * Parser.Stmt.Controls.cs ParsePrinterDialogStandalone). */
         if (gmb_p_tok_is_keyword(gmb_p_cur(p), "Into") || gmb_p_check(p, GMB_TOK_Into)) {
             gmb_p_adv(p);
+            /* INTO resta un ARGOMENTO (indice in control_into): la LISTBOX in forma
+             * pixel `LISTBOX x,y,w,h,"items" INTO v NAME … EXPAND BOTH` arriva quindi
+             * con 6 argomenti (x,y,w,h,items,v) come il parser C# (ListBoxStmt) e il
+             * chunk compiler usa v come HANDLE del controllo, non come voce. Prima
+             * INTO diventava un decimo argomento e quel percorso non era raggiungibile. */
             if (!s->control_into) s->control_into = s->n_control_args;
             for (;;) {
                 if (s->n_control_args >= cap) { cap = cap ? cap * 2 : 4; s->control_args = (gmb_expr_t**)realloc(s->control_args, (size_t)cap * sizeof(gmb_expr_t*)); }
@@ -259,6 +357,12 @@ gmb_stmt_t* gmb_p_parse_control(gmb_parser_t* p, int line)
             gmb_p_set_err(p, "USE nel controllo: atteso CELLS o PIXELS", line);
             break;
         }
+        {   /* LAYOUT: EXPAND / ANCHOR / ALIGN (proprietà del controllo). */
+            char ladd[160];
+            int lr = ctl_parse_layout_clause(p, line, ladd, sizeof ladd);
+            if (lr < 0) break;
+            if (lr > 0) { ctl_append_attr(s, ladd); continue; }
+        }
         break;
     }
     return s;
@@ -349,6 +453,12 @@ gmb_stmt_t* gmb_p_parse_button(gmb_parser_t* p, int line)
                 gmb_p_adv(p);
             }
             continue;
+        }
+        {   /* LAYOUT: EXPAND / ANCHOR / ALIGN (proprietà del controllo). */
+            char ladd[160];
+            int lr = ctl_parse_layout_clause(p, line, ladd, sizeof ladd);
+            if (lr < 0) break;
+            if (lr > 0) { ctl_append_attr_into(spec, sizeof spec, ladd); continue; }
         }
         break;
     }
@@ -490,6 +600,12 @@ gmb_stmt_t* gmb_p_parse_panel(gmb_parser_t* p, int line)
             continue;
         }
         if (ctl_is_kw(t, "FOCUS")) { size_t Ls = strlen(spec); snprintf(spec + Ls, sizeof(spec) - Ls, " focus"); gmb_p_adv(p); continue; }
+        {   /* LAYOUT: EXPAND / ANCHOR / ALIGN (proprietà del controllo). */
+            char ladd[160];
+            int lr = ctl_parse_layout_clause(p, line, ladd, sizeof ladd);
+            if (lr < 0) break;
+            if (lr > 0) { ctl_append_attr_into(spec, sizeof spec, ladd); continue; }
+        }
         break;
     }
     if (spec[0]) {

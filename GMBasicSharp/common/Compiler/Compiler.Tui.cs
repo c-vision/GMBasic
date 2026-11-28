@@ -23,6 +23,14 @@ public sealed partial class Compiler
         AssignVariable(id, isLet: false);
     }
 
+    /* Controllo pixel: `n` voci pushate + syscall PIXEL_CTRL con argc = 1 + n (è il
+     * numero di voci della lista, come si aspetta vm_tui_pos_chain). L'handle del
+     * controllo appena creato resta in cima allo stack: lo consuma EmitTuiId o il POP. */
+    private void EmitPixelCtl(int n)
+    {
+        EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.PIXEL_CTRL); EmitByte((byte)(1 + n));
+    }
+
     private void VisitStatusBarStatement(StatusBarStmt stmt)
     {
         VisitExpression(stmt.Text);
@@ -61,13 +69,23 @@ public sealed partial class Compiler
 
     private void VisitListBoxStatement(ListBoxStmt stmt)
     {
-        VisitExpression(stmt.Row);
-        VisitExpression(stmt.Col);
-        VisitExpression(stmt.Width);
-        VisitExpression(stmt.Height);
-        VisitExpression(stmt.Items);
-        EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.TUI_LISTBOX); EmitByte((byte)5);
-        AssignVariable(stmt.Variable, isLet: false);
+        /* LISTBOX x, y, w, h, "items" [INTO v] [NAME/STYLE/EXPAND/…]: forma a
+         * RETTANGOLO (pixel) anche sul percorso VM/C. Il protocollo di PIXEL_CTRL è
+         * `kind name spec LISTA(voci)`: kind = "LISTBOX", voci = x, y, w, h, items.
+         * INTO di LISTBOX è il valore dell'elemento selezionato (come sul C99Native, che
+         * passa `double* var` a gmb_control_add_listbox), NON l'handle: l'handle resta
+         * disponibile con la clausola ID o CONTROL GET "nome","handle". Non si assegna
+         * nulla alla creazione — il C99Native lascia la variabile com'è finché l'utente
+         * non seleziona — così le 4 gambe hanno lo stesso valore osservabile.
+         * Le clausole (NAME/STYLE/EXPAND/ANCHOR/ALIGN) le applica CONTROL_APPLY_PROPS
+         * al controllo appena creato, come per gli altri controlli TUI. */
+        EmitConstant("LISTBOX");
+        EmitConstant("");          /* nome: arriva dalle clausole (CONTROL_APPLY_PROPS) */
+        EmitConstant("");          /* spec: idem */
+        VisitListLiteralExpression(new ListLiteralExpr(
+            new List<Expr> { stmt.Row, stmt.Col, stmt.Width, stmt.Height, stmt.Items }.ToImmutableArray(),
+            stmt.Token));
+        EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.PIXEL_CTRL); EmitByte(4);
         EmitTuiId(stmt.Id);
         EmitTuiProps(stmt.Props, stmt.Token);
         if (stmt.Events != null) foreach (var _e in stmt.Events) VisitControlEventStatement(_e);

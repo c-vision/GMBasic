@@ -8082,6 +8082,9 @@ public static partial class IlRuntime
     public static void FormSetLastStyle(string spec) { try { Current.Graphics.FormSetLastStyle(spec); } catch { } }
     public static void FormFrame(int ms) { try { Current.Graphics.FormFrame(ms); } catch { } }
     public static void UiFrame(int ms) { try { Current.Graphics.UiFrame(ms); } catch { } }
+    /// <summary>WINDOW RESIZE w, h — pagina logica + reflow del LAYOUT (EXPAND/ANCHOR/ALIGN),
+    /// eseguito dal runtime C condiviso (una sola implementazione con C99Native/VM-C).</summary>
+    public static void WindowResize(double w, double h) { try { Current.Graphics.WindowResize((int)w, (int)h); } catch { } }
     public static void UiAddCheckbox(int x, int y, int w, string label) { try { Current.Graphics.UiAddCheckbox(x, y, w, label); } catch { } }
     public static double UiLastHandle() { try { return Current.Graphics.UiLastHandle(); } catch { return -1; } }
     public static bool ControlApplyProps(IReadOnlyList<object?> a)
@@ -8114,6 +8117,9 @@ public static partial class IlRuntime
     public static void UiAddDatepicker(int x,int y,int w) { try { Current.Graphics.UiAddDatepicker(x, y, w); } catch { } }
     public static void UiAddColorpicker(int x,int y,int w,int h) { try { Current.Graphics.UiAddColorpicker(x, y, w, h); } catch { } }
     public static void UiAddListbox(int x,int y,int w,int h,string csv) { try { Current.Graphics.UiAddListbox(x, y, w, h, csv ?? ""); } catch { } }
+    /// <summary>LISTBOX nella forma con handle: crea il controllo e ritorna il suo handle
+    /// (runtime C condiviso). È il valore che INTO collega alla variabile.</summary>
+    public static int UiAddListboxH(int x,int y,int w,int h,string csv) { try { return Current.Graphics.UiAddListboxH(x, y, w, h, csv ?? ""); } catch { return -1; } }
     public static void UiAddCombobox(int x,int y,int w,string csv) { try { Current.Graphics.UiAddCombobox(x, y, w, csv ?? ""); } catch { } }
     public static void UiAddRadiogroup(int x,int y,int w,int h,string csv) { try { Current.Graphics.UiAddRadiogroup(x, y, w, h, csv ?? ""); } catch { } }
     public static void UiAddToggle(int x,int y,int w,string caption) { try { Current.Graphics.UiAddToggle(x, y, w, caption ?? ""); } catch { } }
@@ -8212,6 +8218,9 @@ public static partial class IlRuntime
     public static void FormControlRemove(object? instance) { try { Current.Graphics.UserControlRemove(instance); } catch { } }
     public static void FormControlDraw(double h, double op, double a, double b, double c, double d, string s) { try { Current.Graphics.UserControlDraw((int)h, (int)op, a, b, c, d, s); } catch { } }
     public static double FormLastHandle() { try { return Current.Graphics.FormLastHandle(); } catch { return -1; } }
+    /// <summary>Applica la spec di clausole (NAME/TAG/STYLE/EXPAND/ANCHOR/ALIGN) al controllo di
+    /// handle dato: l'handle viene dal runtime C condiviso, quindi una sola implementazione.</summary>
+    public static void FormSetLastStyleForHandle(double handle, string spec) { try { Current.Graphics.FormSetLastStyleForHandle((int)handle, spec ?? ""); } catch { } }
     public static double FormClicked(double h) { try { return Current.Graphics.FormClicked((int)h); } catch { return 0; } }
     public static double FormDblClicked(double h) { try { return Current.Graphics.FormDblClicked((int)h); } catch { return 0; } }
     public static double FormChanged(double h) { try { return Current.Graphics.FormChanged((int)h); } catch { return 0; } }
@@ -16736,13 +16745,15 @@ public static double TextWidth(string s)
         return false;
     }
 
-    public static string TuiListBox(IReadOnlyList<object?> args)
+    public static double TuiListBox(IReadOnlyList<object?> args)
     {
         var row = PopInt(args, 0); var col = PopInt(args, 1);
         var w = PopInt(args, 2, 20); var h = PopInt(args, 3, 5);
         var items = PopStrArr(args, 4);
-        UiAddListbox(row, col, w, Math.Max(1, h), string.Join("|", items)); // runtime C, non-bloccante
-        return "";
+        /* Handle del controllo creato: è quello del runtime C condiviso (stessa sorgente di
+         * CONTROL GET "nome","handle" e del percorso C99Native), NON "" — prima INTO
+         * collegava la variabile alla stringa vuota e nessun handle era disponibile. */
+        return UiAddListboxH(row, col, w, Math.Max(1, h), string.Join("|", items)); // runtime C, non-bloccante
     }
 
     public static string TuiComboBox(IReadOnlyList<object?> args)

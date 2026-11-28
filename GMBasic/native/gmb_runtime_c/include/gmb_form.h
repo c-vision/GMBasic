@@ -183,11 +183,22 @@ void gmb_form_set_last_style(const char* spec);
  * in QUALSIASI registry (form widget/button, poi TUI). Unico punto per gli emitter: le
  * clausole del controllo non possono più andare perse a seconda del tipo. */
 void gmb_form_apply_style_handle(int handle, const char* spec);
+/* LAYOUT dei controlli FORM (EXPAND/ANCHOR/ALIGN): ricalcola i rect dei widget/pulsanti
+ * che hanno dichiarato le clausole sulla dimensione CORRENTE della pagina. Idempotente
+ * (delta rispetto al rect base), quindi richiamabile a ogni frame. Ritorna quanti mossi. */
+int  gmb_form_layout_reflow(void);
+/* WINDOW RESIZE w, h — ridimensiona la pagina LOGICA su entrambi i percorsi (pixel e
+ * celle) e riapplica il LAYOUT. Unico punto: emitter C e P/Invoke delle gambe gestite. */
+void gmb_window_resize(int w, int h);
 /* Nota l'handle dell'ultimo controllo creato (form o TUI): gli emitter applicano le
  * clausole dichiarate (NAME/STYLE/metric/…) a QUEST'ultimo, qualunque sia il registry. */
 void gmb_form_note_handle(int handle);
 /* Applica le clausole all'ULTIMO controllo creato, nel registry corretto (form o TUI). */
 void gmb_form_apply_last_style(const char* spec);
+/* Handle del controllo appena creato, UNIFORME sui due registry (pixel e celle): è il
+ * valore che i compilatori collegano a INTO e che CONTROL GET "nome","handle" restituisce.
+ * -1 se nessun controllo è stato creato. */
+int  gmb_control_last_handle(void);
 
 /* Proprieta' base (VB) del controllo: impostabili anche nella spec di STYLE
  * ("name=Ok tag=t visible=1 enabled=1 tabindex=2 tabstop=1 focus"). Getter per indice. */

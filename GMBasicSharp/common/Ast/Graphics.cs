@@ -1016,6 +1016,15 @@ public sealed record WindowPumpStmt(Expr Ms, Token Token) : Stmt(Token.Position)
     public override AstNode DeepClone() => new WindowPumpStmt((Expr)Ms.DeepClone(), (Token)Token.DeepClone());
 }
 
+/// <summary>`WINDOW RESIZE <w>, <h>` — porta la pagina logica alla dimensione voluta e
+/// riapplica il LAYOUT dei controlli (EXPAND/ANCHOR/ALIGN). Comando, non funzione.</summary>
+[JsonDerivedType(typeof(WindowResizeStmt), nameof(WindowResizeStmt))]
+public sealed record WindowResizeStmt(Expr Width, Expr Height, Token Token) : Stmt(Token.Position)
+{
+    public override string ToString() => $"WINDOW RESIZE {Width}, {Height}";
+    public override AstNode DeepClone() => new WindowResizeStmt((Expr)Width.DeepClone(), (Expr)Height.DeepClone(), (Token)Token.DeepClone());
+}
+
 /// <summary>`WINDOW CLOSE` — richiede la chiusura della finestra (COMANDO, senza nome = finestra SDL).</summary>
 public sealed record WindowRequestCloseStmt(Token Token) : Stmt(Token.Position)
 {

@@ -119,7 +119,10 @@ gmb_string_t gmb_str_right(gmb_string_t s, gmb_int_t n) {
     return gmb_str_left(gmb_string_alloc(s.data + off), n);
 }
 
-/* MID(s, start, len): sottostringa 1-based, indici in unità UTF-16. len<=0 → stringa vuota. */
+/* MID(s, start, len): sottostringa 1-based, indici in CARATTERI (code point), come
+ * LEN/LEFT$/RIGHT$/INSTR e la guida Stringhe. len<=0 → stringa vuota.
+ * (Il commento diceva "unità UTF-16", un design mai entrato nel codice: il conteggio
+ * è gmb_chars_len, cioè code point.) */
 gmb_string_t gmb_str_mid(gmb_string_t s, gmb_int_t start, gmb_int_t len) {
     gmb_int_t units;
     size_t off, off2, bytes;
@@ -878,15 +881,55 @@ gmb_list_t gmb_str_to_chars(gmb_string_t s) {
     return out;
 }
 
-/* REVERSE(s): inverte l'ordine dei caratteri di una stringa. */
+/* REVERSE(s): inverte l'ordine dei CARATTERI (code point), non dei byte.
+ *
+ * Prima copiava i byte al contrario: "città" dava "àttic" con la 'à' spezzata
+ * (i 2 byte di U+00E0 invertiti producono UTF-8 non valido). La convenzione del
+ * runtime è quella di LEN/LEFT$/MID$/RIGHT$/INSTR: unità = code point (vedi
+ * Stringhe-Guida-Utente). Un byte non valido (codifica rotta in ingresso) conta
+ * 1 byte, come in gmb_chars_len_n, così la funzione non amplifica il danno. */
 gmb_string_t gmb_str_reverse(gmb_string_t s) {
-    gmb_string_t r = gmb_string_alloc("");
-    r.length = s.length;
+    gmb_string_t r;
+    size_t n, i, out;
+    size_t* starts;
+    if (!s.data || s.length == 0) return gmb_string_alloc("");
+    n = 0;
+    for (i = 0; i < s.length; ) {
+        unsigned char b = (unsigned char)s.data[i];
+        int nb = (b < 0x80) ? 1
+               : ((b & 0xE0) == 0xC0) ? 2
+               : ((b & 0xF0) == 0xE0) ? 3
+               : ((b & 0xF8) == 0xF0) ? 4 : 1;
+        if (i + (size_t)nb > s.length) nb = 1;   /* tronco in coda: 1 byte */
+        n += 1;
+        i += (size_t)nb;
+    }
+    starts = (size_t*)malloc((n ? n : 1) * sizeof(size_t));
+    if (!starts) return gmb_string_alloc("");
+    for (i = 0, out = 0; i < s.length && out < n; out++) {
+        starts[out] = i;
+        unsigned char b = (unsigned char)s.data[i];
+        int nb = (b < 0x80) ? 1
+               : ((b & 0xE0) == 0xC0) ? 2
+               : ((b & 0xF0) == 0xE0) ? 3
+               : ((b & 0xF8) == 0xF0) ? 4 : 1;
+        if (i + (size_t)nb > s.length) nb = 1;
+        i += (size_t)nb;
+    }
+    r = gmb_string_alloc("");
     r.data = (char*)realloc(r.data, s.length + 1);
     if (r.data) {
-        for (size_t i = 0; i < s.length; i++) r.data[i] = s.data[s.length - 1 - i];
-        r.data[s.length] = '\0';
+        out = 0;
+        for (size_t k = n; k > 0; k--) {
+            size_t from = starts[k - 1];
+            size_t to = (k < n) ? starts[k] : s.length;
+            memcpy(r.data + out, s.data + from, to - from);
+            out += to - from;
+        }
+        r.data[out] = '\0';
+        r.length = out;
     }
+    free(starts);
     return r;
 }
 

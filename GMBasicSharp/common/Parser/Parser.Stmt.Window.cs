@@ -102,6 +102,16 @@ public sealed partial class Parser
             return [new WindowPumpStmt(ms, parser.Previous())];
         }
 
+        // WINDOW RESIZE <w>, <h> — ridimensiona la pagina logica e fa scattare il LAYOUT
+        // dei controlli (EXPAND/ANCHOR/ALIGN). Comando a due argomenti separati da virgola.
+        if (parser.Match(TokenKind.Resize))
+        {
+            var rw = parser.ParseExpression();
+            parser.Consume(TokenKind.Comma, "Expected ',' after WINDOW RESIZE width.");
+            var rh = parser.ParseExpression();
+            return [new WindowResizeStmt(rw, rh, parser.Previous())];
+        }
+
         // WINDOW CLOSE — richiede la chiusura della finestra (COMANDO, senza nome = SDL).
         if (parser.Match(TokenKind.Close))
             return [new WindowRequestCloseStmt(parser.Previous())];

@@ -1484,25 +1484,37 @@ int gmb_str_rat(const char* search, const char* target)
     return last ? (int)(last - target) + 1 : 0;
 }
 
+/* Substring per CARATTERI (code point), la stessa unità di LEN/LEFT$/MID$/RIGHT$/INSTR.
+ * Prima indicizzava i BYTE (s[i]): una sottostringa che cade su un carattere
+ * multibyte (una "à", una emoji) ne prendeva solo una parte, producendo UTF-8 non
+ * valido. Oggi nessun chiamante usa questa funzione: la correzione è di coerenza,
+ * così chi la collegherà in futuro non eredita il difetto. start è 1-based, come
+ * in BASIC. */
 int gmb_str_substr(const char* s, int start, int count, char* out, int out_cap)
 {
+    /* Unità "carattere" del runtime (gmb_strings.c); dichiarate qui perché
+     * gmb_runtime.h non è includibile in questo file (gmb_str_space ha
+     * dichiarazioni static/non-static in conflitto). */
+    extern int64_t gmb_chars_len(const char* s);
+    extern size_t  gmb_chars_to_byte(const char* s, int64_t chars);
     if (!out || out_cap <= 0) return 0;
     out[0] = '\0';
     if (!s || count <= 0) return 0;
-    int len = (int)strlen(s);
-    if (start > len) return 0;
+    int chars = (int)gmb_chars_len(s);
+    if (start > chars) return 0;
     if (start < 1)
     {
         count += start - 1;
         start = 1;
         if (count <= 0) return 0;
     }
-    if (start + count - 1 > len) count = len - start + 1;
-    int n = 0;
-    for (int i = start - 1; i < start - 1 + count && i < len && n < out_cap - 1; i++)
-        out[n++] = s[i];
+    if (start + count - 1 > chars) count = chars - start + 1;
+    size_t from = gmb_chars_to_byte(s, start - 1);
+    size_t to   = gmb_chars_to_byte(s, start - 1 + count);
+    size_t n = 0;
+    for (size_t i = from; i < to && n + 1 < (size_t)out_cap; i++) out[n++] = s[i];
     out[n] = '\0';
-    return n;
+    return (int)n;
 }
 
 int gmb_str_stuff(const char* s, int start, int delete, const char* insert, char* out, int out_cap)

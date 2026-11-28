@@ -2439,6 +2439,19 @@ static void cc_syscall(gmb_cc_t* c, int code, int argc)
     cc_byte(c, argc);
 }
 
+/* syscall 400 (PIXEL_CTRL). Il bytecode porta 4 valori: kind, name, spec stringa e la
+ * LISTA degli argomenti. L'handler VM/C (vm_pixel_ctrl) legge kind/name/spec dalla cima
+ * e poi le voci della lista: nella codifica VM/C il numero di voci (argc) serve
+ * all'handler per i controlli che ne dipendono, quindi alla syscall si passa
+ * argc = 1 + n (4 per i controlli a 3 argomenti, come prima della correzione). */
+static void cc_pixel_ctrl(gmb_cc_t* c, int n)
+{
+    cc_byte(c, GMB_OP_SYSCALL);
+    cc_u16(c, 400);
+    cc_byte(c, (uint8_t)(1 + n));
+}
+
+static void cc_pixel_ctrl(gmb_cc_t* c, int n);
 static void cc_block(gmb_cc_t* c, gmb_stmt_t** body, int n)
 {
     for (int i = 0; i < n; i++) cc_stmt(c, body[i]);
@@ -4283,6 +4296,7 @@ static void cc_json_io_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
 }
 
 static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s);
+static void cc_pixel_ctrl(gmb_cc_t* c, int n);
 /* Controllo UI non-bloccante via syscall 400 (vm_pixel_ctrl): stack
  * [kind, name, spec, lista-argomenti] + MK_LIST. Usato da PANEL/BUTTON STYLE. */
 static void cc_ui_control(gmb_cc_t* c, const gmb_stmt_t* s, const char* kind, int nargs, int style_idx)
@@ -4297,7 +4311,7 @@ static void cc_ui_control(gmb_cc_t* c, const gmb_stmt_t* s, const char* kind, in
         if (c->error) return;
     }
     cc_byte(c, GMB_OP_MK_LIST); cc_u16(c, (unsigned)nargs);
-    cc_syscall(c, 400, 4);
+    cc_pixel_ctrl(c, nargs);
 }
 
 /* Letterali annidati `{{1,2},{5,7}}`: il parser li rappresenta come CALL "_array_"
@@ -6686,6 +6700,16 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
         if (s->channel) cc_expr(c, s->channel); else { int z = cc_add_const(c, GMB_CCONST_DOUBLE, 0.0, NULL); cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, z); }
         if (!c->error) cc_syscall(c, 401, 1);
         break;
+    /* WINDOW RESIZE w, h — ridimensiona la pagina logica (pixel + celle) e riapplica
+     * il LAYOUT. Stessa funzione del runtime C usata da C99Native e dalle gambe gestite. */
+    case GMB_STMT_WINDOW_RESIZE:
+        if (s->win_coords[0]) cc_expr(c, s->win_coords[0]);
+        else { int z = cc_add_const(c, GMB_CCONST_DOUBLE, 0.0, NULL); cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, z); }
+        if (c->error) return;
+        if (s->win_coords[1]) cc_expr(c, s->win_coords[1]);
+        else { int z = cc_add_const(c, GMB_CCONST_DOUBLE, 0.0, NULL); cc_byte(c, GMB_OP_PUSH_CONST); cc_u16(c, z); }
+        if (!c->error) cc_syscall(c, 519, 2);   /* SysCall.WINDOW_RESIZE */
+        break;
     case GMB_STMT_WINDOW_THEME:
     {
         const gmb_expr_t* th = s->channel;
@@ -6902,6 +6926,35 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
                 "IMAGEBUTTON","QR","RICHTEXT","HALFBLOCK","TILING","FUNCTIONKEYBAR","CANDLESTICK","CHART", NULL };
             int known = 0;
             for (int k = 0; kinds[k]; k++) if (strcasecmp(cn, kinds[k]) == 0) { known = 1; break; }
+            /* LISTBOX nella forma PIXEL del parser C — `LISTBOX x, y, w, h, "items" [NAME …]`
+             * oppure con il marker `_pixel_` (INTO presente) — usa la stessa strada del
+             * BUTTON/PANEL: x/y/w/h/items + spec (NAME/STYLE/EXPAND/ANCHOR/ALIGN), così la
+             * LISTBOX resta un controllo del percorso grafico e non il widget a celle TUI. */
+            if (known && strcasecmp(cn, "LISTBOX") == 0 && s->n_control_args >= 6) {
+                /* LISTBOX in FORMA PIXEL: x, y, w, h, "items", INTO-variabile [+ clausole].
+                 * Stesso bridge del C99Native: gmb_form_add_listbox (dispatch pixel/TUI nel
+                 * runtime) + handle in INTO, clausole via gmb_form_set_last_style. Prima
+                 * cadeva nel ramo generico (syscall 400), che su VM/C in TEXT crea il widget
+                 * a CELLE (row,col) invece del controllo con rect in celle della finestra →
+                 * nessun layout e INTO non valido. */
+                cc_push_str_const(c, "LISTBOX");
+                cc_push_str_const(c, "");
+                cc_push_str_const(c, (s->set_attr && s->n_set_attr > 0 && s->set_attr[0]) ? s->set_attr[0] : "");
+                for (int i = 0; i < 5; i++) {
+                    const gmb_expr_t* e = (1 + i < s->n_control_args) ? s->control_args[1 + i] : NULL;
+                    if (e) cc_expr(c, e); else cc_byte(c, GMB_OP_PUSH_NIL);
+                    if (c->error) return;
+                }
+                cc_byte(c, GMB_OP_MK_LIST); cc_u16(c, 5u);
+                cc_pixel_ctrl(c, 5);
+                /* INTO della forma pixel = VARIABILE da assegnare (CONTROL GET "value" → var),
+                 * come la ListBoxStmt delle gambe gestite. */
+                if (s->control_into > 0 && s->control_into < s->n_control_args &&
+                    s->control_args[s->control_into] && s->control_args[s->control_into]->var) {
+                    cc_syscall(c, 410, 0); cc_store_target(c, s->control_args[s->control_into]->var, s->line);
+                } else cc_syscall(c, 410, 0);
+                break;
+            }
             if (known) {
                 int npos = (s->control_into > 0 ? s->control_into : s->n_control_args) - 1;
                 if (npos < 0) npos = 0;
@@ -6914,7 +6967,7 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
                     if (c->error) return;
                 }
                 cc_byte(c, GMB_OP_MK_LIST); cc_u16(c, (unsigned)npos);
-                cc_syscall(c, 400, 4);
+                cc_pixel_ctrl(c, npos);
                 /* Handle del controllo appena creato (unificato TUI/form): serve per ID e
                  * per il target INTO. syscall 295 lascia il valore sullo stack; se nessuno
                  * dei due lo consuma resta per il POP dello statement. */

@@ -777,6 +777,8 @@ public static partial class Linker
 
             case WindowPumpStmt wp:
                 return new WindowPumpStmt(ResolveExpression(wp.Ms, program), wp.Token) { ScopeId = wp.ScopeId };
+            case WindowResizeStmt wr:
+                return new WindowResizeStmt(ResolveExpression(wr.Width, program), ResolveExpression(wr.Height, program), wr.Token) { ScopeId = wr.ScopeId };
             case OnWindowStmt s:
             {
                 string? wname = s.Action switch

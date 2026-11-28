@@ -13,6 +13,17 @@ public sealed partial class Compiler
 
     private static string PxStr(Expr? e) => e is StringExpr se ? (se.Value ?? "") : "";
 
+    /// <summary>Argomento STRINGA di un CONTROL GET/SET/MOVE/…: se è un letterale lo si emette
+    /// direttamente; se è una variabile/espressione si EMETTE L'ESPRESSIONE. Prima qui si
+    /// usava PxStr (solo letterali) e qualunque nome in variabile diventava "" — il runtime
+    /// cercava un controllo senza nome e ogni CONTROL GET tornava 0.</summary>
+    private void EmitCtrlStrArgument(Expr? e)
+    {
+        if (e is StringExpr) EmitConstant(PxStr(e));
+        else if (e == null) EmitConstant("");
+        else VisitExpression(e);
+    }
+
     /* Nome di riferimento per la composizione (CONTROL ADD): nome-variabile (PARENT c) o stringa. */
     private static string CtrlRefName(List<Expr> a, int i) => i < a.Count ? a[i] switch
     {
@@ -57,7 +68,7 @@ public sealed partial class Compiler
     private void VisitControlMethodStatement(ControlMethodStmt cm)
     {
         var a = cm.Args;
-        void S(int i) => EmitConstant(i < a.Count ? PxStr(a[i]) : "");
+        void S(int i) => EmitCtrlStrArgument(i < a.Count ? a[i] : null);
         void N(int i) { if (i < a.Count) VisitExpression(a[i]); else EmitConstant(0.0); }
         switch (cm.ResolveSubKind())
         {

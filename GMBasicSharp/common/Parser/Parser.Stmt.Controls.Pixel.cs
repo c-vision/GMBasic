@@ -6,7 +6,8 @@ namespace Basic;
 public sealed partial class Parser
 {
     private static readonly HashSet<string> PixelClauseKeys = new(StringComparer.OrdinalIgnoreCase)
-    { "NAME", "TAG", "TOOLTIP", "VISIBLE", "ENABLED", "TABINDEX", "TABSTOP", "FOCUS", "STYLE", "ON", "ID", "USE" };
+    { "NAME", "TAG", "TOOLTIP", "VISIBLE", "ENABLED", "TABINDEX", "TABSTOP", "FOCUS", "STYLE", "ON", "ID", "USE",
+      "EXPAND", "ANCHOR", "ALIGN" };
 
     /* Nomi di evento validi (per le clausole inline attaccate ON<EVENTO>). */
     private static readonly HashSet<string> PixelEvents = new(StringComparer.OrdinalIgnoreCase)
@@ -27,6 +28,64 @@ public sealed partial class Parser
 
     private static bool IsClauseKeyword(Token t) =>
         t.Lexeme != null && PixelClauseKeys.Contains(t.Lexeme);   /* per lexeme: TAG/TOOLTIP/VISIBLE... sono keyword */
+
+    /// <summary>Confronto per LESSEMA (case-insensitive) — LEFT/RIGHT/... possono essere
+    /// keyword o identificatori: la grafia è l'unica cosa che conta qui.</summary>
+    private static bool LayoutWord(Token? t, params string[] words) =>
+        t?.Lexeme != null && words.Any(w => string.Equals(t.Lexeme, w, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Clausola di LAYOUT del controllo (EXPAND/ANCHOR/ALIGN) → frammento CSS-like
+    /// `chiave=valore` da fondere nella spec di stile. Il token della chiave è già consumato.
+    /// Stessa grammatica del parser C (gmb_parser_stmt_controls.c): una sola semantica.</summary>
+    private static string ParseLayoutClause(Parser p, string key)
+    {
+        if (key == "EXPAND")
+        {
+            var v = "both";
+            var t = p.Peek();
+            if (LayoutWord(t, "H", "HORIZONTAL")) { v = "h"; p.Advance(); }
+            else if (LayoutWord(t, "V", "VERTICAL")) { v = "v"; p.Advance(); }
+            else if (LayoutWord(t, "BOTH", "ALL")) { v = "both"; p.Advance(); }
+            else if (LayoutWord(t, "NONE")) { v = "none"; p.Advance(); }
+            return "expand=" + v;
+        }
+        if (key == "ANCHOR" || key == "ALIGN")
+        {
+            var parts = new List<string>();
+            while (true)
+            {
+                var t = p.Peek();
+                string? v;
+                if (key == "ANCHOR")
+                    v = LayoutWord(t, "LEFT") ? "left"
+                        : LayoutWord(t, "RIGHT") ? "right"
+                        : LayoutWord(t, "TOP") ? "top"
+                        : LayoutWord(t, "BOTTOM") ? "bottom"
+                        : LayoutWord(t, "ALL", "FILL") ? "all"
+                        : LayoutWord(t, "NONE") ? "none" : null;
+                else
+                    v = LayoutWord(t, "LEFT", "START") ? "left"
+                        : LayoutWord(t, "CENTER", "CENTRE") ? "center"
+                        : LayoutWord(t, "RIGHT", "END") ? "right"
+                        : LayoutWord(t, "TOP") ? "top"
+                        : LayoutWord(t, "MIDDLE", "VCENTER") ? "middle"
+                        : LayoutWord(t, "BOTTOM") ? "bottom" : null;
+                if (v == null)
+                {
+                    if (parts.Count == 0)
+                        throw CreateError(t, key == "ANCHOR"
+                            ? "ANCHOR nel controllo: atteso LEFT/RIGHT/TOP/BOTTOM/ALL/NONE."
+                            : "ALIGN nel controllo: atteso LEFT/CENTER/RIGHT/TOP/MIDDLE/BOTTOM.");
+                    break;
+                }
+                parts.Add(v); p.Advance();
+                if (p.Peek().Kind is TokenKind.Plus or TokenKind.Comma) { p.Advance(); continue; }
+                break;
+            }
+            return (key == "ANCHOR" ? "anchor=" : "align=") + string.Join("+", parts);
+        }
+        return "";
+    }
 
     /// <summary>CHECK/RADIO/TRACK/DROPDOWN/PROGRESS/TEXTBOX/BUTTON/... + clausole
     /// (NAME/TAG/TOOLTIP/VISIBLE/ENABLED/TABINDEX/TABSTOP/FOCUS/STYLE/ON &lt;EV&gt; &lt;SUB&gt;).</summary>
@@ -94,6 +153,13 @@ public sealed partial class Parser
                 if (v == "CELLS") { p.Advance(); clauses.Add(new PixelClause("STYLE", new StringExpr("metric=1", t), null, null, KeyKind: TokenKind.PixelStyle)); }
                 else if (v == "PIXELS") { p.Advance(); clauses.Add(new PixelClause("STYLE", new StringExpr("metric=2", t), null, null, KeyKind: TokenKind.PixelStyle)); }
                 else throw CreateError(p.Peek(), "USE nel controllo: atteso CELLS o PIXELS.");
+            }
+            else if (key is "EXPAND" or "ANCHOR" or "ALIGN")
+            {
+                /* Clausole di LAYOUT: proprietà del controllo come NAME/TAG/STYLE.
+                 * Il frammento `expand=…`/`anchor=…`/`align=…` è fuso nella STESSA spec
+                 * di stile (unico canale verso il runtime C, che lo applica). */
+                clauses.Add(new PixelClause("STYLE", new StringExpr(" " + ParseLayoutClause(p, key), t), null, null, KeyKind: TokenKind.PixelStyle));
             }
             else
             {

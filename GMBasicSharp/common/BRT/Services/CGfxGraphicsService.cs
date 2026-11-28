@@ -114,6 +114,7 @@ public sealed class CGfxGraphicsService : IGraphicsService
     [DllImport(Lib)] private static extern void gmb_form_reset();
     [DllImport(Lib)] private static extern void gmb_form_frame(int frameMs);
     [DllImport(Lib)] private static extern void gmb_ui_frame(int frameMs);
+    [DllImport(Lib)] private static extern void gmb_window_resize(int w, int h);
     [DllImport(Lib)] private static extern void gmb_tui_add_checkbox(int x, int y, int w, string label);
     [DllImport(Lib)] private static extern int gmb_tui_last_handle();
     [DllImport(Lib)] private static extern void gmb_control_apply_props_handle(int handle, uint flags, string name, string tag, string tooltip, int tabindex, int visible, int enabled, int tabstop);
@@ -384,6 +385,7 @@ public sealed class CGfxGraphicsService : IGraphicsService
     public bool FormClosed() => FormClosedC() != 0;
     public void FormClose() => FormRequestCloseC();
     public void FormSetLastStyle(string spec) => FormSetLastStyleC(spec);
+    public void FormSetLastStyleForHandle(int handle, string spec) => FormSetLastStyleForHandleC(handle, spec ?? "");
     public double FormControlGet(string name, string prop) => FormControlGetC(name, prop);
     public string FormControlGetStr(string name, string prop) => FormControlGetStrC(name, prop);
     public void FormControlSet(string name, string prop, double num, string str) => FormControlSetC(name, prop, num, str);
@@ -396,6 +398,10 @@ public sealed class CGfxGraphicsService : IGraphicsService
     public void FormResetC() => gmb_form_reset();
     public void FormFrameC(int frameMs) => gmb_form_frame(frameMs);
     public void UiFrame(int frameMs) { try { gmb_ui_frame(frameMs); } catch { } }
+    /// <summary>WINDOW RESIZE w, h — ridimensiona la pagina LOGICA e riapplica il LAYOUT
+    /// (EXPAND/ANCHOR/ALIGN) su entrambi i percorsi. Unica implementazione nel runtime C,
+    /// la stessa usata da C99Native e VM/C.</summary>
+    public void WindowResize(int w, int h) { try { gmb_window_resize(w, h); } catch { } }
 
     /// <summary>Contesto grafico passato al metodo Paint di un UserControl (coordinate locali).
     /// Il disegno è accodato al main thread (Enq) → il thread SDL non esegue BASIC (ADR §7).</summary>
@@ -468,6 +474,10 @@ public sealed class CGfxGraphicsService : IGraphicsService
     public void UiAddDatepicker(int x,int y,int w) { try { gmb_tui_add_datepicker(x, y, w); } catch { } }
     public void UiAddColorpicker(int x,int y,int w,int h) { try { gmb_tui_add_colorpicker(x, y, w, h); } catch { } }
     public void UiAddListbox(int x,int y,int w,int h,string csv) { try { gmb_tui_add_listbox(x, y, w, h, csv ?? ""); } catch { } }
+    /* Handle del LISTBOX appena creato: stessa sorgente di CONTROL GET "nome","handle"
+     * (il runtime C condiviso), così `LISTBOX … INTO v` lega su IL/PCode lo stesso handle
+     * di C99Native/VM-C invece del default -1 dell'interfaccia. */
+    public int UiAddListboxH(int x,int y,int w,int h,string csv) { try { UiAddListbox(x, y, w, h, csv); return gmb_form_last_handle(); } catch { return -1; } }
     public void UiAddCombobox(int x,int y,int w,string csv) { try { gmb_tui_add_combobox(x, y, w, csv ?? ""); } catch { } }
     public void UiAddRadiogroup(int x,int y,int w,int h,string csv) { try { gmb_tui_add_radiogroup(x, y, w, h, csv ?? ""); } catch { } }
     public void UiAddToggle(int x,int y,int w,string caption) { try { gmb_tui_add_toggle(x, y, w, caption ?? ""); } catch { } }
@@ -497,6 +507,7 @@ public sealed class CGfxGraphicsService : IGraphicsService
     public int  FormClosedC() { try { return gmb_form_closed(); } catch { return 1; } }
     public void FormRequestCloseC() => gmb_form_request_close();
     public void FormSetLastStyleC(string spec) => gmb_form_set_last_style(spec);
+    public void FormSetLastStyleForHandleC(int handle, string spec) => gmb_control_apply_style_handle(handle, spec);
     public double FormControlGetC(string name, string prop) { try { return gmb_form_control_get(name, prop); } catch { return 0; } }
     public void FormControlSetC(string name, string prop, double num, string str) => gmb_form_control_set(name, prop, num, str ?? "");
     public string FormControlGetStrC(string name, string prop) { try { return System.Runtime.InteropServices.Marshal.PtrToStringAnsi(gmb_form_control_get_str(name, prop)) ?? ""; } catch { return ""; } }

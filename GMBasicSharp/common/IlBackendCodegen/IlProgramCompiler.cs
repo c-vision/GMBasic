@@ -330,6 +330,7 @@ public sealed partial class IlProgramCompiler
     private static readonly MethodInfo IlRuntimeFormControlRefreshMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormControlRefresh))!;
     private static readonly MethodInfo IlRuntimeFormBindUserControlEventMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormBindUserControlEvent))!;
     private static readonly MethodInfo IlRuntimeFormLastHandleMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormLastHandle))!;
+    private static readonly MethodInfo IlRuntimeFormSetLastStyleForHandleMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormSetLastStyleForHandle))!;
     private static readonly MethodInfo IlRuntimeFormClickedMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormClicked))!;
     private static readonly MethodInfo IlRuntimeFormDblClickedMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormDblClicked))!;
     private static readonly MethodInfo IlRuntimeFormChangedMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.FormChanged))!;
@@ -340,6 +341,7 @@ public sealed partial class IlProgramCompiler
     private static readonly MethodInfo IlRuntimeMousePressedMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.MousePressed))!;
     private static readonly MethodInfo IlRuntimeKeyPressedMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.KeyPressed))!;
     private static readonly MethodInfo IlRuntimeUiFrameMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.UiFrame))!;
+    private static readonly MethodInfo IlRuntimeWindowResizeMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.WindowResize))!;
     private void EmitTuiIdIL(Target? id) { if (id == null) return; _il.Emit(OpCodes.Call, IlRuntimeUiLastHandleMethod); EmitAssignTargetFromTop(id, new DoubleType()); }
     private void EmitTuiPropsIL(ControlProps? p, Token tok) { if (p == null) return; EmitTuiCall(IlRuntimeControlApplyPropsMethod, [p.Name, p.Tag, p.Tooltip, p.TabIndex, p.Visible, p.Enabled, p.TabStop, p.Focus ? new NumberExpr(1.0, tok) : null, p.Style, p.Color, p.ColorFocus, p.ColorSelect, p.ColorError], null); }
     private static readonly MethodInfo IlRuntimeUiLastHandleMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.UiLastHandle))!;
@@ -2412,7 +2414,11 @@ case SpeedSetFilterStmt spSetFilter:
             case DatePickerStmt dp: EmitTuiCall(IlRuntimeTuiDatePickerMethod, [dp.Row, dp.Col], dp.Variable); EmitTuiIdIL(dp.Id); EmitTuiPropsIL(dp.Props, dp.Token); if (dp.Events != null) foreach (var _e in dp.Events) EmitControlEvent(_e); break;
             case FileDialogStmt fd: EmitTuiCall(IlRuntimeTuiFileDialogMethod, [fd.Mask, fd.Title], fd.Variable); EmitTuiIdIL(fd.Id); EmitTuiPropsIL(fd.Props, fd.Token); if (fd.Events != null) foreach (var _e in fd.Events) EmitControlEvent(_e); break;
             case GridStmt grid: EmitTuiCall(IlRuntimeTuiGridMethod, [grid.Row, grid.Col, grid.Width, grid.Height, grid.Headers, grid.Data], grid.Variable); EmitTuiIdIL(grid.Id); EmitTuiPropsIL(grid.Props, grid.Token); if (grid.Events != null) foreach (var _e in grid.Events) EmitControlEvent(_e); break;
-            case ListBoxStmt lb: EmitTuiCall(IlRuntimeTuiListBoxMethod, [lb.Row, lb.Col, lb.Width, lb.Height, lb.Items], lb.Variable); EmitTuiIdIL(lb.Id); EmitTuiPropsIL(lb.Props, lb.Token); if (lb.Events != null) foreach (var _e in lb.Events) EmitControlEvent(_e); break;
+            /* LISTBOX: INTO è il valore selezionato (doppio legato al controllo sul C99Native),
+             * non l'handle — l'handle si ottiene con ID o CONTROL GET. La creazione non tocca
+             * la variabile (il C99Native la lascia intatta finché l'utente non seleziona):
+             * `into: null` scarta il valore di ritorno (l'handle) e tiene la parità 4 gambe. */
+            case ListBoxStmt lb: EmitTuiCall(IlRuntimeTuiListBoxMethod, [lb.Row, lb.Col, lb.Width, lb.Height, lb.Items], null); EmitTuiIdIL(lb.Id); EmitTuiPropsIL(lb.Props, lb.Token); if (lb.Events != null) foreach (var _e in lb.Events) EmitControlEvent(_e); break;
             case MenuStmt menu: EmitTuiCall(IlRuntimeTuiMenuMethod, [menu.Row, menu.Col, menu.Items], menu.Variable); EmitTuiIdIL(menu.Id); EmitTuiPropsIL(menu.Props, menu.Token); if (menu.Events != null) foreach (var _e in menu.Events) EmitControlEvent(_e); break;
             case ToggleStmt tg: EmitTuiCall(IlRuntimeTuiToggleMethod, [tg.Row, tg.Col, tg.Caption], tg.Variable); EmitTuiIdIL(tg.Id); EmitTuiPropsIL(tg.Props, tg.Token); if (tg.Events != null) foreach (var _e in tg.Events) EmitControlEvent(_e); break;
             case SpinnerStmt sp: EmitSpinnerStatement(sp); EmitTuiIdIL(sp.Id); EmitTuiPropsIL(sp.Props, sp.Token); if (sp.Events != null) foreach (var _e in sp.Events) EmitControlEvent(_e); break;
@@ -2443,6 +2449,7 @@ case SpeedSetFilterStmt spSetFilter:
             case TreeViewStmt tv: EmitTuiCall(IlRuntimeTuiTreeViewMethod, [tv.Row, tv.Col, tv.Width, tv.Height, tv.Tree], tv.Variable); EmitTuiIdIL(tv.Id); EmitTuiPropsIL(tv.Props, tv.Token); if (tv.Events != null) foreach (var _e in tv.Events) EmitControlEvent(_e); break;
             case WindowActionStmt wa: EmitWindowActionStatement(wa); break;
             case WindowPumpStmt wpu: EmitLdI4(wpu.Ms); _il.Emit(OpCodes.Call, IlRuntimeUiFrameMethod); break;
+            case WindowResizeStmt wrs: EmitLdDbl(wrs.Width); EmitLdDbl(wrs.Height); _il.Emit(OpCodes.Call, IlRuntimeWindowResizeMethod); break;
             case WindowRequestCloseStmt: _il.Emit(OpCodes.Call, IlRuntimeFormCloseMethod); _il.Emit(OpCodes.Ldc_R8, 0.0); _il.Emit(OpCodes.Pop); break;
             case WindowVisibilityStmt wv: EmitWindowVisibilityStatement(wv); break;
             case WindowSetTitleStmt wst: EmitWindowSetTitleStatement(wst); break;
