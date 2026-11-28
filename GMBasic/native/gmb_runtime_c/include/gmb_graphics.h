@@ -374,6 +374,15 @@ void gmb_gfx_fill_rounded_gradient(int x, int y, int w, int h, int radius, unsig
 void gmb_gfx_drop_shadow(int x, int y, int w, int h, int offset, unsigned int shadow_rgba, int radius);
 void gmb_gfx_fill_circle(int cx, int cy, int d, unsigned int rgba);
 int  gmb_gfx_sprite_def(int id, int w, int h, const int* pixels);
+/* ---- DESIGN: immagine definita da righe ASCII (riferimento: DESIGN/@) ----
+ * `rows` = righe separate da '\n' (un '\r' finale è ignorato, una '\n' finale non aggiunge
+ * una riga), tutte della stessa larghezza, 1..256 colonne/righe e <= 4096 pixel. Ogni
+ * carattere è un indice di palette in base 36 ('0'..'9' → 0..9, 'A'..'Z'/'a'..'z' → 10..35);
+ * '.' e ' ' sono trasparenti. Lo sprite è una texture normale (`gmb_gfx_sprite_def`), quindi
+ * disegno, collisione e gruppi valgono invariati. 0 = fatto; -1 = errore, motivo in
+ * `gmb_gfx_design_error()` (mai uno sprite a metà). */
+int  gmb_gfx_design(int id, const char* rows);
+const char* gmb_gfx_design_error(void);
 /* Matrice affine 2x3 (a,b,c,d,e,f) dello sprite. draw_texture conosce solo rotazione e
  * scala, quindi la matrice si DECOMPONE (gmb_gfx_sprite_rot_scale, la stessa usata da
  * disegno, collisione per pixel e gruppi): rot = atan2(b,a), scala = |(a,b)| / |(c,d)|;

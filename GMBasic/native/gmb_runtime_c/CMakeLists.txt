@@ -262,6 +262,8 @@ set(GMB_ALL_SRCS
     src/gmb_strbuf.c
     src/gmb_datetime.c
     src/gmb_format.c
+    src/gmb_print_using.c
+    src/gmb_peek.c
     # SemVer 2.0 + range matching — riferimento C del Package Manager (§"backend di riferimento è C")
     src/gmb_semver.c
     src/gmb_math.c
@@ -379,6 +381,7 @@ set(GMB_ALL_SRCS
     src/stb_truetype_impl.c
     src/gmb_gfx_cellfont.c
     src/gmb_graphics_textscreen.c
+    src/gmb_graphics_design.c
     src/gmb_graphics_texture.c
     src/gmb_graphics_sprite.c
     src/gmb_graphics_sprite_group.c
@@ -1182,6 +1185,7 @@ add_library(gmb_gfx SHARED
     src/gmb_graphics_text.c
     src/gmb_gfx_cellfont.c
     src/gmb_graphics_textscreen.c
+    src/gmb_graphics_design.c
     src/gmb_graphics_image.c
     src/gmb_graphics_sprite.c
     src/gmb_graphics_sprite_group.c
@@ -1705,6 +1709,21 @@ add_executable(gmb_gfx_textscreen_selfcheck tests/gmb_gfx_textscreen_selfcheck.c
 target_link_libraries(gmb_gfx_textscreen_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_gfx_textscreen_selfcheck PRIVATE include)
 add_test(NAME gmb_gfx_textscreen_selfcheck COMMAND gmb_gfx_textscreen_selfcheck)
+# P7 blocco 5: formattatore PRINT USING, DESIGN da righe ASCII, PEEK/POKE di memoria.
+add_executable(gmb_print_using_selfcheck tests/gmb_print_using_selfcheck.c)
+target_link_libraries(gmb_print_using_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_print_using_selfcheck PRIVATE include)
+add_test(NAME gmb_print_using_selfcheck COMMAND gmb_print_using_selfcheck)
+
+add_executable(gmb_gfx_design_selfcheck tests/gmb_gfx_design_selfcheck.c)
+target_link_libraries(gmb_gfx_design_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_gfx_design_selfcheck PRIVATE include)
+add_test(NAME gmb_gfx_design_selfcheck COMMAND gmb_gfx_design_selfcheck)
+
+add_executable(gmb_peek_selfcheck tests/gmb_peek_selfcheck.c)
+target_link_libraries(gmb_peek_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_peek_selfcheck PRIVATE include)
+add_test(NAME gmb_peek_selfcheck COMMAND gmb_peek_selfcheck)
 
 add_executable(gmb_sb_selfcheck tests/gmb_sb_selfcheck.c)
 target_link_libraries(gmb_sb_selfcheck PRIVATE gmb_runtime)
