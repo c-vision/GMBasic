@@ -646,6 +646,9 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
     /* CONTROL <SUB> ... : metodi a runtime per nome (CONTROL SET/GET/GETS/MOVE/FOCUS/ZORDER). */
     if (gmb_p_tok_is_soft_keyword(t, "CONTROL"))
         return gmb_p_parse_control_method(p, line);
+    /* PALETTE <SUB> … : overlay comandi (Ctrl+K) — stessa forma di CONTROL <SUB>. */
+    if (gmb_p_tok_is_soft_keyword(t, "PALETTE"))
+        return gmb_p_parse_palette(p, line);
     /* FIRE EVENT <handle>, "<EVENTO>" — comando a due token (iniezione evento controllo). */
     if (gmb_p_tok_is_soft_keyword(t, "FIRE"))
         return gmb_p_parse_fire(p, line);

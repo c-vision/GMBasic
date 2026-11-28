@@ -220,6 +220,13 @@ gmb_val_t gmb_md_parse(const char* text)
                     if (*q == '|') { cbuf[ci] = 0; ci = 0; gmb_strbuf_t sb = gmb_strbuf_new(); inline_to_text(md_trim(cbuf), &sb); gmb_list_add(&row, md_strv(sb.data)); gmb_strbuf_free(&sb); }
                     else if (ci < 511) cbuf[ci++] = *q;
                 }
+                /* Ultima cella: la riga può NON finire con '|' (Markdown lo consente). */
+                if (ci > 0)
+                {
+                    cbuf[ci] = 0;
+                    gmb_strbuf_t sb = gmb_strbuf_new(); inline_to_text(md_trim(cbuf), &sb);
+                    gmb_list_add(&row, md_strv(sb.data)); gmb_strbuf_free(&sb);
+                }
                 gmb_list_add(&rows, gmb_make_val_list_take(&row));
                 free(rl2);
                 p = rnl ? rnl + 1 : p + rl;
@@ -688,4 +695,95 @@ char* gmb_md_format(gmb_val_t doc)
     gmb_string_t rs = gmb_strbuf_to_string(&sb);
     gmb_strbuf_free(&sb);
     return rs.data ? rs.data : strdup("");
+}
+
+/* ── iterazione dei blocchi (per i VIEW: markdown impaginato riga per riga) ──
+ * L'AST resta l'unica fonte: queste funzioni espongono solo lettura, così un
+ * renderer (gmb_textview) non duplica il parsing. Fuori range → ""/0. */
+static gmb_val_t md_block_at(gmb_val_t doc, int index)
+{
+    gmb_list_t* bl = md_blocks(doc);
+    if (!bl || index < 0 || (size_t)index >= bl->count) return gmb_val_nil();
+    return bl->items[index];
+}
+
+int gmb_md_block_count(gmb_val_t doc)
+{
+    gmb_list_t* bl = md_blocks(doc);
+    return bl ? (int)bl->count : 0;
+}
+
+const char* gmb_md_block_type(gmb_val_t doc, int index)
+{
+    gmb_val_t b = md_block_at(doc, index);
+    return b.kind == GMB_TYPE_NIL ? "" : blk_type(b);
+}
+
+const char* gmb_md_block_text(gmb_val_t doc, int index)
+{
+    gmb_val_t b = md_block_at(doc, index);
+    return b.kind == GMB_TYPE_NIL ? "" : md_str(blk_field(b, "text"));
+}
+
+int gmb_md_block_level(gmb_val_t doc, int index)
+{
+    gmb_val_t b = md_block_at(doc, index);
+    return b.kind == GMB_TYPE_NIL ? 0 : (int)md_num(blk_field(b, "level"));
+}
+
+int gmb_md_block_ordered(gmb_val_t doc, int index)
+{
+    gmb_val_t b = md_block_at(doc, index);
+    return b.kind == GMB_TYPE_NIL ? 0 : (int)md_num(blk_field(b, "ordered"));
+}
+
+int gmb_md_block_item_count(gmb_val_t doc, int index)
+{
+    gmb_val_t b = md_block_at(doc, index);
+    if (b.kind == GMB_TYPE_NIL) return 0;
+    gmb_list_t* items = md_list_of(blk_field(b, "items"));
+    return items ? (int)items->count : 0;
+}
+
+const char* gmb_md_block_item(gmb_val_t doc, int index, int item)
+{
+    gmb_val_t b = md_block_at(doc, index);
+    if (b.kind == GMB_TYPE_NIL) return "";
+    gmb_list_t* items = md_list_of(blk_field(b, "items"));
+    if (!items || item < 0 || (size_t)item >= items->count) return "";
+    return md_str(items->items[item]);
+}
+
+int gmb_md_block_cols(gmb_val_t doc, int index)
+{
+    gmb_val_t b = md_block_at(doc, index);
+    if (b.kind == GMB_TYPE_NIL) return 0;
+    gmb_list_t* hdr = md_list_of(blk_field(b, "header"));
+    return hdr ? (int)hdr->count : 0;
+}
+
+int gmb_md_block_row_count(gmb_val_t doc, int index)
+{
+    gmb_val_t b = md_block_at(doc, index);
+    if (b.kind == GMB_TYPE_NIL) return 0;
+    gmb_list_t* rows = md_list_of(blk_field(b, "rows"));
+    return rows ? (int)rows->count : 0;
+}
+
+/* row < 0 = riga di intestazione; altrimenti riga `row` del corpo. */
+const char* gmb_md_block_cell(gmb_val_t doc, int index, int row, int col)
+{
+    gmb_val_t b = md_block_at(doc, index);
+    if (b.kind == GMB_TYPE_NIL || col < 0) return "";
+    if (row < 0)
+    {
+        gmb_list_t* hdr = md_list_of(blk_field(b, "header"));
+        if (!hdr || (size_t)col >= hdr->count) return "";
+        return md_str(hdr->items[col]);
+    }
+    gmb_list_t* rows = md_list_of(blk_field(b, "rows"));
+    if (!rows || (size_t)row >= rows->count) return "";
+    gmb_list_t* cells = md_list_of(rows->items[row]);
+    if (!cells || (size_t)col >= cells->count) return "";
+    return md_str(cells->items[col]);
 }

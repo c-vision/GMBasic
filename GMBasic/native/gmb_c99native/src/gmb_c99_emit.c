@@ -27639,6 +27639,21 @@ static void emit_mcp_executor(ctx_t* c) {
     sb_put(&c->out, "    return 0;\n}\n\n");
 }
 
+/* PALETTE COMANDI (overlay Ctrl+K). Per ogni procedura dichiarata come runner
+ * (`PALETTE RUN CALL <sub>`) emette il bridge `id$ → gmb_user_<sub>(id$)`: il runner
+ * riceve l'ID dell'azione scelta. L'overlay, il filtro e l'esecuzione via GPM stanno
+ * nel runtime (`gmb_ui_palette.c`); qui si emette solo il collegamento. */
+static void emit_palette_runners(ctx_t* c)
+{
+    if (!c->pal_runner_n) return;
+    for (int i = 0; i < c->pal_runner_n; i++)
+        sb_printf(&c->out,
+            "static void gmb_palette_runner_%s(const char* __id, void* __ctx) {\n"
+            "    (void)__ctx; (void)gmb_user_%s(gmb_string_alloc(__id));\n}\n",
+            c->pal_runner[i], c->pal_runner[i]);
+    sb_put(&c->out, "\n");
+}
+
 /* AI.PLUGINCALL su C99Native: il plugin NON porta codice — `PLUGIN.md` dichiara la PROCEDURA
  * (`procedures[0]`) che deve esistere NEL PROGRAMMA (parità C# `PluginRegistry.Call` →
  * `CallHandler` → `_basicProcedures`). Senza VM BASIC nel binario il dispatch è una catena di
@@ -38371,6 +38386,9 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
      * serve MCP, e DOPO i corpi funzione (le gmb_user_* devono essere dichiarate). */
     if (!c->error[0] && c->uses_mcp) emit_mcp_executor(c);
     if (!c->error[0] && c->uses_plugincall) emit_plugin_call_dispatcher(c);
+    /* PALETTE COMANDI: se il programma ha `PALETTE …`, il frame live TUI/pixel deve
+     * disegnare l'overlay e pompare l'azione scelta (come l'inspector). */
+    if (!c->error[0] && c->uses_tui) emit_palette_runners(c);
 
     if (!c->error[0] && c->lib_mode) emit_library_section(c, prog);
     if (!c->error[0] && !c->lib_mode) {
@@ -38397,6 +38415,22 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
         /* Startup console (Executor.Startup.cs:280-346): sceglie IConsole all'avvio
          * (GMB_CONSOLE 0=%SDL 1=C64 2=ANSI 3=SYSTEM; GMBASIC_HEADLESS=>Headless). */
         if (c->uses_ui || c->uses_tui) sb_put(&c->out, "    gmb_iconsole_boot();\n");
+        /* REGISTRO dei controlli: le gambe managed lo scelgono dal MODO SCHERMO
+         * (SCREEN acceso → PIXEL/ombra, TEXT → registry TUI). Un eseguibile C senza
+         * UI avrebbe `GMB_GFX_SCREEN_ON()` sempre 0: si forza lo stesso criterio
+         * così `CONTROL SET/GET` seguono il percorso della gamba di riferimento. */
+        if (c->uses_tui || c->uses_ui) {
+            sb_put(&c->out, "    { extern int gmb_gfx_screen_on(void); extern void gmb_form_set_registry_forced(int);\n"
+                            "      gmb_form_set_registry_forced(gmb_gfx_screen_on() ? 1 : 0); }\n");
+        }
+        /* PALETTE COMANDI: se il programma la usa, il frame live la disegna e ne pompa
+         * le azioni. In un eseguibile senza finestra (SDL assente/headless) NON si
+         * accende: nessun overlay disegnato a vuoto, e i test restano deterministici. */
+        if (c->pal_runner_n) {
+            sb_put(&c->out, "    { extern int gmb_gfx_video_is_real(void);\n"
+                            "      extern void gmb_ui_palette_wire(int);\n"
+                            "      if (gmb_gfx_video_is_real()) gmb_ui_palette_wire(1); }\n");
+        }
         /* Canary tasti TUI (parità col backend C#): GMB_TUI_SCRIPT inietta una sequenza
          * (es. ESC×256 dal gate/CI) che chiude i modali widget headless. */
         if (c->uses_tui)
@@ -38562,6 +38596,14 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
     (void)c->uses_doc; (void)c->uses_agent_loop; (void)c->uses_md; (void)c->uses_bits;
     (void)c->uses_tray; (void)c->uses_events;
     if (c->uses_tui) sb_put(&fin, "#include \"gmb_tui_widgets.h\"\n#include \"gmb_tui_windowstmt.h\"\n#include \"gmb_tui_mousestmt.h\"\n#include \"gmb_tui_tbrowse.h\"\n#include \"gmb_tui_io.h\"\n#include \"gmb_tui_app.h\"\n");
+    /* PALETTE COMANDI: le funzioni del runtime (`gmb_palette_*`) devono essere VISIBILI
+     * prima del corpo di Main, che le chiama negli statement `PALETTE …` emessi lì
+     * (senza l'header: "call to undeclared function gmb_palette_clear"). */
+    if (c->pal_runner_n) sb_put(&fin, "#include \"gmb_ui_palette.h\"\n");
+    /* Prototipi dei bridge runner: `PALETTE RUN CALL <sub>` sta nel corpo di Main, il
+     * corpo del bridge è emesso DOPO le funzioni → serve la dichiarazione in anticipo. */
+    for (int _pr = 0; _pr < c->pal_runner_n; _pr++)
+        sb_printf(&fin, "static void gmb_palette_runner_%s(const char*, void*);\n", c->pal_runner[_pr]);
     /* UserControl: prototipi delle thunk Paint (corpi emessi in coda, dopo i metodi). */
     if (c->uses_tui) {
         for (int _pi = 0; _pi < c->nfn; _pi++) {

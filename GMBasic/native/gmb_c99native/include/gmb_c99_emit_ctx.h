@@ -217,6 +217,10 @@ typedef struct {
     int ffi_var_n;
     int ffi_var_fn[128];
     char ffi_var_key[128][65];
+    /* PALETTE COMANDI: procedure dichiarate come runner (`PALETTE RUN CALL <sub>`).
+     * Il prologo emette per ognuna `gmb_palette_runner_<sub>` (id$ → gmb_user_<sub>). */
+    int pal_runner_n;
+    char pal_runner[16][48];
     /* TESTO SORGENTE (ERR.SourceLineText): il sorgente CONCATENATO passato al parser, di
      * proprietà del driver (vive per tutta l'emissione). Indice 0 = riga 1, la stessa
      * numerazione dei `#line` e di `gmb_trace_line`. NULL = non incorporare il blob. */

@@ -261,6 +261,9 @@ gmb_stmt_t* gmb_p_parse_lineinput(gmb_parser_t* p, int line);
 gmb_stmt_t* gmb_p_parse_control(gmb_parser_t* p, int line);
 gmb_stmt_t* gmb_p_parse_control_method(gmb_parser_t* p, int line);
 gmb_stmt_t* gmb_p_parse_fire(gmb_parser_t* p, int line);
+/* PALETTE <SUB> … : overlay comandi (Ctrl+K). Stessa forma di CONTROL <SUB> (argomenti
+ * in control_args, [0]="PALETTE"); l'emitter C99 la riconosce per nome. */
+gmb_stmt_t* gmb_p_parse_palette(gmb_parser_t* p, int line);
 /* BUTTON x, y, w, "label" ON CLICK <sub> — bottone non-modale con callback GPM. */
 gmb_stmt_t* gmb_p_parse_button(gmb_parser_t* p, int line);
 gmb_stmt_t* gmb_p_parse_panel(gmb_parser_t* p, int line);

@@ -12,7 +12,15 @@
 #include <time.h>
 static long long form_now_ms(void){ struct timespec ts; clock_gettime(CLOCK_MONOTONIC,&ts); return (long long)ts.tv_sec*1000 + ts.tv_nsec/1000000; }
 #include "gmb_tui_widgets.h"   /* gmb_widget_style_t + tema corrente */
+#include "gmb_textview.h"      /* LISTBOX STYLE "mode=markdown|diff" / "virtual=1" */
+/* Definite in gmb_tui_listbox.c (UI): servono anche al percorso PIXEL/ombra. */
+void gmb_listbox_set_text(gmb_listbox_t*, const char*, int);
+void gmb_listbox_sync(gmb_listbox_t*, int);
 #include "gmb_theme_roles.h"    /* ruoli semantici del tema (STYLE "role=…") */
+#include "gmb_anim.h"          /* motore di animazione tick-driven (CONTROL SET "anim") */
+#include "gmb_ui_inspector.h"  /* overlay ui.inspector (albero dei controlli, costo frame) */
+#include "gmb_ui_palette.h"    /* overlay comandi (Ctrl+K), esecuzione via GPM */
+#include "gmb_a11y.h"          /* ui.reduce_motion: le animazioni diventano snap */
 #include "gmb_tui_tbrowse.h"   /* gmb_browse_t (props CONTROL SET/GET TBROWSE) */
 #ifdef GMB_GFX_SDL_PRESENT
 #include "gmb_gfx_present.h"
@@ -41,6 +49,20 @@ static void gmb_ui_missing_warn(void)
 {
     static int warned;
     if (!warned) { warned = 1; fprintf(stderr, "[form] UI non inclusa in questa build: controlli TUI/ombra non disponibili.\n"); }
+}
+
+/* FORZATURA DEL REGISTRO (solo per la gamba C99Native, emessa dal driver prima del
+ * programma). Le gambe managed, girando dentro il processo host con la UI, decidono
+ * il registro dal MODO SCHERMO (SCREEN/gmb_ui_gfx.screen_on); un eseguibile C può
+ * non includere la UI (gmb_ui_null) e in quel caso `GMB_GFX_SCREEN_ON()` è sempre 0.
+ * Per riprodurre il percorso PIXEL/ombra anche senza UI la decisione si FORZA qui.
+ * `gmb_form_set_registry_forced(-1)` = nessuna forzatura (default, codice storico). */
+static int g_registry_forced = -1;   /* -1 = non forzato, 0 = TUI, 1 = FORM/PIXEL */
+void gmb_form_set_registry_forced(int which) { g_registry_forced = which; }
+static int form_wants_form(void)
+{
+    if (g_registry_forced >= 0) return g_registry_forced;
+    return GMB_GFX_SCREEN_ON();
 }
 
 
@@ -241,13 +263,176 @@ static void apply_base_props(gmb_widget_t* wd, const char* spec, int idx);
  * Il rect e la finestra di riferimento sono in PIXEL (unità del form grafico). */
 static int layout_form_win_w(void) { int w = GMB_GFX_SCREEN_W(); return w > 0 ? w : gmb_gfx_screen_width(); }
 static int layout_form_win_h(void) { int h = GMB_GFX_SCREEN_H(); return h > 0 ? h : gmb_gfx_screen_height(); }
+
+/* FLOW (WrapBox/Grid) nel percorso PIXEL: stesso solver del runtime condiviso
+ * (`gmb_layout_flow_apply`), così TUI e grafica dispongono i figli allo stesso
+ * modo. Il contenitore è un controllo con `flow=`; i figli hanno `group=<nome>`. */
+static int form_flow_reflow(void)
+{
+    int moved = 0;
+    for (int pass = 0; pass < 2; pass++) {
+        int cnt = (pass == 0) ? g_nbtn : g_nwid;
+        for (int a = 0; a < cnt; a++) {
+            gmb_control_t* anc = (pass == 0) ? &g_btns[a].base : &g_wid[a].base;
+            const char* aname = (pass == 0) ? g_btns[a].name : g_wid[a].name;
+            if (!anc->layout_flow || !aname || !*aname) continue;
+            struct gmb_control* kids[GMB_FORM_MAX_WIDGETS];
+            int kn = 0;
+            for (int i = 0; i < g_nbtn && kn < GMB_FORM_MAX_WIDGETS; i++)
+                if (&g_btns[i].base != anc && g_btns[i].base.layout_group[0]
+                    && strcmp(g_btns[i].base.layout_group, aname) == 0)
+                    kids[kn++] = (struct gmb_control*)&g_btns[i].base;
+            for (int i = 0; i < g_nwid && kn < GMB_FORM_MAX_WIDGETS; i++)
+                if (&g_wid[i].base != anc && g_wid[i].base.layout_group[0]
+                    && strcmp(g_wid[i].base.layout_group, aname) == 0)
+                    kids[kn++] = (struct gmb_control*)&g_wid[i].base;
+            moved += gmb_layout_flow_apply(kids, kn, anc->x, anc->y, anc->width, anc->height,
+                                           anc->layout_flow, anc->layout_cols,
+                                           anc->layout_gap, anc->layout_pad);
+        }
+    }
+    return moved;
+}
+
 static void layout_apply_btn(gmb_form_btn_t* b, const gmb_layout_spec_t* ls)
 {
     gmb_layout_configure((struct gmb_control*)&b->base, 0, ls, layout_form_win_w(), layout_form_win_h());
+    if (ls->flow >= 0 || ls->has_group) form_flow_reflow();
 }
 static void layout_apply_wid(gmb_widget_t* wd, const gmb_layout_spec_t* ls)
 {
     gmb_layout_configure((struct gmb_control*)&wd->base, 0, ls, layout_form_win_w(), layout_form_win_h());
+    if (ls->flow >= 0 || ls->has_group) form_flow_reflow();
+}
+
+/* ---- ANIMAZIONE (classe C: solo stato + frame, nessun thread) -----------------
+ * `CONTROL SET nome, "anim", 0, "left:300:400:out"`: anima una proprietà del rect
+ * dal valore corrente al target in `ms`, con easing. Con `ui.reduce_motion` attivo
+ * (o durata 0) il valore va SUBITO al target: stessa semantica, nessun movimento.
+ * L'avanzamento è del frame (`gmb_anim_tick`), quindi non serve un secondo
+ * esecutore e il worker GPM non viene mai bloccato. */
+static int anim_round(double v) { return (int)(v >= 0.0 ? v + 0.5 : v - 0.5); }
+
+static void ctrl_anim_start(gmb_control_t* c, int handle, int is_tui, const char* spec)
+{
+    if (!c || !spec) return;
+    int prop, ms, easing; double to;
+    if (!gmb_anim_parse_spec(spec, &prop, &to, &ms, &easing)) return;
+    double from = (prop == GMB_ANIM_LEFT)   ? (double)c->x
+                : (prop == GMB_ANIM_TOP)    ? (double)c->y
+                : (prop == GMB_ANIM_WIDTH)  ? (double)c->width
+                                            : (double)c->height;
+    if (ms <= 0 || !gmb_a11y_motion() || from == to) {
+        int v = anim_round(to);
+        if (prop == GMB_ANIM_LEFT) c->x = v;
+        else if (prop == GMB_ANIM_TOP) c->y = v;
+        else if (prop == GMB_ANIM_WIDTH) c->width = v;
+        else c->height = v;
+        return;
+    }
+    gmb_anim_start(handle, is_tui, prop, from, to, ms, easing);
+}
+
+/* Applica al percorso PIXEL i valori correnti delle animazioni. Chiamata a ogni
+ * frame da gmb_form_layout_reflow (dopo il reflow, così l'animazione vince). */
+static void form_anim_apply(void)
+{
+    int n = gmb_anim_count();
+    if (n <= 0) return;
+    for (int i = 0; i < GMB_ANIM_MAX; i++) {
+        int h, tui, prop, done; double v;
+        if (!gmb_anim_get(i, &h, &tui, &prop, &done, &v) || tui) continue;
+        gmb_control_t* c = NULL;
+        for (int k = 0; k < g_nbtn && !c; k++) if (g_btns[k].base.handle == h) c = &g_btns[k].base;
+        for (int k = 0; k < g_nwid && !c; k++) if (g_wid[k].base.handle == h) c = &g_wid[k].base;
+        if (!c) { gmb_anim_forget(h, 0); continue; }
+        int nv = anim_round(v);
+        if (prop == GMB_ANIM_LEFT) c->x = nv;
+        else if (prop == GMB_ANIM_TOP) c->y = nv;
+        else if (prop == GMB_ANIM_WIDTH) c->width = nv;
+        else c->height = nv;
+        g_dirty = 1;
+    }
+}
+
+/* ---- INSPECTOR (percorso PIXEL) ---------------------------------------------
+ * Raccolta delle voci del FORM e pannello disegnato sopra tutto. Come nel
+ * percorso TUI non è un controllo: nessun registro, nessun evento, nessun BASIC. */
+static const char* form_widget_kind_name(int kind)
+{
+    switch (kind) {
+        case W_CHECK:      return "CHECK";
+        case W_RADIO:      return "RADIO";
+        case W_TRACK:      return "TRACK";
+        case W_DROPDOWN:   return "DROPDOWN";
+        case W_PROGRESS:   return "PROGRESS";
+        case W_TOGGLE:     return "TOGGLE";
+        case W_SPINNER:    return "SPINNER";
+        case W_STATUSBAR:  return "STATUSBAR";
+        case W_TABS:       return "TABS";
+        case W_LISTBOX:    return "LISTBOX";
+        case W_COLORPICKER:return "COLORPCK";
+        case W_DATE:       return "DATE";
+        case W_GRID:       return "GRID";
+        case W_FILE:       return "FILE";
+        case W_TREE:       return "TREE";
+        case W_MENUBAR:    return "MENUBAR";
+        case W_TEXT:       return "TEXT";
+        case W_CANVAS:     return "CANVAS";
+        case W_IMAGE:      return "IMAGE";
+        case W_IMAGEBUTTON:return "IMAGEBTN";
+        case W_QR:         return "QR";
+        case W_RICHTEXT:   return "RICHTEXT";
+        case W_HALFBLOCK:  return "HALFBLOCK";
+        case W_TILING:     return "TILING";
+        case W_PANEL:      return "PANEL";
+        case W_STAR:       return "STAR";
+        case W_NUMERIC:    return "NUMERIC";
+        case W_SCROLLBAR:  return "SCROLLBAR";
+        default:           return "WIDGET";
+    }
+}
+
+static int form_item_flags(gmb_control_t* c, int focused)
+{
+    int flags = 0;
+    if (c->visible)  flags |= GMB_INSPECT_VISIBLE;
+    if (c->enabled)  flags |= GMB_INSPECT_ENABLED;
+    if (focused)     flags |= GMB_INSPECT_FOCUSED;
+    if (c->layout_on) flags |= GMB_INSPECT_LAYOUT;
+    if (c->layout_flow) flags |= GMB_INSPECT_FLOW;
+    if (c->layout_group[0]) flags |= GMB_INSPECT_GROUP;
+    if (gmb_anim_active_for(c->handle, 0)) flags |= GMB_INSPECT_ANIMATED;
+    return flags;
+}
+
+static void form_inspector(void)
+{
+    if (!gmb_inspector_enabled()) return;
+    gmb_inspector_reset();
+    for (int i = 0; i < g_nbtn; i++) {
+        gmb_control_t* c = &g_btns[i].base;
+        const char* nm = g_btns[i].name[0] ? g_btns[i].name : g_btns[i].label;
+        gmb_inspector_add(nm, "BUTTON", c->x, c->y, c->width, c->height,
+                          form_item_flags(c, g_focus_btn == i), c->layout_cols);
+    }
+    for (int i = 0; i < g_nwid; i++) {
+        gmb_control_t* c = &g_wid[i].base;
+        const char* nm = g_wid[i].name[0] ? g_wid[i].name : g_wid[i].label;
+        gmb_inspector_add(nm, form_widget_kind_name(g_wid[i].kind),
+                          c->x, c->y, c->width, c->height,
+                          form_item_flags(c, g_focus_wid == i), c->layout_cols);
+    }
+    gmb_inspector_draw_pixels();
+}
+
+/* COMANDI (`Ctrl+K`): overlay sopra il frame. Il pump gira QUI, nel frame, mai nel
+ * percorso del tasto: l'azione scelta viene eseguita come TASK del GPM. */
+static void form_palette(void)
+{
+    if (!gmb_ui_palette_wired()) return;
+    gmb_palette_pump();
+    if (gmb_palette_is_open()) gmb_palette_draw_pixels();
 }
 /* Ricalcola il layout dei controlli FORM sulla dimensione CORRENTE della pagina.
  * Idempotente: la si può chiamare a ogni frame. Ritorna quanti controlli mossi. */
@@ -259,6 +444,11 @@ int gmb_form_layout_reflow(void)
         if (g_btns[i].base.layout_on && gmb_layout_reflow((struct gmb_control*)&g_btns[i].base, 0, w, h)) n++;
     for (int i = 0; i < g_nwid; i++)
         if (g_wid[i].base.layout_on && gmb_layout_reflow((struct gmb_control*)&g_wid[i].base, 0, w, h)) n++;
+    n += form_flow_reflow();
+    /* ANIMAZIONE: il valore animato vince sul reflow (l'animazione è una scelta
+     * esplicita del programma). Avanza col tempo di parete del frame. */
+    gmb_anim_tick();
+    form_anim_apply();
     if (n) g_dirty = 1;
     return n;
 }
@@ -390,7 +580,7 @@ int gmb_form_add_button(int x, int y, int w, int h, const char* label, gmb_form_
 {
     /* Dispatch polimorfico: in TEXT il bottone vive nel registry TUI (frame-driven).
      * Vale anche per i chiamanti C# (P/Invoke su questa funzione). */
-    if (!GMB_GFX_SCREEN_ON())
+    if (!form_wants_form())
     {
         extern gmb_control_t* gmb_tui_add_button(int, int, int, const char*);
         extern void gmb_tui_set_event_id(int, int, gmb_tui_cb);
@@ -418,7 +608,7 @@ int gmb_form_add_button(int x, int y, int w, int h, const char* label, gmb_form_
  * GRAPHICS -> registry form. Stesso verbo, stesso handle unificato. */
 int gmb_control_add_button(int x, int y, int w, int h, const char* label, gmb_form_cb cb)
 {
-    if (!GMB_GFX_SCREEN_ON())
+    if (!form_wants_form())
     {
         extern gmb_control_t* gmb_tui_add_button(int, int, int, const char*);
         extern void gmb_tui_set_event_id(int, int, gmb_tui_cb);
@@ -434,7 +624,7 @@ int gmb_control_add_button(int x, int y, int w, int h, const char* label, gmb_fo
 /* Factory polimorfica CHECKBOX: TEXT -> registry TUI (+ bind INTO), GRAPHICS -> form. */
 int gmb_control_add_checkbox(int x, int y, int w, const char* label, double* var)
 {
-    if (!GMB_GFX_SCREEN_ON())
+    if (!form_wants_form())
     {
         extern gmb_control_t* gmb_tui_add_checkbox(int, int, int, const char*);
         extern void gmb_tui_bind_value(int, double*);
@@ -450,7 +640,7 @@ int gmb_control_add_checkbox(int x, int y, int w, const char* label, double* var
 /* Factory polimorfica TOGGLE: TEXT -> registry TUI (+ bind INTO), GRAPHICS -> form. */
 int gmb_control_add_toggle(int x, int y, int w, const char* label, double* var)
 {
-    if (!GMB_GFX_SCREEN_ON())
+    if (!form_wants_form())
     {
         extern gmb_control_t* gmb_tui_add_toggle(int, int, int, const char*);
         extern void gmb_tui_bind_value(int, double*);
@@ -475,7 +665,7 @@ extern void gmb_tui_bind_value(int, double*);
 
 int gmb_control_add_radio(int x, int y, int w, const char* items, double* var)
 {
-    if (!GMB_GFX_SCREEN_ON())
+    if (!form_wants_form())
     {
         gmb_control_t* c = gmb_tui_add_radiogroup(x, y, w, 1, items);
         if (!c) return -1;
@@ -488,12 +678,13 @@ int gmb_control_add_radio(int x, int y, int w, const char* items, double* var)
 
 int gmb_control_add_listbox(int x, int y, int w, int h, const char* items, double* var)
 {
-    if (!GMB_GFX_SCREEN_ON())
+    if (!form_wants_form())
     {
         gmb_control_t* c = gmb_tui_add_listbox(x, y, w, h, items);
         if (!c) return -1;
         if (var) gmb_tui_bind_value(c->handle, var);
         gmb_form_note_handle(c->handle);
+        g_last_is_tui = 0;   /* handle TUI (0..63) ≠ spazi dei widget: evita la collisione */
         return c->handle;
     }
     return gmb_form_add_listbox(x, y, w, h, items, var);
@@ -501,7 +692,7 @@ int gmb_control_add_listbox(int x, int y, int w, int h, const char* items, doubl
 
 int gmb_control_add_combobox(int x, int y, int w, const char* items, double* var)
 {
-    if (!GMB_GFX_SCREEN_ON())
+    if (!form_wants_form())
     {
         gmb_control_t* c = gmb_tui_add_combobox(x, y, w, items);
         if (!c) return -1;
@@ -514,7 +705,7 @@ int gmb_control_add_combobox(int x, int y, int w, const char* items, double* var
 
 int gmb_control_add_numericupdown(int x, int y, int w, double mn, double mx, double step, double* var)
 {
-    if (!GMB_GFX_SCREEN_ON())
+    if (!form_wants_form())
     {
         gmb_control_t* c = gmb_tui_add_numericupdown(x, y, w, (int)mn, (int)mx, (int)(var ? *var : mn));
         if (!c) return -1;
@@ -546,7 +737,7 @@ int gmb_control_add_scrollbar(int x, int y, int len, int mn, int mx, int val, do
 
 int gmb_control_add_grid(int x, int y, int w, int h, const char* headers, const char* data, double* var)
 {
-    if (!GMB_GFX_SCREEN_ON())
+    if (!form_wants_form())
     {
         extern gmb_control_t* gmb_tui_add_grid(int, int, int, int, int, const char*);
         extern void gmb_tui_bind_value(int, double*);
@@ -562,7 +753,7 @@ int gmb_control_add_grid(int x, int y, int w, int h, const char* headers, const 
 
 int gmb_control_add_tree(int x, int y, int w, int h, const char* items, double* var)
 {
-    if (!GMB_GFX_SCREEN_ON())
+    if (!form_wants_form())
     {
         extern gmb_control_t* gmb_tui_add_treeview(int, int, int, int, const char*);
         extern void gmb_tui_bind_value(int, double*);
@@ -577,7 +768,7 @@ int gmb_control_add_tree(int x, int y, int w, int h, const char* items, double* 
 
 int gmb_control_add_tab(int x, int y, int w, const char* items, double* var)
 {
-    if (!GMB_GFX_SCREEN_ON())
+    if (!form_wants_form())
     {
         extern gmb_control_t* gmb_tui_add_tab(int, int, int, const char*);
         extern void gmb_tui_bind_value(int, double*);
@@ -592,7 +783,7 @@ int gmb_control_add_tab(int x, int y, int w, const char* items, double* var)
 
 int gmb_control_add_colorpicker(int x, int y, int w, const char* palette, double* var)
 {
-    if (!GMB_GFX_SCREEN_ON())
+    if (!form_wants_form())
     {
         extern gmb_control_t* gmb_tui_add_colorpicker(int, int, int, int);
         extern void gmb_tui_bind_value(int, double*);
@@ -705,6 +896,20 @@ static unsigned int parse_color(const char* t)
 }
 
 /* Applica uno stile CSS-like ai default. Token separati da spazio: key | key=value. */
+/* Applica SOLO le chiavi dell'area vista testuale (`mode=`/`virtual=`) a un widget:
+ * lo STYLE di un controllo PIXEL passa anche di qui, così `LISTBOX … STYLE "mode=diff"`
+ * vale identicamente nei due percorsi (TUI e FORM/ombra). */
+static void style_apply_view_mode(gmb_widget_t* w, const char* spec)
+{
+    if (!w || !spec || w->base.ctrl_kind != GMB_CK_LISTBOX) return;
+    if (!strcasestr(spec, "mode=") && !strcasestr(spec, "virtual=")) return;
+    int nm = gmb_textview_style_mode(spec, w->tv_mode);
+    if (nm == w->tv_mode) return;
+    const char* keep = w->tv ? gmb_textview_source_text((gmb_textview_t*)w->tv) : NULL;
+    gmb_listbox_set_text((gmb_listbox_t*)w, keep, nm);
+    w->tv_mode = nm;
+}
+
 static void style_apply(gmb_widget_style_t* s, const char* spec)
 {
     if (!spec || !*spec) return;
@@ -952,6 +1157,26 @@ static void px_draw_arrow_band(int x, int y, int w, int h, int tl,
     }
 }
 
+/* Colore del testo di una riga della vista testuale nel percorso PIXEL. 0 = usa
+ * il colore normale del widget. */
+static unsigned tv_style_text_color(int st, const gmb_widget_style_t* s)
+{
+    switch (st)
+    {
+        case GMB_TV_S_HEAD1:
+        case GMB_TV_S_HEAD2:
+        case GMB_TV_S_HEAD3:
+        case GMB_TV_S_HUNK:  return (s->accent & 0xFFFFFFu) ? s->accent : s->text;
+        case GMB_TV_S_CODE:  return (s->head_fg & 0xFFFFFFu) ? s->head_fg : s->text;
+        case GMB_TV_S_QUOTE:
+        case GMB_TV_S_RULE:
+        case GMB_TV_S_META:  return s->text_disabled;
+        case GMB_TV_S_ADD:   return 0xFF16A34Au;
+        case GMB_TV_S_DEL:   return 0xFFDC2626u;
+        default:             return 0;
+    }
+}
+
 /* Disegna i widget pixel (checkbox/radio/track/dropdown/progress). */
 static void draw_one_widget(gmb_widget_t* wd, float sc)
 {
@@ -1151,6 +1376,9 @@ static void draw_one_widget(gmb_widget_t* wd, float sc)
             int soft = ui_soft(s);
             int rr = soft ? 12 : 6;
             unsigned acc = (s->accent & 0xFFFFFFu) ? s->accent : s->fill_hover;
+            /* Vista testuale virtuale: la larghezza utile è in CELLE (il rect qui
+             * è in pixel) — la stessa che usa il renderer a celle. */
+            if (wd->tv) gmb_listbox_sync(wd, cwl > 0 ? w / cwl : w);
             if (soft) ui_soft_shadow(x, y, w, h, rr);
             ui_fill_card(x, y, w, h, rr, s);
             GMB_GFX_STROKE_RRECT(x, y, w, h, rr, s->border);
@@ -1182,8 +1410,13 @@ static void draw_one_widget(gmb_widget_t* wd, float sc)
                         else tcol = s->sel_fg;
                     }
                 }
-                const char* it = wd->items[j];
-                if (it[0] == '@' && (it[1] == 'g' || it[1] == 'G')) { tcol = 0xFF16A34Au; it += 2; if (*it == ' ') it++; }
+                const char* it = wd->tv ? gmb_textview_row((gmb_textview_t*)wd->tv, j) : wd->items[j];
+                if (wd->tv)
+                {
+                    unsigned tc = tv_style_text_color(gmb_textview_row_style((gmb_textview_t*)wd->tv, j), s);
+                    if (tc) tcol = tc;
+                }
+                else if (it[0] == '@' && (it[1] == 'g' || it[1] == 'G')) { tcol = 0xFF16A34Au; it += 2; if (*it == ' ') it++; }
                 else if (it[0] == '@' && (it[1] == 'r' || it[1] == 'R')) { tcol = 0xFFDC2626u; it += 2; if (*it == ' ') it++; }
                 GMB_GFX_DRAW_TEXT(it, x + (soft ? 14 : 8), ry + (rowH - tl) / 2, 0, GFX_RGB(tcol));
             }
@@ -1684,6 +1917,25 @@ static void apply_base_props_btn(gmb_form_btn_t* b, const char* spec);
  * Chiamato anche dal registry TUI: una sola nozione di "ultimo controllo" per entrambi. */
 void gmb_form_note_handle(int handle) { g_last_handle = handle; g_last_added = -1; g_last_is_tui = 1; }
 
+/* Lo stesso controllo può vivere in DUE registri: il widget PIXEL (g_wid/g_btns) e il
+ * control TUI (g_reg_ctrl), che è quello che il reflow TUI muove (`gmb_tui_layout_reflow`).
+ * Gli handle dei due registri si SOVRAPPONGONO (entrambi partono da 0), quindi il match
+ * per handle non basta a identificare il control TUI: la chiave comune è il NOME.
+ *
+ * Senza questa sincronizzazione una spec con `minw=/maxw=/grow=` applicata per handle
+ * restava solo sul widget pixel e il reflow TUI la ignorava (il controllo si allargava
+ * oltre maxw o non assorbiva la sua quota di delta). La spec è riapplicata SOLO al
+ * layout: i colori di un controllo a celle in modalità grafica hanno un altro renderer
+ * (fallback a celle) e non vanno forzati da qui. */
+static void sync_layout_to_tui(const char* name, const char* spec)
+{
+    if (!name || !*name || !spec) return;
+    { extern gmb_control_t* gmb_tui_control_find_by_name(const char*);
+      extern void gmb_control_apply_layout_spec(gmb_control_t*, const char*);
+      gmb_control_t* t = gmb_tui_control_find_by_name(name);
+      if (t) gmb_control_apply_layout_spec(t, spec); }
+}
+
 /* Applica le clausole dichiarate (NAME/STYLE/metric/…) all'ULTIMO controllo creato,
  * nel registry giusto: form (widget/button) o TUI. Gli handle dei due registry si
  * sovrappongono (0..31 / 0..63), quindi il registry NON si può dedurre dall'handle. */
@@ -1696,10 +1948,12 @@ void gmb_form_apply_last_style(const char* spec)
         return;
     }
     for (int i = 0; i < g_nwid; i++) if (g_wid[i].base.handle == g_last_handle) {
-        style_apply(&g_wid[i].style, spec); apply_base_props(&g_wid[i], spec, i); g_dirty = 1; return;
+        style_apply(&g_wid[i].style, spec); apply_base_props(&g_wid[i], spec, i); style_apply_view_mode(&g_wid[i], spec);
+        sync_layout_to_tui(g_wid[i].name, spec); g_dirty = 1; return;
     }
     for (int i = 0; i < g_nbtn; i++) if (g_btns[i].base.handle == g_last_handle) {
-        style_apply(&g_btns[i].style, spec); apply_base_props_btn(&g_btns[i], spec); g_dirty = 1; return;
+        style_apply(&g_btns[i].style, spec); apply_base_props_btn(&g_btns[i], spec);
+        sync_layout_to_tui(g_btns[i].name, spec); g_dirty = 1; return;
     }
     { extern void gmb_control_apply_style_handle(int, const char*);
       gmb_control_apply_style_handle(g_last_handle, spec); }
@@ -1707,12 +1961,16 @@ void gmb_form_apply_last_style(const char* spec)
 
 void gmb_form_apply_style_handle(int handle, const char* spec)
 {
-    /* Form widget/button per handle: stile + proprietà base (NAME/TAG/…/metric). Poi TUI. */
+    /* Form widget/button per handle: stile + proprietà base (NAME/TAG/…/metric). Poi TUI.
+     * In OGNI ramo la spec di layout va anche al control TUI OMONIMO (stesso nome):
+     * è lui che il reflow TUI muove, e gli handle dei due registri si sovrappongono. */
     for (int i = 0; i < g_nwid; i++) if (g_wid[i].base.handle == handle) {
-        style_apply(&g_wid[i].style, spec); apply_base_props(&g_wid[i], spec, i); g_dirty = 1; return;
+        style_apply(&g_wid[i].style, spec); apply_base_props(&g_wid[i], spec, i); style_apply_view_mode(&g_wid[i], spec);
+        sync_layout_to_tui(g_wid[i].name, spec); g_dirty = 1; return;
     }
     for (int i = 0; i < g_nbtn; i++) if (g_btns[i].base.handle == handle) {
-        style_apply(&g_btns[i].style, spec); apply_base_props_btn(&g_btns[i], spec); g_dirty = 1; return;
+        style_apply(&g_btns[i].style, spec); apply_base_props_btn(&g_btns[i], spec);
+        sync_layout_to_tui(g_btns[i].name, spec); g_dirty = 1; return;
     }
     { extern void gmb_control_apply_style_handle(int, const char*);
       gmb_control_apply_style_handle(handle, spec); }
@@ -1733,10 +1991,12 @@ void gmb_form_set_last_style(const char* spec)
      * applicare la spec al controllo SBAGLIATO. */
     if (!g_last_is_tui) {
         for (int i = 0; i < g_nwid; i++) if (g_wid[i].base.handle == g_last_handle) {
-            style_apply(&g_wid[i].style, spec); apply_base_props(&g_wid[i], spec, i); g_dirty = 1; return;
+            style_apply(&g_wid[i].style, spec); apply_base_props(&g_wid[i], spec, i); style_apply_view_mode(&g_wid[i], spec);
+            sync_layout_to_tui(g_wid[i].name, spec); g_dirty = 1; return;
         }
         for (int i = 0; i < g_nbtn; i++) if (g_btns[i].base.handle == g_last_handle) {
-            style_apply(&g_btns[i].style, spec); apply_base_props_btn(&g_btns[i], spec); g_dirty = 1; return;
+            style_apply(&g_btns[i].style, spec); apply_base_props_btn(&g_btns[i], spec);
+            sync_layout_to_tui(g_btns[i].name, spec); g_dirty = 1; return;
         }
     }
     if (g_last_handle >= 0) {
@@ -2117,7 +2377,21 @@ static void tui_ctrl_set(const char* name, const char* prop, double num, const c
 #endif
         }
     }
-    else if (!strcasecmp(prop,"caption")||!strcasecmp(prop,"text")||!strcasecmp(prop,"label")) { if (str) tui_ctrl_set_text(c,str); }
+    else if (!strcasecmp(prop,"text")||!strcasecmp(prop,"content")||!strcasecmp(prop,"markdown")||!strcasecmp(prop,"diff")) {
+        /* LISTBOX: il testo diventa la VISTA VIRTUALE (markdown/diff/lista grande).
+         * Ogni altro controllo mantiene il significato storico di "text" = etichetta. */
+        int tv_mode = !strcasecmp(prop,"markdown") ? GMB_TV_MARKDOWN
+                    : !strcasecmp(prop,"diff")     ? GMB_TV_DIFF : -1;
+        if (c->ctrl_kind==GMB_CK_LISTBOX && c->user) {
+#ifdef GMB_WITH_UI
+            gmb_listbox_set_text((gmb_listbox_t*)c->user, str, tv_mode);
+#else
+            gmb_ui_missing_warn();
+#endif
+        }
+        else if (str) tui_ctrl_set_text(c,str);
+    }
+    else if (!strcasecmp(prop,"caption")||!strcasecmp(prop,"label")) { if (str) tui_ctrl_set_text(c,str); }
     else if (!strcasecmp(prop,"tooltip")) { if (str) snprintf(c->tooltip,sizeof(c->tooltip),"%s",str); }
     else if (!strcasecmp(prop,"tag")) { if (str) snprintf(c->tag,sizeof(c->tag),"%s",str); }
     else if (!strcasecmp(prop,"name")) { if (str) snprintf(c->name,sizeof(c->name),"%s",str); }
@@ -2175,6 +2449,9 @@ static void tui_ctrl_set(const char* name, const char* prop, double num, const c
         if (num != 0) gmb_form_modal_open(c);
         else if (gmb_form_modal_control() == c) gmb_form_modal_close();
     }
+    /* ANIMAZIONE: `CONTROL SET nome, "anim", 0, "left:300:400:out"`. Avanza il
+     * frame, non un thread: vedi gmb_anim.h. Con `ui.reduce_motion` va al target. */
+    else if (!strcasecmp(prop, "anim")) { if (str) ctrl_anim_start(c, c->handle, 1, str); }
     else control_extra_set(c, prop, num, str);
     /* Ogni modifica a un controllo TUI deve riflettersi al frame successivo: il livello
      * pixel è ridisegnato solo su dirty (senza, `visible=0` lasciava i pixel vecchi).
@@ -2203,6 +2480,13 @@ static double tui_ctrl_get(const char* name, const char* prop)
     if (!strcasecmp(prop,"listcount")) {
         if (c->ctrl_kind==GMB_CK_LISTBOX) return (double)((gmb_widget_t*)c->user)->nitems;
         if (c->ctrl_kind==GMB_CK_COMBOBOX) return (double)((gmb_widget_t*)c->user)->nitems;
+        return 0;
+    }
+    /* Stile della riga corrente di una LISTBOX in vista virtuale: GMB_TV_S_*
+     * (0 normale, 1..3 titoli, 4 codice, 5 citazione, 6 regola, 7/8/9/10 diff). */
+    if (!strcasecmp(prop,"rowstyle")) {
+        if (c->ctrl_kind==GMB_CK_LISTBOX) { gmb_widget_t* lw=(gmb_widget_t*)c->user;
+            return lw->tv ? (double)gmb_textview_row_style((const gmb_textview_t*)lw->tv,(int)lw->ival) : 0.0; }
         return 0;
     }
     if (!strcasecmp(prop,"uppercase")) return c->uppercase;
@@ -2239,7 +2523,20 @@ static double tui_ctrl_get(const char* name, const char* prop)
 static const char* tui_ctrl_get_str(const char* name, const char* prop)
 {
     gmb_control_t* c = gmb_tui_control_find_by_name(name); if (!c || !prop) return "";
-    if (!strcasecmp(prop,"caption")||!strcasecmp(prop,"text")||!strcasecmp(prop,"label")) return tui_ctrl_text(c);
+    if (!strcasecmp(prop,"caption")||!strcasecmp(prop,"text")||!strcasecmp(prop,"label")) {
+        /* LISTBOX in vista virtuale: "text" = riga CORRENTE della vista (markdown
+         * ripulito / riga di diff) — è così che si legge ciò che l'utente vede. */
+        if (c->ctrl_kind == GMB_CK_LISTBOX && c->user) {
+            gmb_widget_t* lw = (gmb_widget_t*)c->user;
+            if (lw->tv) {
+                static char _tvr[1024];
+                const char* r = gmb_textview_row((const gmb_textview_t*)lw->tv, (int)lw->ival);
+                snprintf(_tvr, sizeof _tvr, "%s", r ? r : "");
+                return _tvr;
+            }
+        }
+        return tui_ctrl_text(c);
+    }
     if (!strcasecmp(prop,"tooltip")) return c->tooltip;
     if (!strcasecmp(prop,"tag")) return c->tag;
     if (!strcasecmp(prop,"name")) return c->name;
@@ -2297,7 +2594,17 @@ void gmb_form_control_set(const char* name, const char* prop, double num, const 
         w->nitems = n;
         wd_set_num(w, 0);
     }
-    else if (!strcasecmp(prop, "caption") || !strcasecmp(prop, "text") || !strcasecmp(prop, "label")) {
+    else if (!strcasecmp(prop, "text") || !strcasecmp(prop, "content") || !strcasecmp(prop, "markdown") || !strcasecmp(prop, "diff")) {
+        /* LISTBOX: vista virtuale (markdown/diff/lista grande); gli altri controlli
+         * conservano il significato storico di "text" = etichetta. */
+        int tv_mode = !strcasecmp(prop, "markdown") ? GMB_TV_MARKDOWN
+                    : !strcasecmp(prop, "diff")     ? GMB_TV_DIFF : -1;
+        if (w && w->base.ctrl_kind == GMB_CK_LISTBOX) {
+            if (str) gmb_listbox_set_text((gmb_listbox_t*)w, str, tv_mode);
+        }
+        else if (str) { if (w) { snprintf(w->label, sizeof(w->label), "%s", str); if (w->strptr || w->kind == W_TEXT) wd_set_str(w, str); } else snprintf(t->label, sizeof(t->label), "%s", str); }
+    }
+    else if (!strcasecmp(prop, "caption") || !strcasecmp(prop, "label")) {
         if (str) { if (w) { snprintf(w->label, sizeof(w->label), "%s", str); if (w->strptr || w->kind == W_TEXT) wd_set_str(w, str); } else snprintf(t->label, sizeof(t->label), "%s", str); } }
     else if (!strcasecmp(prop, "tooltip")) { if (str) { if (w) snprintf(w->tooltip, sizeof(w->tooltip), "%s", str); else snprintf(t->tooltip, sizeof(t->tooltip), "%s", str); } }
     else if (!strcasecmp(prop, "tag"))     { if (str) { if (w) snprintf(w->tag, sizeof(w->tag), "%s", str); else snprintf(t->tag, sizeof(t->tag), "%s", str); } }
@@ -2316,6 +2623,13 @@ void gmb_form_control_set(const char* name, const char* prop, double num, const 
     else if (!strcasecmp(prop, "modal")) {
         if (num != 0) { if (w) gmb_form_modal_open(&w->base); else gmb_form_modal_open(&t->base); }
         else if (gmb_form_modal_control() == (w ? &w->base : &t->base)) gmb_form_modal_close();
+    }
+    /* ANIMAZIONE (percorso PIXEL): stessa superficie del percorso TUI. */
+    else if (!strcasecmp(prop, "anim")) {
+        if (str) {
+            if (w) ctrl_anim_start(&w->base, w->base.handle, 0, str);
+            else   ctrl_anim_start(&t->base, t->base.handle, 0, str);
+        }
     }
     else control_extra_set(w ? &w->base : &t->base, prop, num, str);
     g_dirty = 1;
@@ -2349,6 +2663,10 @@ double gmb_form_control_get(const char* name, const char* prop)
     else if (!strcasecmp(prop, "handle"))                           return (double)(w ? w->base.handle : t->base.handle);
     else if (!strcasecmp(prop, "value") || !strcasecmp(prop, "selected") || !strcasecmp(prop, "index") || !strcasecmp(prop, "listindex")) return w ? wd_num(w) : 0;
     else if (!strcasecmp(prop, "listcount")) return w ? w->nitems : 0;
+    /* Stile della riga corrente di una LISTBOX in vista virtuale (GMB_TV_S_*). */
+    else if (!strcasecmp(prop, "rowstyle"))
+        return (w && w->base.ctrl_kind == GMB_CK_LISTBOX && w->tv)
+             ? (double)gmb_textview_row_style((const gmb_textview_t*)w->tv, (int)w->ival) : 0;
     else if (!strcasecmp(prop, "min") || !strcasecmp(prop, "minvalue")) return w ? w->vmin : 0;
     else if (!strcasecmp(prop, "max") || !strcasecmp(prop, "maxvalue")) return w ? w->vmax : 0;
     else if (!strcasecmp(prop, "step")) return w ? w->vstep : 0;
@@ -2361,7 +2679,17 @@ double gmb_form_control_get(const char* name, const char* prop)
 const char* gmb_form_control_get_str(const char* name, const char* prop)
 {
     int b; int i = ctrl_find(name, &b); if (i < 0) return tui_ctrl_get_str(name, prop); if (!prop) return "";
-    if (!strcasecmp(prop, "caption") || !strcasecmp(prop, "text") || !strcasecmp(prop, "label")) { if (b) return g_btns[i].label; if (g_wid[i].strptr || g_wid[i].kind == W_TEXT) return wd_str(&g_wid[i]); return g_wid[i].label; }
+    if (!strcasecmp(prop, "caption") || !strcasecmp(prop, "text") || !strcasecmp(prop, "label")) {
+        /* LISTBOX con vista virtuale: "text" = riga corrente della VISTA (markdown
+         * ripulito / riga di diff), non l'etichetta. Stessa lettura del percorso TUI. */
+        if (!b && g_wid[i].base.ctrl_kind == GMB_CK_LISTBOX && g_wid[i].tv) {
+            static char _tvrow[1024];
+            extern const char* gmb_textview_row(const gmb_textview_t*, int);
+            const char* r = gmb_textview_row((const gmb_textview_t*)g_wid[i].tv, g_wid[i].ival);
+            snprintf(_tvrow, sizeof _tvrow, "%s", r ? r : "");
+            return _tvrow;
+        }
+        if (b) return g_btns[i].label; if (g_wid[i].strptr || g_wid[i].kind == W_TEXT) return wd_str(&g_wid[i]); return g_wid[i].label; }
     if (!strcasecmp(prop, "tooltip")) return b ? g_btns[i].tooltip : g_wid[i].tooltip;
     if (!strcasecmp(prop, "tag"))     return b ? g_btns[i].tag : g_wid[i].tag;
     if (!strcasecmp(prop, "name"))    return b ? g_btns[i].name : g_wid[i].name;
@@ -3640,6 +3968,7 @@ void gmb_form_render_if_dirty(void)
     sframes++;
 
     if (!GMB_GFX_SCREEN_ON()) return;
+    int64_t tf0 = gmb_ticks_ms();   /* costo del present per l'inspector */
     static float s_last_scale = -1.0f;
     float sc = GMB_GFX_RENDER_SCALE();
     if (sc <= 0.0f) sc = 1.0f;
@@ -3685,6 +4014,9 @@ void gmb_form_render_if_dirty(void)
             g_dirty = 0;
         }
         if (sp && *sp && sframes == want) GMB_GFX_SAVE_PNG(sp);
+        form_inspector();
+        form_palette();
+        gmb_inspector_note_frame((int)(gmb_ticks_ms() - tf0), g_nbtn + g_nwid);
         return;
     }
     if (gmb_form_active() && (g_dirty || g_dam_full || g_ndam > 0))
@@ -3705,7 +4037,12 @@ void gmb_form_render_if_dirty(void)
     g_ndam = 0;
     g_dam_full = 0;
 
+    /* INSPECTOR (`ui.inspector`) sopra il frame, DOPO lo shot: le immagini golden non
+     * contengono il pannello (riporta un tempo, quindi non sarebbe deterministico). */
     if (sp && *sp && sframes == want) GMB_GFX_SAVE_PNG(sp);
+    form_inspector();
+    form_palette();
+    gmb_inspector_note_frame((int)(gmb_ticks_ms() - tf0), g_nbtn + g_nwid);
 }
 
 static void form_park(int ms)

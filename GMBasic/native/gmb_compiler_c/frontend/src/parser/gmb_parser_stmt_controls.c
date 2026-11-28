@@ -535,6 +535,46 @@ gmb_stmt_t* gmb_p_parse_control_method(gmb_parser_t* p, int line)
 }
 
 /* PANEL x, y, w, h, "titolo" [STYLE "spec"] — card di sezione (CONTROL args come BUTTON). */
+gmb_stmt_t* gmb_p_parse_palette(gmb_parser_t* p, int line)
+{
+    /* PALETTE ADD "id", "titolo"[, …] | CLEAR | OPEN | CLOSE | RUN CALL <sub> | KEY k
+     * Argomenti nella stessa forma di CONTROL <SUB>: [0]="PALETTE" [1]=<sub> [2..]=valori.
+     * RUN CALL è la sola forma non banale: la procedura arriva come VAR (CALL è un
+     * marcatore dei metodi, come nelle altre forme `… CALL <sub>`). */
+    gmb_stmt_t* s = gmb_stmt_new(GMB_STMT_CONTROL, line);
+    int cap = 8;
+    s->control_args = (gmb_expr_t**)malloc(sizeof(gmb_expr_t*) * (size_t)cap);
+    s->n_control_args = 0;
+    s->control_args[s->n_control_args++] = gmb_expr_var(strdup("PALETTE"), line);
+    gmb_p_adv(p);   /* PALETTE */
+    const gmb_token_t* sub = gmb_p_cur(p);
+    if (sub && sub->lexeme) {
+        s->control_args[s->n_control_args++] = gmb_expr_var(gmb_p_tok_strdup(sub), line);
+        gmb_p_adv(p);
+    }
+    if (!gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_at_end(p)) {
+        for (;;) {
+            if (gmb_p_check(p, GMB_TOK_Call) || gmb_p_tok_is_soft_keyword(gmb_p_cur(p), "CALL")) {
+                /* SELECT <sub>: la procedura è il NOME che segue */
+                if (gmb_p_check(p, GMB_TOK_Call)) gmb_p_adv(p); else gmb_p_adv(p);
+                const gmb_token_t* nm = gmb_p_cur(p);
+                if (nm && nm->lexeme) {
+                    if (s->n_control_args >= cap) { cap *= 2; s->control_args = (gmb_expr_t**)realloc(s->control_args, sizeof(gmb_expr_t*) * (size_t)cap); }
+                    s->control_args[s->n_control_args++] = gmb_expr_var(gmb_p_tok_strdup(nm), line);
+                    gmb_p_adv(p);
+                }
+                break;
+            }
+            if (s->n_control_args >= cap) { cap *= 2; s->control_args = (gmb_expr_t**)realloc(s->control_args, sizeof(gmb_expr_t*) * (size_t)cap); }
+            s->control_args[s->n_control_args++] = gmb_p_parse_expr(p);
+            if (gmb_p_match(p, GMB_TOK_Comma)) continue;
+            break;
+        }
+    }
+    return s;
+}
+
+/* PANEL x, y, w, h, "titolo" [STYLE "spec"] — card di sezione (CONTROL args come BUTTON). */
 gmb_stmt_t* gmb_p_parse_panel(gmb_parser_t* p, int line)
 {
     gmb_stmt_t* s = gmb_stmt_new(GMB_STMT_CONTROL, line);

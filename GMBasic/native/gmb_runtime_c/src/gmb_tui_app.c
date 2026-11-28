@@ -8,6 +8,10 @@ extern gmb_control_t* g_reg_ctrl[]; extern int g_reg_n; extern int g_reg_focus;
 #include "gmb_tui_widgets.h"
 #include "gmb_theme_roles.h"
 #include "gmb_a11y.h"   /* ui.reduce_motion: nessun ridisegno periodico / blink */
+#include "gmb_anim.h"   /* motore di animazione tick-driven (CONTROL SET "anim") */
+#include "gmb_ui_inspector.h"  /* overlay ui.inspector: albero dei controlli, costo frame */
+#include "gmb_color_filter.h"  /* ui.color_filter: hook "modo cambiato" → frame sporco */
+#include "gmb_textview.h"      /* LISTBOX STYLE "mode=markdown|diff" / "virtual=1" */
 #include "gmb_tui_io.h"
 #include "gmb_tui_clipper.h"
 #include "gmb_graphics.h"
@@ -824,6 +828,22 @@ static void apply_style_kv(gmb_control_t* c, const char* spec)
                 else { int t = (int)(v * 10.0 + 0.5); if (t < 10) t = 10; if (t > 210) t = 210; c->style.role_aa = t; }
             }
         }
+        else if (strncasecmp(p, "mode=", 5) == 0 || strncasecmp(p, "virtual=", 8) == 0) {
+            /* VISTA TESTUALE VIRTUALE (solo LISTBOX): `mode=markdown|diff|plain`,
+             * `virtual=1` = lista grande a righe. Il modo è una proprietà del
+             * controllo (gmb_widget_t.tv_mode) e vale anche per il testo già
+             * assegnato: si reimpagina qui, senza toccare la sorgente. */
+            if (c->ctrl_kind == GMB_CK_LISTBOX && c->user) {
+                gmb_widget_t* w = (gmb_widget_t*)c->user;
+                int nm = gmb_textview_style_mode(p, w->tv_mode);
+                if (nm != w->tv_mode || (w->tv && nm != gmb_textview_mode((gmb_textview_t*)w->tv))) {
+                    const char* keep = NULL;
+                    if (w->tv) keep = gmb_textview_source_text((gmb_textview_t*)w->tv);
+                    gmb_listbox_set_text((gmb_listbox_t*)w, keep, nm);
+                    w->tv_mode = nm;
+                }
+            }
+        }
         while (*p && *p != ' ') p++;
     }
 }
@@ -844,10 +864,17 @@ void gmb_control_apply_layout(gmb_control_t* c, const gmb_layout_spec_t* ls)
     if (!c || !ls) return;
     gmb_layout_configure(c, 1, ls, gmb_tui_screen_width(), gmb_tui_screen_height());
 }
+static int tui_flow_reflow(void);
 void gmb_control_apply_layout_spec(gmb_control_t* c, const char* spec)
 {
     gmb_layout_spec_t ls;
-    if (gmb_layout_parse(spec, &ls)) gmb_control_apply_layout(c, &ls);
+    if (gmb_layout_parse(spec, &ls)) {
+        gmb_control_apply_layout(c, &ls);
+        /* FLOW: contenitore (`flow=`) o figlio (`group=`) appena dichiarato. Si
+         * ridispone subito il gruppo, così il layout è corretto anche PRIMA del
+         * primo resize (non solo quando arriva WINDOW RESIZE). */
+        if (ls.flow >= 0 || ls.has_group) tui_flow_reflow();
+    }
 }
 
 /* Fallback PIXEL per i controlli senza draw_px_fn: rende il controllo nel suo
@@ -900,6 +927,12 @@ static int s_px_dirty = 1;
  * altrimenti una modifica (es. visible=0) resta invisibile finché il form non si ridisegna. */
 void gmb_tui_mark_dirty(void) { s_px_dirty = 1; }
 static double s_px_last = 0.0;
+
+/* ui.color_filter: un cambio di filtro cambia OGNI colore del frame. Il cambio lo
+ * scopre la rilettura del registro (`gmb_color_filter_mode` in gmb_ui_theme), che
+ * chiama questo hook: il frame successivo si ridisegna da capo. */
+static void tui_cvf_changed(void) { s_px_dirty = 1; { extern void gmb_form_invalidate_all(void); gmb_form_invalidate_all(); } }
+__attribute__((constructor)) static void tui_cvf_hook_init(void) { gmb_color_filter_on_change(tui_cvf_changed); }
 void gmb_tui_px_mark_dirty(void) { s_px_dirty = 1; }
 
 void gmb_tui_px_invalidate(void) { s_px_dirty = 1; }
@@ -1038,6 +1071,11 @@ static void tui_key_focus_sync(void)
 /* Applica un tasto ai controlli (fuoco/tab/ESC/host-key). Condivisa tra typeahead e tty. */
 static void tui_process_key(int k)
 {
+    /* PALETTE COMANDI (`Ctrl+K`): mentre è aperta è MODALE — ogni tasto va a lei. */
+    { extern int gmb_palette_is_open(void); extern int gmb_palette_key(int);
+      extern void gmb_palette_open(void);
+      if (gmb_palette_is_open()) { (void)gmb_palette_key(k); return; }
+      if (k == 11) { gmb_palette_open(); return; }   /* 11 = Ctrl+K nel codepage dei tasti TUI */ }
     /* F1..F10: barra tasti GLOBALE (come Clipper), indipendente dal focus. */
     if (k >= GMB_K_F1 && k <= GMB_K_F10)
         for (int i = 0; i < g_reg_n; i++)
@@ -1194,6 +1232,31 @@ void gmb_tui_sync_bindings(void)
  * dimensione CORRENTE della griglia a celle. Idempotente: se il delta rispetto
  * alla base è invariato non cambia nulla, quindi la si può richiamare a ogni
  * giro del loop senza costo (né rimbalzi). Ritorna il numero di controlli mossi. */
+static int tui_flow_reflow(void)
+{
+    /* I contenitori con FLOW dispongono i figli dichiarati `group=<nome>`. Si fa
+     * DOPO il reflow per-controllo: il contenitore può essersi mosso con EXPAND e
+     * i figli devono seguire il suo rect nuovo, non quello dichiarato. */
+    int moved = 0;
+    for (int a = 0; a < g_reg_n; a++) {
+        gmb_control_t* anc = g_reg_ctrl[a];
+        if (!anc || anc->layout_flow == GMB_LAYOUT_FLOW_NONE || !anc->name[0]) continue;
+        gmb_control_t* kids[GMB_TUI_CTRL_MAX];
+        int kn = 0;
+        for (int i = 0; i < g_reg_n; i++) {
+            gmb_control_t* c = g_reg_ctrl[i];
+            if (c && c != anc && c->layout_group[0]
+                && strcmp(c->layout_group, anc->name) == 0 && kn < GMB_TUI_CTRL_MAX)
+                kids[kn++] = c;
+        }
+        moved += gmb_layout_flow_apply((struct gmb_control* const*)kids, kn,
+                                       anc->x, anc->y, anc->width, anc->height,
+                                       anc->layout_flow, anc->layout_cols,
+                                       anc->layout_gap, anc->layout_pad);
+    }
+    return moved;
+}
+
 int gmb_tui_layout_reflow(void)
 {
     int n = 0;
@@ -1203,7 +1266,32 @@ int gmb_tui_layout_reflow(void)
         if (!c || !c->layout_on) continue;
         if (gmb_layout_reflow(c, 1, w, h)) { n++; s_px_dirty = 1; }
     }
+    n += tui_flow_reflow();
+    if (n) s_px_dirty = 1;
     return n;
+}
+
+/* ANIMAZIONE (percorso TUI): applica ai controlli i valori correnti degli slot
+ * `is_tui`. La ricerca è per HANDLE dentro il registry TUI; un controllo sparito
+ * viene dimenticato (nessuno slot orfano). Chiamata dal frame dopo il reflow. */
+static void tui_anim_apply(void)
+{
+    if (gmb_anim_count() <= 0) return;
+    for (int i = 0; i < GMB_ANIM_MAX; i++) {
+        int h, tui, prop, done; double v;
+        if (!gmb_anim_get(i, &h, &tui, &prop, &done, &v) || !tui) continue;
+        gmb_control_t* c = NULL;
+        for (int k = 0; k < g_reg_n && !c; k++)
+            if (g_reg_ctrl[k] && g_reg_ctrl[k]->handle == h) c = g_reg_ctrl[k];
+        if (!c) { gmb_anim_forget(h, 1); continue; }
+        int nv = (int)(v >= 0.0 ? v + 0.5 : v - 0.5);
+        if (prop == GMB_ANIM_LEFT) c->x = nv;
+        else if (prop == GMB_ANIM_TOP) c->y = nv;
+        else if (prop == GMB_ANIM_WIDTH) c->width = nv;
+        else c->height = nv;
+        s_px_dirty = 1;
+        gmb_tui_mark_dirty();
+    }
 }
 
 /* Ridimensiona la griglia a CELLE (controparte TUI di gmb_gfx_resize_screen).
@@ -1366,11 +1454,41 @@ void gmb_tui_draw_controls(gmb_screen_buffer_t* buf)
     }
     if (saved_sink) gmb_screen_set_sink(buf, saved_sink);
     gmb_surface_set_autoattach(1);
+
+    /* INSPECTOR (`ui.inspector`): overlay disegnato DOPO i controlli, quindi sopra
+     * di essi. Non è un controllo: non sta in nessun registro e non prende eventi. */
+    if (gmb_inspector_enabled()) {
+        gmb_inspector_reset();
+        for (int i = 0; i < g_reg_n; i++) {
+            gmb_control_t* c = g_reg_ctrl[i];
+            if (!c) continue;
+            int flags = 0;
+            if (c->visible)  flags |= GMB_INSPECT_VISIBLE;
+            if (c->enabled)  flags |= GMB_INSPECT_ENABLED;
+            if (c->focused)  flags |= GMB_INSPECT_FOCUSED;
+            if (c->layout_on) flags |= GMB_INSPECT_LAYOUT;
+            if (c->layout_flow) flags |= GMB_INSPECT_FLOW;
+            if (c->layout_group[0]) flags |= GMB_INSPECT_GROUP;
+            if (gmb_anim_active_for(c->handle, 1)) flags |= GMB_INSPECT_ANIMATED;
+            gmb_inspector_add(c->name, gmb_inspector_kind_name(c->ctrl_kind),
+                              c->x, c->y, c->width, c->height, flags, c->layout_cols);
+        }
+        gmb_inspector_draw_cells(buf);
+    }
+    /* COMANDI (Ctrl+K): pump nel frame (azione come task GPM), poi l'overlay. */
+    { extern void gmb_palette_pump(void); extern int gmb_palette_is_open(void);
+      extern int gmb_ui_palette_wired(void);
+      extern void gmb_palette_draw_cells(gmb_screen_buffer_t*);
+      if (gmb_ui_palette_wired()) {
+          gmb_palette_pump();
+          if (gmb_palette_is_open()) gmb_palette_draw_cells(buf);
+      } }
 }
 
 int gmb_tui_controls_frame(int frame_ms)
 {
     int had_input = 0;
+    int64_t t_frame0 = gmb_ticks_ms();   /* costo del frame per l'inspector */
     /* Tasti dalla finestra grafica (SDL): vanno ai controlli TUI. */
     while (g_gfxq_h != g_gfxq_t) { int k = g_gfxq[g_gfxq_h]; g_gfxq_h = (g_gfxq_h + 1) % 128; tui_process_key(k); had_input = 1; }
     gmb_clipper_state_t* st = gmb_tui_global_state();
@@ -1424,6 +1542,9 @@ int gmb_tui_controls_frame(int frame_ms)
     /* LAYOUT: prima di disegnare, riallinea i controlli che hanno dichiarato
      * EXPAND/ANCHOR/ALIGN sulla dimensione corrente della griglia. */
     gmb_tui_layout_reflow();
+    /* ANIMAZIONE: avanza col tempo del frame e applica i valori (dopo il reflow). */
+    gmb_anim_tick();
+    tui_anim_apply();
     /* Desktop ad OGNI frame (prima restavano le celle vecchie, es. la dropdown di un menu
      * appena chiuso). UNICA implementazione: gmb_theme_paint_desktop -> desktop + retino
      * dal TEMA (prima fg e bg erano lo stesso colore: retino invisibile). */
@@ -1474,6 +1595,9 @@ int gmb_tui_controls_frame(int frame_ms)
         if (gmb_cur()) gmb_yield_ticks(frame_ms);
         else gmb_sleep_ms(frame_ms);
     }
+    /* Costo del frame per l'inspector: il pannello del frame SUCCESSIVO mostra questo
+     * valore (misurare il frame mentre lo si disegna sarebbe autoreferenziale). */
+    gmb_inspector_note_frame((int)(gmb_ticks_ms() - t_frame0), g_reg_n);
     return 0;
 }
 

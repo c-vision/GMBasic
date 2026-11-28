@@ -301,15 +301,88 @@ int emit_control_stmt(ctx_t* c, gmb_stmt_t* s)
      *   CONTROL SET "n","prop",val[,str$] | CONTROL GET "n","prop" INTO var |
      *   CONTROL GETS "n","prop" INTO var$ | CONTROL MOVE "n",x,y[,w,h] |
      *   CONTROL FOCUS "n" | CONTROL ZORDER "n",front. */
+    /* PALETTE COMANDI (overlay Ctrl+K) — statement con la stessa forma dei comandi
+     * di controllo: nessun TokenKind nuovo, il primo argomento è la sotto-parola.
+     *   PALETTE ADD "id", "titolo"[, "scorciatoia"[, "categoria"]]
+     *   PALETTE CLEAR | OPEN | CLOSE
+     *   PALETTE RUN CALL <sub>   — <sub>(id$) eseguito via GPM quando si sceglie. */
+    if (strcasecmp(cname, "PALETTE") == 0) {
+        const char* sub = (a[0] && a[0]->var) ? a[0]->var : "";
+        c99_mark_tui(c);
+        if (!strcasecmp(sub, "ADD") && na >= 3) {
+            const char* fn = (na >= 6) ? "gmb_palette_register" : (na >= 5) ? "gmb_palette_register4" : "gmb_palette_register3";
+            sb_printf(&c->out, "%s(", fn);
+            emit_str_operand(c, a[1]); sb_put(&c->out, ".data, ");
+            sb_put(&c->out, "(");
+            emit_str_operand(c, a[2]); sb_put(&c->out, ").data, ");
+            sb_put(&c->out, "(");
+            if (na >= 4) emit_str_operand(c, a[3]); else sb_put(&c->out, "gmb_string_alloc(\"\")");
+            sb_put(&c->out, ").data");
+            if (na >= 5) { sb_put(&c->out, ", ("); emit_str_operand(c, a[4]); sb_put(&c->out, ").data"); }
+            sb_put(&c->out, ");\n");
+            return 1;
+        }
+        if (!strcasecmp(sub, "CLEAR")) { sb_put(&c->out, "gmb_palette_clear();\n"); return 1; }
+        if (!strcasecmp(sub, "OPEN"))  { sb_put(&c->out, "gmb_palette_open();\n"); return 1; }
+        if (!strcasecmp(sub, "CLOSE")) { sb_put(&c->out, "gmb_palette_close();\n"); return 1; }
+        if (!strcasecmp(sub, "RUN") && na >= 2 && a[1] && a[1]->var) {
+            /* runner C: riceve l'id, chiama la SUB/FUNCTION BASIC per nome */
+            const char* pn = a[1]->var;
+            if ((pn[0] == 'L' || pn[0] == 'G') && pn[1] == ':') pn += 2;
+            int seen = 0;
+            for (int i = 0; i < c->pal_runner_n; i++) if (!strcmp(c->pal_runner[i], pn)) { seen = 1; break; }
+            if (!seen && c->pal_runner_n < 16)
+                snprintf(c->pal_runner[c->pal_runner_n++], sizeof c->pal_runner[0], "%s", pn);
+            sb_printf(&c->out, "{ extern void gmb_palette_set_runner(void (*)(const char*, void*), void*);\n"
+                                "      gmb_palette_set_runner(gmb_palette_runner_%s, NULL); }\n", pn);
+            return 1;
+        }
+        if (!strcasecmp(sub, "KEY") && na >= 2) {
+            sb_put(&c->out, "(void)gmb_palette_key((int)(");
+            emit_expr(c, a[1]);
+            sb_put(&c->out, "));\n");
+            return 1;
+        }
+        /* PALETTE TYPE "testo" — scrive nella query (minuscole, spazi singoli) */
+        if (!strcasecmp(sub, "TYPE") && na >= 2) {
+            sb_put(&c->out, "gmb_palette_type((");
+            emit_str_operand(c, a[1]);
+            sb_put(&c->out, ").data);\n");
+            return 1;
+        }
+        snprintf(c->error, sizeof c->error, "PALETTE %s: argomenti non validi", sub ? sub : "");
+        return 0;
+    }
     if (strcasecmp(cname, "CONTROL") == 0 && na >= 1 && a[0] && a[0]->var) {
         const char* sub = a[0]->var;
         c99_mark_tui(c); ind(c);
         if (!strcasecmp(sub, "SET") && na >= 4) {
+            /* Due forme, distinte dal TIPO del 3° argomento:
+             *   CONTROL SET "n","prop",<numero>[,<stringa>]  → proprietà mista
+             *   CONTROL SET "n","prop",<stringa>             → proprietà SOLO stringa
+             *     ("text"/"content"/"markdown"/"diff"/"items")
+             * Nella seconda il payload va nel 4° argomento e il numero è 0. Prima la
+             * stringa finiva in `gmb_val_to_double(...)` (= 0) mentre il 4° argomento
+             * restava "": il testo non arrivava MAI al controllo (LISTBOX "text" → 0 righe). */
+            int str_payload = (na < 5) && a[3] && etype(c, a[3]) == TY_STR;
             sb_put(&c->out, "((void)gmb_form_control_set((");
             emit_str_operand(c, a[1]); sb_put(&c->out, ").data, (");
             emit_str_operand(c, a[2]); sb_put(&c->out, ").data, (double)(");
-            emit_expr(c, a[3]); sb_put(&c->out, "), ");
-            if (na >= 5) { sb_put(&c->out, "("); emit_str_operand(c, a[4]); sb_put(&c->out, ").data"); } else sb_put(&c->out, "\"\"");
+            if (str_payload) sb_put(&c->out, "0.0");
+            /* Valore NUMERICO: un'espressione stringa in un contesto numerico va
+             * convertita, altrimenti il C emette `(double)(gmb_string_t)`. */
+            else if (a[3] && etype(c, a[3]) == TY_STR) {
+                sb_put(&c->out, "gmb_val_to_double(gmb_make_val_string((");
+                emit_expr(c, a[3]);
+                sb_put(&c->out, ").data))");
+            } else emit_expr(c, a[3]);
+            sb_put(&c->out, "), ");
+            /* Il 4° argomento è una STRINGA: va passato con `.data` (non come
+             * espressione numerica), altrimenti una variabile `s$` diventa
+             * `(double)(s)` e il C non compila. Stesso idioma di CLIP.SET. */
+            if (str_payload) { sb_put(&c->out, "("); emit_str_operand(c, a[3]); sb_put(&c->out, ").data"); }
+            else if (na >= 5) { sb_put(&c->out, "("); emit_str_operand(c, a[4]); sb_put(&c->out, ").data"); }
+            else sb_put(&c->out, "\"\"");
             sb_put(&c->out, "), 0.0);\n");
             return 1;
         }
