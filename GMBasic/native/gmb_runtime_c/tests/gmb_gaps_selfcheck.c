@@ -794,21 +794,30 @@ static int test_audio_synth_mml(void){
     int ns = gmb_audio_synth(440, 0.1, 1, 0.0, 0.0, 1.0, 0.0, 0.25, 0, 0, 0, sq, 4410);
     if (ns != 4410) { printf("FAIL square\n"); return 1; }
     /* MML parse: O4 C D E > C → 4 note, frequenze C4/D4/E4/C5 */
-    double f[16], d[16]; int t[16];
-    int nm = gmb_audio_mml_parse("O4 C D E > C", f, d, t, 16);
+    double f[16], d[16]; int t[16], v[16];
+    int nm = gmb_audio_mml_parse("O4 C D E > C", f, d, t, v, 16);
     if (nm != 4) { printf("FAIL mml count %d\n", nm); return 1; }
     if (fabs(f[0] - 261.63) > 0.01 || fabs(f[1] - 293.66) > 0.01 || fabs(f[2] - 329.63) > 0.01) { printf("FAIL mml freqs %.2f %.2f %.2f\n", f[0], f[1], f[2]); return 1; }
     if (fabs(f[3] - 523.25) > 0.01) { printf("FAIL mml octave up %.2f\n", f[3]); return 1; }
     /* T120 L4 C → durata 0.5s */
-    int nm2 = gmb_audio_mml_parse("T120 L4 C", f, d, t, 16);
+    int nm2 = gmb_audio_mml_parse("T120 L4 C", f, d, t, v, 16);
     if (nm2 != 1 || fabs(d[0] - 0.5) > 1e-9) { printf("FAIL mml dur %d %.3f\n", nm2, d[0]); return 1; }
     /* P4 = pausa */
-    int nm3 = gmb_audio_mml_parse("P4", f, d, t, 16);
+    int nm3 = gmb_audio_mml_parse("P4", f, d, t, v, 16);
     if (nm3 != 1 || t[0] != 1) { printf("FAIL mml pause %d t%d\n", nm3, t[0]); return 1; }
+    /* N60 = nota MIDI assoluta (C4, 261.63 Hz): prima era ignorata → silenzio. */
+    int nm4 = gmb_audio_mml_parse("N60", f, d, t, v, 16);
+    if (nm4 != 1 || t[0] != 0 || fabs(f[0] - 261.63) > 0.05) { printf("FAIL mml N60 %d %.2f\n", nm4, f[0]); return 1; }
+    /* L16 = 1/16 (0.125 s a T120): prima una sola cifra → L1 (2 s). */
+    int nm5 = gmb_audio_mml_parse("T120 L16 C", f, d, t, v, 16);
+    if (nm5 != 1 || fabs(d[0] - 0.125) > 1e-9) { printf("FAIL mml L16 dur %.4f\n", d[0]); return 1; }
+    /* V applicato alle note successive (prima letto e buttato). */
+    int nm6 = gmb_audio_mml_parse("V30 C V70 D", f, d, t, v, 16);
+    if (nm6 != 2 || v[0] != 30 || v[1] != 70) { printf("FAIL mml volume %d %d\n", v[0], v[1]); return 1; }
     /* MIDI/note duration per PLAY */
     double nd = gmb_audio_note_duration(4, 120);
     if (fabs(nd - 0.5) > 1e-9) { printf("FAIL note dur\n"); return 1; }
-    printf("OK (synth %d peak %.0f mid %.0f; mml 4 note C4/D4/E4/C5 dur0.5 pause)\n", n, peak, mid);
+    printf("OK (synth %d peak %.0f mid %.0f; mml C4/D4/E4/C5 dur0.5 pause N60 L16 V30/70)\n", n, peak, mid);
     return 0;
 }
 static int test_bar_builder(void){

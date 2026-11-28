@@ -1111,9 +1111,20 @@ int gmb_audio_synth(int frequency, double duration, int waveform,
                     double attack, double decay, double sustain, double release,
                     double pulse_width, int filter_type, double cutoff, double resonance,
                     double* out, int max_samples);
-int gmb_audio_mml_parse(const char* mml, double* out_freq, double* out_dur, int* out_type, int max_cmds);
+/* MML: O/L/T/P/V/N/>/< + note. out_type 0=nota 1=pausa; out_vol riceve il volume V
+ * corrente per comando (NULL = non richiesto). N<n> = nota MIDI assoluta 0..127,
+ * L a più cifre (L16 = 1/16). */
+int gmb_audio_mml_parse(const char* mml, double* out_freq, double* out_dur, int* out_type,
+                        int* out_vol, int max_cmds);
 void gmb_audio_sound(int frequency, double duration, int volume);
 void gmb_audio_play_mml(const char* mml);
+/* SOUND [ON voice,] freq, dur[, vol[, wave[, att,dec,sus,rel[, pw]]]] — voice 0..7 con canale
+ * stabile, 6 forme d'onda, ADSR, pulse width e filtro del voice (parità SoundOnVoiceAsync). */
+void gmb_audio_sound_voice(double voice, double frequency, double duration, double volume,
+                           double waveform, double attack, double decay, double sustain,
+                           double release, double pulse_width);
+/* FILTER voice, type, cutoff, resonance (0=Off, 1=LowPass, 2=HighPass, 3=BandPass). */
+void gmb_audio_set_filter(int voice, int type, double cutoff, double resonance);
 /* CHOOSE(index, values...) — indice 1-based nella lista valori (ParamArray). Ritorna il valore
  * scelto (gmb_val_t unificato) o gmb_val_nil() se l'indice è fuori range. */
 gmb_val_t gmb_choose(gmb_int_t idx, const gmb_val_t* values, gmb_int_t n);

@@ -6911,6 +6911,9 @@ int emit_bf_scene(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
  * gmb_c99_emit_clock.c (questo TU non include l'header interno: le dichiarazioni stanno qui). */
 void emit_clock_domain(ctx_t* c, gmb_stmt_t* s);
 int emit_bf_clock(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
+/* AUDIO (2026-11-28): SOUND/PLAY/FILTER — definito in gmb_c99_emit_audio.c
+ * (questo TU non include l'header interno: la dichiarazione sta qui). */
+void emit_audio_domain(ctx_t* c, gmb_stmt_t* s);
 int emit_bf_rdd(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_dbf(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
 int emit_bf_ledger(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk, gmb_expr_t** args, int nargs, int line);
@@ -33209,6 +33212,7 @@ static const ST_EMIT_TBL_row ST_EMIT_TBL[] = {
     { GMB_STMT_MOUSE_WAIT, st_mouse },
     { GMB_STMT_GFX, st_gfx },
     { GMB_STMT_DOMAIN, st_domain },
+    { GMB_STMT_AUDIO, emit_audio_domain },   /* SOUND/PLAY/FILTER — gmb_c99_emit_audio.c */
     { GMB_STMT_MCP, st_mcp },
     { GMB_STMT_AGENT_CREATE, st_agent },
     { GMB_STMT_AGENT_DELETE, st_agent },

@@ -103,6 +103,8 @@ void emit_speed_domain(ctx_t* c, gmb_stmt_t* s);
 /* Motore 3D (P2): dominio WORLD (comandi) e letture WORLD.MOVING/LIGHTNOW/… */
 void emit_world_domain(ctx_t* c, gmb_stmt_t* s);
 void emit_scene_domain(ctx_t* c, gmb_stmt_t* s);
+/* AUDIO (2026-11-28): SOUND / PLAY / FILTER → chiamate al runtime audio condiviso. */
+void emit_audio_domain(ctx_t* c, gmb_stmt_t* s);
 int  emit_bf_scene(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,
                    gmb_expr_t** args, int nargs, int line);
 int  emit_bf_world(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk,

@@ -119,9 +119,15 @@ int gmb_audio_synth(int frequency, double duration, int waveform,
     return samples;
 }
 
-/* MML parse (AudioManager.cs:839 ParseMusicString): O/L/T/P/V/>/< note.
- * Ritorna numero di comandi; out_freq/out_dur coppie, out_type 0=note 1=pausa. */
-int gmb_audio_mml_parse(const char* mml, double* out_freq, double* out_dur, int* out_type, int max_cmds)
+/* MML parse (AudioManager.cs:839 ParseMusicString): O/L/T/P/V/N/>/< + note.
+ * Ritorna numero di comandi; out_freq/out_dur coppie, out_type 0=nota 1=pausa.
+ *
+ * `out_vol` (puo' essere NULL) riceve il volume V corrente del comando (0..100): vale per
+ * le note SUCCESSIVE. Prima V veniva letto e poi buttato — il volume MML non aveva effetto.
+ * `N<n>` e' una nota MIDI assoluta 0..127 (ignora l'ottava, come AudioUtils.MidiNoteToFrequency
+ * nel C#); `L` accetta PIU' cifre: prima si leggeva una sola cifra e "L16" suonava come L1. */
+int gmb_audio_mml_parse(const char* mml, double* out_freq, double* out_dur, int* out_type,
+                        int* out_vol, int max_cmds)
 {
     if (!mml || !out_freq || max_cmds <= 0) return 0;
     int current_octave = 4, note_len = 4, tempo = 120, vol = 100;
@@ -133,8 +139,15 @@ int gmb_audio_mml_parse(const char* mml, double* out_freq, double* out_dur, int*
         char c = (char)toupper((unsigned char)*p);
         int dotted = 0;
         if (c == '.') { p++; continue; }
-        if (c == 'O' && p[1]) { current_octave = p[1] - '0'; if (current_octave < 0) current_octave = 0; if (current_octave > 6) current_octave = 6; p += 2; continue; }
-        if (c == 'L' && p[1]) { note_len = p[1] - '0'; if (note_len < 1) note_len = 1; if (note_len > 64) note_len = 64; p += 2; continue; }
+        if (c == 'O' && p[1] >= '0' && p[1] <= '9') { current_octave = p[1] - '0'; if (current_octave > 6) current_octave = 6; p += 2; continue; }
+        /* L a PIU' cifre (parita' C#: L[1-9]\d* — L16 = 1/16, non L1). */
+        if (c == 'L' && p[1] >= '0' && p[1] <= '9') {
+            note_len = atoi(p + 1);
+            if (note_len < 1) note_len = 1;
+            if (note_len > 64) note_len = 64;
+            p++; while (*p >= '0' && *p <= '9') p++;
+            continue;
+        }
         if (c == 'T' && p[1]) { tempo = atoi(p + 1); if (tempo < 32) tempo = 32; if (tempo > 255) tempo = 255; p++; while (*p >= '0' && *p <= '9') p++; continue; }
         if (c == 'V' && p[1]) { vol = atoi(p + 1); if (vol > 100) vol = 100; p++; while (*p >= '0' && *p <= '9') p++; continue; }
         if (c == 'P' && p[1]) {
@@ -143,6 +156,20 @@ int gmb_audio_mml_parse(const char* mml, double* out_freq, double* out_dur, int*
             if (*p == '.') { dotted = 1; p++; }
             double dur = gmb_audio_note_duration(pl, tempo); if (dotted) dur *= 1.5;
             out_freq[n] = 0; out_dur[n] = dur; out_type[n] = 1;
+            if (out_vol) out_vol[n] = vol;
+            n++;
+            continue;
+        }
+        /* N<midi>: nota MIDI ASSOLUTA 0..127 (ignora l'ottava), come il C#. */
+        if (c == 'N' && p[1] >= '0' && p[1] <= '9') {
+            int midi = atoi(p + 1);
+            if (midi < 0) midi = 0;
+            if (midi > 127) midi = 127;
+            p++; while (*p >= '0' && *p <= '9') p++;
+            if (*p == '.') { dotted = 1; p++; }
+            double dur = gmb_audio_note_duration(note_len, tempo); if (dotted) dur *= 1.5;
+            out_freq[n] = gmb_audio_midi_to_frequency(midi); out_dur[n] = dur; out_type[n] = 0;
+            if (out_vol) out_vol[n] = vol;
             n++;
             continue;
         }
@@ -165,6 +192,7 @@ int gmb_audio_mml_parse(const char* mml, double* out_freq, double* out_dur, int*
             double freq = gmb_audio_frequency(basef, current_octave);
             double dur = gmb_audio_note_duration(note_len, tempo); if (dotted) dur *= 1.5;
             out_freq[n] = freq; out_dur[n] = dur; out_type[n] = 0;
+            if (out_vol) out_vol[n] = vol;
             n++;
             continue;
         }
@@ -367,12 +395,162 @@ void gmb_audio_sound(int frequency, double duration, int volume)
 void gmb_audio_play_mml(const char* mml)
 {
     if (!mml) return;
-    double freq[256], dur[256]; int type[256];
-    int n = gmb_audio_mml_parse(mml, freq, dur, type, 256);
+    double freq[256], dur[256]; int type[256], vol[256];
+    int n = gmb_audio_mml_parse(mml, freq, dur, type, vol, 256);
     for (int i = 0; i < n; i++) {
-        if (type[i] == 0) gmb_audio_sound((int)freq[i], dur[i], 100);
-        else gmb_sleep_ms((int)(dur[i] * 1000));
+        /* Timbro delle note MML: il preset di AudioManager.SoundOnVoiceAsync
+         * (voice 0, wave 0, A 10%, D 0, S 100%, R 20%, pw 25%) e il volume V della
+         * sequenza — prima V era ignorato e le note suonavano sempre a 100. */
+        if (type[i] == 0) gmb_audio_sound_voice(0, freq[i], dur[i], vol[i], 0, 0.10, 0.0, 1.0, 0.20, 0.25);
+        else gmb_gpm_sleep((int)(dur[i] * 1000));   /* §0ter: park, non worker bloccato */
     }
+}
+
+/* ── §0ter: audio ASINCRONO (park del task al confine del syscall) ────────────────────
+ * Perché. Le varianti bloccanti attendono la fine del suono con gmb_gpm_sleep: sul C99Native
+ * è un park della coroutine, ma un backend senza coroutine per il frame C di un syscall
+ * (VM/C) non ha dove parcheggiare e finirebbe per dormire il worker. Qui l'attesa non c'è:
+ * la riproduzione vive sul thread audio di SDL_mixer (che non esegue BASIC) e la funzione
+ * ritorna la DURATA da attendere; il chiamante parcheggia il task (sleep_until_ms + timer)
+ * e al risveglio riprende dopo la syscall, con il worker libero. */
+
+/* Posti dei toni asincroni in riproduzione (chunk + PCM da liberare al termine). */
+#define GMB_AUDIO_ASYNC_SLOTS 8
+static struct { gmb_mix_chunk* chunk; int16_t* pcm; int channel; } g_async_play[GMB_AUDIO_ASYNC_SLOTS];
+
+/* Libera i toni asincroni già finiti (Mix_Playing(channel) == 0). Chiamata all'inizio di
+ * ogni SOUND asincrono: nessun thread di servizio, nessuna attesa. */
+static void gmb_audio_async_reap(void)
+{
+    if (!g_mix.Playing) return;
+    for (int i = 0; i < GMB_AUDIO_ASYNC_SLOTS; i++)
+    {
+        if (!g_async_play[i].chunk) continue;
+        if (g_mix.Playing(g_async_play[i].channel) > 0) continue;
+        if (g_mix.FreeChunk) g_mix.FreeChunk(g_async_play[i].chunk);
+        free(g_async_play[i].pcm);
+        g_async_play[i].chunk = NULL; g_async_play[i].pcm = NULL; g_async_play[i].channel = -1;
+    }
+}
+
+int gmb_audio_sound_async(int frequency, double duration, int volume)
+{
+    if (duration <= 0) return 0;
+    /* La durata si attende SEMPRE, anche senza mixer: la semantica del SOUND non cambia
+     * con la disponibilità dell'audio (headless: si aspetta e basta). */
+    int ms = (int)(duration * 1000.0 + 0.999);
+    if (ms < 1) ms = 1;
+    gmb_audio_async_reap();
+    gmb_audio_voice_t v;
+    if (!gmb_audio_start_tone(frequency, duration, volume, &v)) return ms;
+    for (int i = 0; i < GMB_AUDIO_ASYNC_SLOTS; i++)
+    {
+        if (g_async_play[i].chunk) continue;
+        g_async_play[i].chunk = v.chunk;
+        g_async_play[i].pcm = v.pcm;
+        g_async_play[i].channel = v.channel;
+        return ms;
+    }
+    /* Tutti i posti occupati: il chunk è IN RIPRODUZIONE, liberarlo ora sarebbe un
+     * use-after-free nel mixer. Si perde la referenza (nessun leak di canali, solo del
+     * buffer di quel tono) — caso limite di 8 SOUND asincroni sovrapposti. */
+    return ms;
+}
+
+/* ── Sequencer MML asincrono ──────────────────────────────────────────────────────────
+ * UN thread dedicato (creato alla prima PLAY asincrona) suona le sequenze in coda, FIFO.
+ * Non esegue BASIC: è il thread audio, non un worker GPM — lì le attese reali sono
+ * legittime. Ogni job tiene quanto gli resta da suonare (`remaining_ms`), così l'attesa
+ * restituita al chiamante include la coda: il task parcheggia una volta sola e si sveglia
+ * quando la SUA sequenza è finita. */
+#define GMB_AUDIO_MML_MAX 256
+typedef struct gmb_audio_mml_job {
+    struct gmb_audio_mml_job* next;
+    int n, idx;
+    int64_t remaining_ms;
+    double freq[GMB_AUDIO_MML_MAX];
+    double dur[GMB_AUDIO_MML_MAX];
+    int type[GMB_AUDIO_MML_MAX];
+} gmb_audio_mml_job_t;
+
+static gmb_audio_mml_job_t* g_mml_head = NULL;
+static gmb_audio_mml_job_t* g_mml_tail = NULL;
+static gmb_mutex_t g_mml_lock;
+static gmb_cond_t g_mml_cond;
+static int g_mml_ready = 0;
+
+static int gmb_audio_mml_cmd_ms(double seconds)
+{
+    int ms = (int)(seconds * 1000.0 + 0.5);
+    return ms < 1 ? 1 : ms;
+}
+
+static void* gmb_audio_mml_thread(void* arg)
+{
+    (void)arg;
+    for (;;)
+    {
+        gmb_audio_mml_job_t* job;
+        GMB_MUTEX_LOCK(&g_mml_lock);
+        while (!g_mml_head) GMB_COND_WAIT(&g_mml_cond, &g_mml_lock);
+        job = g_mml_head;
+        GMB_MUTEX_UNLOCK(&g_mml_lock);
+
+        while (job->idx < job->n)
+        {
+            int i = job->idx++;
+            int ms = gmb_audio_mml_cmd_ms(job->dur[i]);
+            if (job->type[i] == 0) gmb_audio_sound((int)job->freq[i], job->dur[i], 100);
+            else gmb_sleep_ms(ms);   /* pausa: thread audio, non un worker GPM */
+            GMB_MUTEX_LOCK(&g_mml_lock);
+            job->remaining_ms -= ms;
+            if (job->remaining_ms < 0) job->remaining_ms = 0;
+            GMB_MUTEX_UNLOCK(&g_mml_lock);
+        }
+
+        GMB_MUTEX_LOCK(&g_mml_lock);
+        {
+            gmb_audio_mml_job_t** pp = &g_mml_head;
+            gmb_audio_mml_job_t* prev = NULL;
+            while (*pp && *pp != job) { prev = *pp; pp = &(*pp)->next; }
+            if (*pp) { *pp = job->next; if (g_mml_tail == job) g_mml_tail = prev; }
+            if (!g_mml_head) g_mml_tail = NULL;
+        }
+        GMB_MUTEX_UNLOCK(&g_mml_lock);
+        free(job);
+    }
+    return NULL;
+}
+
+int gmb_audio_mml_async(const char* mml)
+{
+    if (!mml || !*mml) return 0;
+    gmb_audio_mml_job_t* job = (gmb_audio_mml_job_t*)calloc(1, sizeof *job);
+    if (!job) return 0;
+    /* Il sequencer asincrono suona a volume pieno: nessun array di volumi (NULL). */
+    job->n = gmb_audio_mml_parse(mml, job->freq, job->dur, job->type, NULL, GMB_AUDIO_MML_MAX);
+    if (job->n <= 0) { free(job); return 0; }
+    for (int i = 0; i < job->n; i++) job->remaining_ms += gmb_audio_mml_cmd_ms(job->dur[i]);
+
+    if (!g_mml_ready)
+    {
+        GMB_MUTEX_INIT(&g_mml_lock);
+        GMB_COND_INIT(&g_mml_cond);
+        g_mml_ready = 1;
+        gmb_thread_t th;
+        if (!GMB_THREAD_CREATE(&th, gmb_audio_mml_thread, NULL)) { free(job); return 0; }
+        GMB_THREAD_DETACH(&th);
+    }
+
+    GMB_MUTEX_LOCK(&g_mml_lock);
+    int64_t total = job->remaining_ms;                 /* coda + questa sequenza */
+    for (gmb_audio_mml_job_t* j = g_mml_head; j; j = j->next) total += j->remaining_ms;
+    if (g_mml_tail) g_mml_tail->next = job; else g_mml_head = job;
+    g_mml_tail = job;
+    GMB_COND_SIGNAL(&g_mml_cond);
+    GMB_MUTEX_UNLOCK(&g_mml_lock);
+
+    return total > 2147483647LL ? 2147483647 : (int)total;
 }
 
 int gmb_audio_load_sound(const char* path)
@@ -503,4 +681,72 @@ void gmb_audio_sound_panned(int frequency, double duration, double gain, double 
     }
     /* Tutti i posti occupati: il chunk e' IN RIPRODUZIONE, liberarlo ora sarebbe un
      * use-after-free nel mixer. Si perde la referenza (nessun leak di canali). */
+}
+
+/* ── SOUND con voice, timbro e ADSR (parità AudioManager.SoundOnVoiceAsync) ─────────────
+ * Sintassi: SOUND [ON voice,] freq, dur[, vol[, wave[, att, dec, sus, rel[, pw]]]].
+ * Prima la leg C conosceva solo il preset (wave 0, A 1%, R 2%) e il voice era un'etichetta
+ * ignorata: il canale lo sceglieva il mixer (Mix_PlayChannel(-1,…)). Qui il canale E' il
+ * voice (0..7), come nel C#, quindi due SOUND sullo stesso voice si sovrascrivono invece di
+ * accumularsi, e il filtro impostato con FILTER su quel voice viene applicato al tono.
+ *
+ * Attesa cooperativa (§0ter): il worker GPM viene parcheggiato mentre il tono suona. Senza
+ * device (headless) ritorna SUBITO: un programma di test non paga la durata del tono. */
+void gmb_audio_sound_voice(double voice_d, double frequency, double duration, double volume_d,
+                           double waveform_d, double attack, double decay, double sustain,
+                           double release, double pulse_width)
+{
+    int voice = (int)voice_d;
+    int volume = (int)volume_d;
+    int waveform = (int)waveform_d;
+    if (voice < 0) voice = 0;
+    if (voice >= GMB_AUDIO_MAX_VOICES) voice = GMB_AUDIO_MAX_VOICES - 1;
+    if (volume < 0) volume = 0;
+    if (volume > 100) volume = 100;
+    if (waveform < 0) waveform = 0;
+    if (waveform > 5) waveform = 5;
+    if (attack < 0.0) attack = 0.0;   if (attack > 1.0) attack = 1.0;
+    if (decay < 0.0) decay = 0.0;     if (decay > 1.0) decay = 1.0;
+    if (sustain < 0.0) sustain = 0.0; if (sustain > 1.0) sustain = 1.0;
+    if (release < 0.0) release = 0.0; if (release > 1.0) release = 1.0;
+    if (pulse_width < 0.01) pulse_width = 0.01;
+    if (pulse_width > 0.99) pulse_width = 0.99;
+    if (frequency <= 0 || duration <= 0) return;
+    if (gmb_mix_ensure() != 1) return;   /* headless: nessun device, nessuna attesa */
+
+    int samples = (int)(GMB_AUDIO_RATE * duration);
+    if (samples <= 0) return;
+    double* buf = (double*)malloc((size_t)samples * sizeof(double));
+    if (!buf) return;
+    int n = gmb_audio_synth((int)frequency, duration, waveform, attack, decay, sustain, release,
+                            pulse_width, 0, 0, 0, buf, samples);
+    if (n <= 0) { free(buf); return; }
+    if (g_filter_set[voice]) apply_biquad(buf, n, &g_filters[voice]);
+
+    int16_t* pcm = (int16_t*)malloc((size_t)n * sizeof(int16_t) * 2);
+    if (!pcm) { free(buf); return; }
+    double scale = volume / 100.0;
+    for (int i = 0; i < n; i++)
+    {
+        double v = buf[i] * scale;
+        if (v > 32767.0) v = 32767.0;
+        if (v < -32768.0) v = -32768.0;
+        pcm[i * 2] = (int16_t)v;
+        pcm[i * 2 + 1] = (int16_t)v;
+    }
+    free(buf);
+
+    gmb_mix_chunk* ch = g_mix.QuickLoadRAW
+        ? g_mix.QuickLoadRAW((unsigned char*)pcm, (unsigned int)(n * 4)) : NULL;
+    if (!ch) { free(pcm); return; }
+    int channel = g_mix.PlayChannel(voice, ch, 0);   /* canale stabile = voice */
+    if (channel < 0)
+    {
+        if (g_mix.FreeChunk) g_mix.FreeChunk(ch);
+        free(pcm);
+        return;
+    }
+    while (g_mix.Playing(channel) > 0) gmb_gpm_sleep(10);
+    if (g_mix.FreeChunk) g_mix.FreeChunk(ch);
+    free(pcm);
 }

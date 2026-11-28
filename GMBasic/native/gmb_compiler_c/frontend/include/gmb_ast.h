@@ -233,6 +233,11 @@ typedef enum {
      * in un TRY/CATCH che esegue i cleanup e RILANCIA (nessun backend lo vede). `go_comm`
      * porta lo statement da eseguire. */
     GMB_STMT_ERRDEFER,
+    /* AUDIO (2026-11-28): SOUND / PLAY / FILTER del parser nativo (prima ridotti a
+     * GMB_STMT_REM, quindi muti su C99Native). Sottocomando in net_sub (0=SOUND,
+     * 1=PLAY, 2=FILTER, 3=PLAY PAUSE/RESUME/STOP con l'azione in `flag`), argomenti in
+     * net_args; per PLAY LOOP … TIMES n le ripetizioni stanno in `go_wait`. Append-only. */
+    GMB_STMT_AUDIO,
 } gmb_stmt_kind_t;
 typedef struct gmb_window { const char* name; const char* action; const char* style; int flag; } gmb_window_t;
 

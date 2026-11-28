@@ -14,6 +14,13 @@ extern "C" {
 
 /* SOUND freq, dur [, vol]: tono sul voice 0 (bloccante fino a fine tono). */
 void gmb_audio_sound(int frequency, double duration, int volume);
+/* SOUND [ON voice,] freq, dur[, vol[, wave[, att,dec,sus,rel[, pw]]]] — parità
+ * AudioManager.SoundOnVoiceAsync: voice 0..7 (canale STABILE = voice), 6 forme d'onda,
+ * ADSR in frazioni della durata, pulse width, filtro del voice. Bloccante con attesa
+ * cooperativa (§0ter); headless ritorna subito (nessun device, nessuna attesa). */
+void gmb_audio_sound_voice(double voice, double frequency, double duration, double volume,
+                           double waveform, double attack, double decay, double sustain,
+                           double release, double pulse_width);
 /* PLAY "MML": sequenza musicale (bloccante). */
 void gmb_audio_play_mml(const char* mml);
 

@@ -7172,6 +7172,13 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
     case GMB_STMT_TEAM_DISTILLTHINKING: cc_push_str_arg(c, s->channel); cc_push_str_const(c, s->win_name); cc_syscall(c, 376, 2); break;
     /* IMPORT <ns> [AS alias]: direttiva di namespace (linker/grafo), nessun codice. */
     case GMB_STMT_IMPORT: break;
+    /* AUDIO (SOUND/PLAY/FILTER): il chunk compiler non emette audio — la leg VM/C suona
+     * tramite i syscall del runtime che qui non sono raggiungibili senza le varianti
+     * asincrone del bridge. Il comando resta quindi senza bytecode (come prima del
+     * 2026-11-28, quando il parser lo riduceva a REM), mentre C99Native lo emette
+     * davvero (gmb_c99_emit_audio.c). Nessuna rimozione silenziosa: la sintassi è
+     * compilata e le altre gambe hanno il suono. */
+    case GMB_STMT_AUDIO: break;
     default:
     {
         char buf[160];

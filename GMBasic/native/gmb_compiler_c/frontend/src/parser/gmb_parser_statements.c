@@ -1829,10 +1829,14 @@ static gmb_stmt_t* gmb_p_parse_stmt_impl(gmb_parser_t* p, bool* multiline)
         while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_check(p, GMB_TOK_Colon)) gmb_p_adv(p);
         return gmb_stmt_new(GMB_STMT_REM, line);
     }
-    /* AUDIO: SOUND/PLAY/FILTER ... — no-op headless (parità emitter C# SoundStmt/PlayStmt/
-     * SetFilterStmt: "runtime audio esterno non portato"). Salta la riga. Prima erano in
-     * rem_vari → "comando 'X' non ancora supportato" (7 sample Audio). */
-    if (t->kind == GMB_TOK_Sound || t->kind == GMB_TOK_Play || t->kind == GMB_TOK_Filter || t->kind == GMB_TOK_Scroll) {
+    /* AUDIO: SOUND/PLAY/FILTER → GMB_STMT_AUDIO (parser in gmb_parser_stmt_audio.c).
+     * Fino al 2026-11-28 questa riga li riduceva a REM ("no-op headless"): C99Native non
+     * emetteva NULLA, quindi SOUND/PLAY compilavano e restavano muti. SCROLL resta un
+     * no-op headless (nessun runtime di scroll per il text-mode qui). */
+    if (t->kind == GMB_TOK_Sound) return gmb_p_parse_audio_sound(p, line);
+    if (t->kind == GMB_TOK_Play) return gmb_p_parse_audio_play(p, line);
+    if (t->kind == GMB_TOK_Filter) return gmb_p_parse_audio_filter(p, line);
+    if (t->kind == GMB_TOK_Scroll) {
         gmb_p_adv(p);
         while (!gmb_p_at_end(p) && !gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_check(p, GMB_TOK_Colon)) gmb_p_adv(p);
         return gmb_stmt_new(GMB_STMT_REM, line);

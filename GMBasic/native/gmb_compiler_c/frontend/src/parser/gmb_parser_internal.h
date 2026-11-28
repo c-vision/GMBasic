@@ -196,6 +196,10 @@ gmb_stmt_t* gmb_p_parse_error(gmb_parser_t* p, int line);
 gmb_stmt_t* gmb_p_parse_throw(gmb_parser_t* p, int line);
 /* Parser.Stmt.DataRead.cs */
 gmb_stmt_t* gmb_p_parse_data(gmb_parser_t* p, int line);
+/* AUDIO (2026-11-28): SOUND / PLAY / FILTER → GMB_STMT_AUDIO (gmb_parser_stmt_audio.c). */
+gmb_stmt_t* gmb_p_parse_audio_sound(gmb_parser_t* p, int line);
+gmb_stmt_t* gmb_p_parse_audio_play(gmb_parser_t* p, int line);
+gmb_stmt_t* gmb_p_parse_audio_filter(gmb_parser_t* p, int line);
 gmb_stmt_t* gmb_p_parse_read(gmb_parser_t* p, int line);
 gmb_stmt_t* gmb_p_parse_restore(gmb_parser_t* p, int line);
 /* Parser.Stmt.Commands.cs */
