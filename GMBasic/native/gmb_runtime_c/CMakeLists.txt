@@ -386,6 +386,8 @@ set(GMB_ALL_SRCS
     src/gmb_graphics_image.c
     src/gmb_graphics_screenshot.c
     src/gmb_graphics_palette.c
+    # P7 del piano 3D: layer 2D con palette PROPRIA, priorita' e composizione (puro stato).
+    src/gmb_graphics_layers.c
     # P1 del piano 3D: target di rendering + cattura headless (nessun header SDL qui).
     src/gmb_3d_frame.c
     # P2: mondi a settori — load (stato nel runtime), binding del renderer e
@@ -1183,6 +1185,7 @@ add_library(gmb_gfx SHARED
     src/gmb_graphics_chart.c
     src/gmb_graphics_screenshot.c
     src/gmb_graphics_palette.c
+    src/gmb_graphics_layers.c
     src/gmb_gfx_present_sdl.c
     src/gmb_sdl_manager.c
     src/gmb_sdl_context.c
@@ -1667,6 +1670,11 @@ target_link_libraries(gmb_theme_roles_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_theme_roles_selfcheck PRIVATE include)
 add_test(NAME gmb_theme_roles_selfcheck COMMAND gmb_theme_roles_selfcheck)
 
+# P7 — layer 2D: palette per layer, priorita', backdrop, dirty, composizione, screenshot.
+add_executable(gmb_graphics_layers_selfcheck tests/gmb_graphics_layers_selfcheck.c)
+target_link_libraries(gmb_graphics_layers_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_graphics_layers_selfcheck PRIVATE include)
+add_test(NAME gmb_graphics_layers_selfcheck COMMAND gmb_graphics_layers_selfcheck)
 
 add_executable(gmb_sb_selfcheck tests/gmb_sb_selfcheck.c)
 target_link_libraries(gmb_sb_selfcheck PRIVATE gmb_runtime)
