@@ -1,7 +1,7 @@
 ' MiniTest — LINALGX terza ondata: autovalori/autovettori e angoli fra sottospazi.
 ' EVD simmetrica (d ascendenti, V colonne ortonormali), EIG generale (autovalori
 ' reali/immaginari e autovettori destri: residuo ||A·v - λv|| ~ 0), SUBSPACEANGLES.
-' EXPECT: evd= 0  d0= 1  d1= 3  orth= 0|eig= 0  wr0= 0  wr1= 0  wi= 1|res= 0|sub= 1  ang0= 0.785398
+' EXPECT: evd= 0  d0= 1  d1= 3  orth= 0|eig= 0  wr0= 0  wr1= 0  wi= 1|res= 0|sub= 1  ang0= 0.785398|sub2= 1  a0= 0
 IMPORT LINALGX
 
 SUB Main()
@@ -40,4 +40,15 @@ SUB Main()
   DIM na AS LONG
   na = LINALGX.SUBSPACEANGLES(u, 2, 1, w, 2, 1, ang)
   PRINT "sub="; na; " ang0="; ROUND(ang(0),6)
+
+  ' righe<colonne: A 2×3 di rango 2, B 2×1 dentro col(A) -> 1 angolo nullo
+  DIM a23(5) AS DOUBLE
+  a23(0)=1 : a23(1)=0 : a23(2)=0
+  a23(3)=0 : a23(4)=1 : a23(5)=0
+  DIM b21(1) AS DOUBLE
+  b21(0)=1 : b21(1)=0
+  DIM ang2(2) AS DOUBLE
+  DIM n2 AS LONG
+  n2 = LINALGX.SUBSPACEANGLES(a23, 2, 3, b21, 2, 1, ang2)
+  PRINT "sub2="; n2; " a0="; ROUND(ang2(0),6)
 END SUB

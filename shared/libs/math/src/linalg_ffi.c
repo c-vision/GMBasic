@@ -714,7 +714,8 @@ i64 ofx_linalg_subspace_angles(const double *a, i64 a_n, i64 rows_a, i64 cols_a,
     (void)a_n; (void)b_n;
     if (!a || !b || !out || rows_a <= 0 || cols_a <= 0 || rows_b != rows_a || cols_b <= 0)
         return -1;
-    i64 cap = rows_a * (cols_a < cols_b ? cols_a : cols_b);
+    i64 maxc = cols_a > cols_b ? cols_a : cols_b;
+    i64 cap = rows_a * (rows_a < maxc ? rows_a : maxc);
     double *Ba = (double *)malloc((size_t)cap * sizeof(double));
     double *Bb = (double *)malloc((size_t)cap * sizeof(double));
     if (!Ba || !Bb) { free(Ba); free(Bb); return -1; }
