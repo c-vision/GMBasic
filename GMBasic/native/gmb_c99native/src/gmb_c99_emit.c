@@ -1695,7 +1695,7 @@ static int user_fn_exists(ctx_t* c, const char* name, int nargs);
 
 /* Una CALL il cui nome ha un TokenKind "matrice/decomposizione" NON è quel builtin se
  * esiste una FUNCTION/DECLARE (utente o .inc) omonima con la STESSA arità: es.
- * `LINALGX.SVD(a, rows, cols, u, s, vt) AS LONG` ha il TokenKind di `LINALG.SVD` ma
+ * `LINALG.SVD(a, rows, cols, u, s, vt) AS LONG` ha il TokenKind di `LINALG.SVD` ma
  * rende un LONG, non un valore matrice. Le euristiche di classificazione (is_array,
  * matrix_value, decomp_kind) devono consultare PRIMA la funzione risolta. */
 static int call_is_user_fn(ctx_t* c, const gmb_expr_t* e)
@@ -38397,6 +38397,14 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
         /* Startup console (Executor.Startup.cs:280-346): sceglie IConsole all'avvio
          * (GMB_CONSOLE 0=%SDL 1=C64 2=ANSI 3=SYSTEM; GMBASIC_HEADLESS=>Headless). */
         if (c->uses_ui || c->uses_tui) sb_put(&c->out, "    gmb_iconsole_boot();\n");
+        /* REGISTRO dei controlli: le gambe managed lo scelgono dal MODO SCHERMO
+         * (SCREEN acceso → PIXEL/ombra, TEXT → registry TUI). Un eseguibile C senza
+         * UI avrebbe `GMB_GFX_SCREEN_ON()` sempre 0: si forza lo stesso criterio
+         * così `CONTROL SET/GET` seguono il percorso della gamba di riferimento. */
+        if (c->uses_tui || c->uses_ui) {
+            sb_put(&c->out, "    { extern int gmb_gfx_screen_on(void); extern void gmb_form_set_registry_forced(int);\n"
+                            "      gmb_form_set_registry_forced(gmb_gfx_screen_on() ? 1 : 0); }\n");
+        }
         /* Canary tasti TUI (parità col backend C#): GMB_TUI_SCRIPT inietta una sequenza
          * (es. ESC×256 dal gate/CI) che chiude i modali widget headless. */
         if (c->uses_tui)

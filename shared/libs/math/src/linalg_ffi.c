@@ -1,5 +1,5 @@
 /*
- * linalg_ffi.c — shim ABI per il namespace BASIC LINALGX (algebra lineare su ARRAY).
+ * linalg_ffi.c — shim ABI per il namespace BASIC LINALG (algebra lineare su ARRAY).
  *
  * PERCHÉ. Il namespace builtin `LINALG` lavora su HANDLE di MATRIX (`gmb_matrix_create`
  * → un indice nella tabella globale del runtime): una dylib FFI self-contained non può
