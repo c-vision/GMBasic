@@ -7,6 +7,7 @@ extern gmb_control_t* g_reg_ctrl[]; extern int g_reg_n; extern int g_reg_focus;
 #include "gmb_ui_gfx.h"
 #include "gmb_tui_widgets.h"
 #include "gmb_theme_roles.h"
+#include "gmb_a11y.h"   /* ui.reduce_motion: nessun ridisegno periodico / blink */
 #include "gmb_tui_io.h"
 #include "gmb_tui_clipper.h"
 #include "gmb_graphics.h"
@@ -934,9 +935,10 @@ void gmb_tui_draw_px_all(void)
 void gmb_tui_draw_px_all_force(void) { tui_draw_px_all_impl(1); }
 static void tui_draw_px_all_impl(int force)
 {
-    /* Ridisegna solo se sporco o ogni 200 ms (spinner/timer). */
+    /* Ridisegna solo se sporco o ogni 200 ms (spinner/timer). Con `ui.reduce_motion`
+     * il ridisegno periodico si spegne: si ridisegna solo su danno/forzatura. */
     { double now = (double)app_now_ms();
-      if (!force && !s_px_dirty && (now - s_px_last) < 200.0) return;
+      if (!force && !s_px_dirty && (!gmb_a11y_motion() || (now - s_px_last) < 200.0)) return;
       s_px_dirty = 0; s_px_last = now; }
     /* Render pixel ricco dei controlli registrati (chiamato dal present GUI, main thread).
      * I controlli sono posizionati in CELLE: qui si converte il rect in PIXEL (cw,ch) e si
@@ -1615,7 +1617,8 @@ void gmb_tui_sdl_present(void)
     int covered = has_caret ? gmb_tui_cursor_covered() : 1;
     struct timeval tv; gettimeofday(&tv, NULL);
     long long ms = (long long)tv.tv_sec * 1000 + tv.tv_usec / 1000;
-    int blink = (((ms - g_cursor_epoch) / 500) & 1) == 0;
+    /* Con `ui.reduce_motion` il cursore non lampeggia: resta acceso e stabile. */
+    int blink = !gmb_a11y_motion() ? 1 : ((((ms - g_cursor_epoch) / 500) & 1) == 0);
     gmb_sdl_console_set_cursor_visible(g_app_sdl, (has_caret && blink && !covered) ? 1 : 0);
     if (has_caret) gmb_sdl_console_set_cursor_position(g_app_sdl, cr + 1, cc + 1);
     gmb_sdl_console_render(g_app_sdl);

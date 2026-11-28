@@ -256,6 +256,7 @@ set(GMB_ALL_SRCS
     src/gmb_strings.c
     src/gmb_layout.c   # LAYOUT MANAGER (EXPAND/ANCHOR/ALIGN) condiviso FORM/TUI
     src/gmb_theme_roles.c  # ruoli semantici del tema (role=…/tone=…) + contrasto WCAG, FORM+TUI
+    src/gmb_a11y.c     # flag globali di accessibilità (ui.high_contrast/text_scale/…), FORM+TUI
     src/gmb_stringbuilder.c
     # Accumulatore growable per il pattern s$=s$+expr riconosciuto dal codegen C99 (§11)
     src/gmb_strbuf.c

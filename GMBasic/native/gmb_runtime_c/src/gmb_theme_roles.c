@@ -7,6 +7,7 @@
  * percorso GRAPHICS (pixel), ed è quindi testabile senza interfaccia.
  * ============================================================================ */
 #include "gmb_theme_roles.h"
+#include "gmb_a11y.h"   /* soglie di contrasto imposte da `ui.high_contrast` */
 
 #include <math.h>
 #include <string.h>
@@ -31,7 +32,7 @@ static int same(gmb_cell_color_t a, gmb_cell_color_t b)
 }
 
 /* a*(1-t) + b*t */
-static gmb_cell_color_t mix(gmb_cell_color_t a, gmb_cell_color_t b, double t)
+gmb_cell_color_t gmb_theme_mix(gmb_cell_color_t a, gmb_cell_color_t b, double t)
 {
     if (t <= 0.0) return a;
     if (t >= 1.0) return b;
@@ -41,7 +42,7 @@ static gmb_cell_color_t mix(gmb_cell_color_t a, gmb_cell_color_t b, double t)
 }
 
 /* f > 1 schiarisce, f < 1 scurisce. */
-static gmb_cell_color_t shade(gmb_cell_color_t c, double f)
+gmb_cell_color_t gmb_theme_shade(gmb_cell_color_t c, double f)
 {
     return mk((int)(c.r * f + 0.5), (int)(c.g * f + 0.5), (int)(c.b * f + 0.5));
 }
@@ -88,7 +89,7 @@ gmb_cell_color_t gmb_theme_ensure_contrast(gmb_cell_color_t fg, gmb_cell_color_t
     gmb_cell_color_t target = gmb_theme_text_on(bg);
     for (int i = 1; i <= 10; i++)
     {
-        gmb_cell_color_t c = mix(fg, target, (double)i / 10.0);
+        gmb_cell_color_t c = gmb_theme_mix(fg, target, (double)i / 10.0);
         if (gmb_theme_contrast_ratio(c, bg) >= min_ratio) return c;
     }
     return target;
@@ -190,7 +191,7 @@ static void role_base(const gmb_theme_t* t, int role,
         *tint = accent;
         break;
     case GMB_ROLE_SECONDARY:
-        *surface = has_col(t->active_bg) ? t->active_bg : mix(accent, win, 0.55);
+        *surface = has_col(t->active_bg) ? t->active_bg : gmb_theme_mix(accent, win, 0.55);
         *ink = gmb_theme_text_on(*surface);
         *tint = accent;
         break;
@@ -223,7 +224,7 @@ static void role_base(const gmb_theme_t* t, int role,
         break;
     case GMB_ROLE_MUTED:
         *surface = dlg_bg;
-        *ink = has_col(t->dim) ? t->dim : mix(*surface, gmb_theme_text_on(*surface), 0.45);
+        *ink = has_col(t->dim) ? t->dim : gmb_theme_mix(*surface, gmb_theme_text_on(*surface), 0.45);
         *tint = *ink;
         break;
     default: /* GMB_ROLE_DEFAULT */
@@ -250,20 +251,20 @@ gmb_cell_color_t gmb_theme_role_color(const gmb_theme_t* t, int role, int state,
     switch (state)
     {
     case GMB_STATE_HOVER:
-        surface = shade(surface, dark ? 1.12 : 0.92);
+        surface = gmb_theme_shade(surface, dark ? 1.12 : 0.92);
         break;
     case GMB_STATE_PRESSED:
-        surface = shade(surface, dark ? 0.80 : 0.76);
+        surface = gmb_theme_shade(surface, dark ? 0.80 : 0.76);
         break;
     case GMB_STATE_DISABLED:
-        surface = mix(surface, win, 0.60);
-        ink = has_col(t->dim) ? t->dim : mix(ink, win, 0.50);
+        surface = gmb_theme_mix(surface, win, 0.60);
+        ink = has_col(t->dim) ? t->dim : gmb_theme_mix(ink, win, 0.50);
         break;
     case GMB_STATE_SELECTED:
-        surface = has_col(t->active_bg) ? t->active_bg : mix(surface, tint, 0.50);
+        surface = has_col(t->active_bg) ? t->active_bg : gmb_theme_mix(surface, tint, 0.50);
         /* Preset dove selezione e accento coincidono (Turbo Vision: blu su blu):
          * senza questo scatto la selezione sarebbe invisibile. */
-        if (same(surface, tint)) surface = shade(surface, dark ? 1.20 : 0.80);
+        if (same(surface, tint)) surface = gmb_theme_shade(surface, dark ? 1.20 : 0.80);
         ink = gmb_theme_text_on(surface);
         break;
     default:
@@ -272,9 +273,12 @@ gmb_cell_color_t gmb_theme_role_color(const gmb_theme_t* t, int role, int state,
 
     switch (part)
     {
-    case GMB_PART_TEXT:   return gmb_theme_ensure_contrast(ink, surface, 4.5);   /* WCAG AA */
-    case GMB_PART_BORDER: return gmb_theme_ensure_contrast(mix(surface, ink, 0.45), win, 3.0);
-    case GMB_PART_FOCUS:  return gmb_theme_ensure_contrast(tint, surface, 3.0);
+    /* Le soglie vengono dai flag globali di accessibilità (include/gmb_a11y.h):
+     * normali = AA (4.5 testo, 3.0 bordi/focus); `ui.high_contrast` le porta ad
+     * AAA (7.0 testo) e bordi 4.5. Un solo punto, vale su TEXT e PIXEL. */
+    case GMB_PART_TEXT:   return gmb_theme_ensure_contrast(ink, surface, gmb_a11y_min_text_ratio());
+    case GMB_PART_BORDER: return gmb_theme_ensure_contrast(gmb_theme_mix(surface, ink, 0.45), win, gmb_a11y_min_border_ratio());
+    case GMB_PART_FOCUS:  return gmb_theme_ensure_contrast(tint, surface, gmb_a11y_min_border_ratio());
     case GMB_PART_ACCENT: return tint;
     default:              return surface;
     }

@@ -4,6 +4,8 @@
  * Nord, Dracula, Monokai, SolarizedDark, RetroGreen, Amber) + desktop_pattern.
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
+#include "gmb_theme_roles.h"
+#include "gmb_a11y.h"   /* ui.high_contrast sul percorso GRAPHICS/PIXEL */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -437,6 +439,18 @@ static unsigned int ps_rgba(gmb_cell_color_t c, unsigned int a)
     return (a << 24) | ((unsigned int)c.r << 16) | ((unsigned int)c.g << 8) | (unsigned int)c.b;
 }
 
+/* Inversa di ps_rgba (ignora l'alpha): serve ai flag di accessibilità per
+ * rileggere i colori 0xAARRGGBB dello stile widget come colori di cella. */
+static gmb_cell_color_t unps(unsigned int v)
+{
+    gmb_cell_color_t c;
+    c.r = (uint8_t)((v >> 16) & 0xFFu);
+    c.g = (uint8_t)((v >> 8)  & 0xFFu);
+    c.b = (uint8_t)( v        & 0xFFu);
+    c.is_default = false;
+    return c;
+}
+
 static int theme_is_classic(const char* n)
 {
     return strcasecmp(n, "turbovision") == 0 || strcasecmp(n, "borland") == 0
@@ -639,6 +653,29 @@ gmb_widget_style_t gmb_widget_style_from_theme(const gmb_theme_t* t)
         s.title_bg = ps_rgba(crgb(0,0,128), 0xFF);
         s.title_fg = ps_rgba(crgb(255,255,255), 0xFF);
         s.pad_x = 6; s.pad_y = 4;
+    }
+
+    /* ACCESSIBILITÀ (ui.high_contrast): sul percorso PIXEL i colori sono risolti qui,
+     * una volta, alla creazione dello stile. Si garantiscono coppie leggibili per
+     * testo, testo disabilitato, bordo e focus su QUALUNQUE preset, senza alterare
+     * forma/ombre/gradienti. Va dopo le varianti (vb6/neon/glass/soft) perché sono
+     * loro a fissare gli ultimi colori. */
+    if (gmb_a11y_get().high_contrast)
+    {
+        double tr  = gmb_a11y_min_text_ratio();
+        double br  = gmb_a11y_min_border_ratio();
+        gmb_cell_color_t fill = unps(s.fill);
+        gmb_cell_color_t brd  = gmb_theme_ensure_contrast(unps(s.border), fill, br);
+        gmb_cell_color_t fbg  = unps(s.focus_bg);
+        gmb_cell_color_t ffg;
+        s.text          = ps_rgba(gmb_theme_ensure_contrast(unps(s.text), fill, tr), 0xFF);
+        s.text_disabled = ps_rgba(gmb_theme_ensure_contrast(unps(s.text_disabled), fill, 4.5), 0xFF);
+        s.border        = ps_rgba(brd, 0xFF);
+        /* l'anello di focus deve staccarsi dalla superficie normale */
+        if (gmb_theme_contrast_ratio(fbg, fill) < br) fbg = gmb_theme_text_on(fill);
+        ffg = gmb_theme_text_on(fbg);
+        s.focus_bg = ps_rgba(fbg, 0xFF);
+        s.focus_fg = ps_rgba(ffg, 0xFF);
     }
     return s;
 }

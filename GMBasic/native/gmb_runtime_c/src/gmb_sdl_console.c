@@ -10,6 +10,7 @@
 #include "gmb_tui_windowstmt.h"
 #include "gmb_tui_clipper.h"
 #include "gmb_tui_widgets.h"
+#include "gmb_a11y.h"   /* ui.text_scale sul font della console */
 #include "gmb_gfx_input.h"
 #include <stdlib.h>
 #include <string.h>
@@ -429,7 +430,9 @@ void gmb_sdl_console_update_font(gmb_sdl_console_t* c)
     gmb_sdl_context_t* ctx = (gmb_sdl_context_t*)c->context;
     int sc = gmb_sdl_context_render_scale(ctx); if (sc < 1) sc = 1;
     c->render_scale = sc;
-    int base = c->font_size > 0 ? c->font_size : (c->config.font_size > 0 ? c->config.font_size : 16);
+    /* `ui.text_scale` si applica alla dimensione FINALE (config o default); 0 = auto
+     * e resta invariato dentro gmb_a11y_scale_px. */
+    int base = gmb_a11y_scale_px(c->font_size > 0 ? c->font_size : (c->config.font_size > 0 ? c->config.font_size : 16));
     int px = base * sc;                       /* scaledFontSize = fontSize * renderScale */
     sdlcon_select_monospace(c);
     if (c->font_atlas) { gmb_font_atlas_free((gmb_font_atlas_t*)c->font_atlas); c->font_atlas = NULL; }

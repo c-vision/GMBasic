@@ -4,6 +4,7 @@
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
 #include "gmb_theme_roles.h"
+#include "gmb_a11y.h"     /* ui.high_contrast / ui.focus_always_visible */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -124,6 +125,12 @@ void gmb_control_style_with_selected_colors(gmb_control_style_t* s, gmb_cell_col
 }
 void gmb_control_style_with_fill(gmb_control_style_t* s, char fill) { s->fill_char = fill; }
 
+/* Due colori di cella indistinguibili (stessi canali RGB). */
+static int col_eq(gmb_cell_color_t a, gmb_cell_color_t b)
+{
+    return a.r == b.r && a.g == b.g && a.b == b.b;
+}
+
 void gmb_control_style_effective(const gmb_control_style_t* s, bool focused, bool error, bool selected,
                                  gmb_cell_color_t* fg, gmb_cell_color_t* bg)
 {
@@ -176,12 +183,33 @@ void gmb_control_style_effective(const gmb_control_style_t* s, bool focused, boo
     {
         *fg = s->has_fg_focus ? s->fg_focus : role_focus_fg;
         *bg = s->has_bg_focus ? s->bg_focus : role_focus_bg;
+
+        /* ACCESSIBILITÀ (ui.focus_always_visible): se il tema/ruolo NON distingue
+         * il focus dal normale (coppia identica, nessun focuscolor= esplicito)
+         * l'utente non sa dove si trova. Si deriva un fondo riconoscibile mescolando
+         * la superficie normale con l'accento del tema; se anche il mix resta troppo
+         * vicino si usa il polo opposto (inversione), che è sempre visibile. */
+        if (gmb_a11y_get().focus_always_visible && !s->has_fg_focus && !s->has_bg_focus
+            && col_eq(*fg, base_fg) && col_eq(*bg, base_bg))
+        {
+            gmb_cell_color_t tint = gmb_theme_role_color(&th, GMB_ROLE_ACCENT, GMB_STATE_NORMAL, GMB_PART_ACCENT);
+            gmb_cell_color_t ring = gmb_theme_mix(base_bg, tint, 0.45);
+            if (gmb_theme_contrast_ratio(ring, base_bg) < 1.30) ring = gmb_theme_text_on(base_bg);
+            *bg = ring;
+            *fg = gmb_theme_text_on(ring);
+        }
     }
     else
     {
         *fg = base_fg;
         *bg = base_bg;
     }
+
+    /* ACCESSIBILITÀ (ui.high_contrast): ultimo passo dopo l'intera cascata, così il
+     * risultato vale per OGNI stato (normale, focus, selezione, errore): l'inchiostro
+     * è quello che legge meglio sulla superficie effettivamente scelta. */
+    if (gmb_a11y_get().high_contrast)
+        *fg = gmb_theme_ensure_contrast(*fg, *bg, gmb_a11y_min_text_ratio());
 }
 
 /* ===================== Palette CONTROLLI Turbo Vision =====================

@@ -3,6 +3,7 @@
  * File per-modulo: piccolo, verificabile e committabile singolarmente.
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
+#include "gmb_a11y.h"   /* ui.text_scale sul big text */
 #include "gmb_graphics.h"
 #include "gmb_form.h"
 #include <stdio.h>
@@ -154,7 +155,7 @@ static void bigtext_draw_px(void* u, gmb_control_t* c)
     int bh = (c->px_h > 0) ? c->px_h : c->height;
     /* Dimensione: esplicita con STYLE "font=NN"; altrimenti derivata dall'altezza.
      * Prima era FORZATA a >= 48px: testo sempre enorme e non regolabile. */
-    int bs = c->font_size > 0 ? c->font_size : (bh - 6);
+    int bs = gmb_a11y_scale_px(c->font_size > 0 ? c->font_size : (bh - 6));
     if (bs < 14) bs = 14;
     gmb_gfx_font(ops, bs);
     int col = (int)(0x40000000u | (st.text & 0xFFFFFFu));

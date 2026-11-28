@@ -93,6 +93,12 @@ double gmb_theme_contrast_ratio(gmb_cell_color_t a, gmb_cell_color_t b);
 gmb_cell_color_t gmb_theme_ensure_contrast(gmb_cell_color_t fg, gmb_cell_color_t bg, double min_ratio);
 gmb_cell_color_t gmb_theme_text_on(gmb_cell_color_t bg);
 
+/* Miscelazione e chiaroscuro puri, usati dai ruoli e dai flag di accessibilità:
+ * `gmb_theme_mix(a,b,t)` = a*(1-t) + b*t (t in 0..1), `gmb_theme_shade(c,f)`
+ * moltiplica i canali (f > 1 schiarisce, f < 1 scurisce). */
+gmb_cell_color_t gmb_theme_mix(gmb_cell_color_t a, gmb_cell_color_t b, double t);
+gmb_cell_color_t gmb_theme_shade(gmb_cell_color_t c, double f);
+
 /* Converte un gmb_cell_color_t in 0xAARRGGBB (per il percorso pixel). */
 unsigned int gmb_theme_rgba(gmb_cell_color_t c, unsigned int alpha);
 

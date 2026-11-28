@@ -18574,14 +18574,33 @@ public static double TextWidth(string s)
     public static string AiSetOption(string name, string value)
     {
         var rc = Basic.Providers.MlxOptions.Set(name, value);
-        if (rc == 0)
+        /* Le opzioni di INTERFACCIA (`ui.*`: accessibilità) sono lette dal runtime C a ogni
+         * disegno, e il registro dell'engine (`MlxOptions`) è separato da quello C (`gmb_opt*`):
+         * senza inoltro il set riuscirebbe ma il colore/scala/movimento non cambierebbe su
+         * IL/PCodeVM. L'inoltro vale SOLO per `ui.`: gli altri nomi restano identici a prima. */
+        bool isUi = !string.IsNullOrEmpty(name)
+                    && name.StartsWith("ui.", StringComparison.OrdinalIgnoreCase);
+        bool forwarded = isUi && Basic.Providers.GmbEnv.SetRegistry(name, value);
+        if (rc == 0 || forwarded)
         {
             if (!string.IsNullOrEmpty(name)) _optionsSetByLanguage.TryAdd(name, 1);
             NotifyOptionAcceptedWithoutReport(name, value);
+            return value;
         }
-        return rc == 0 ? value : "";
+        return "";
     }
-    public static string AiOption(string name) => Basic.Providers.MlxOptions.Get(name);
+    public static string AiOption(string name)
+    {
+        /* Per `ui.*` la verità è il registro C: è LUI che il runtime usa per disegnare, e su
+         * IL/PCodeVM è dove `AiSetOption` inoltra il valore. Così la lettura torna sempre quello
+         * che il programma ha scritto, anche se il registro dell'engine non conosce il nome. */
+        if (!string.IsNullOrEmpty(name) && name.StartsWith("ui.", StringComparison.OrdinalIgnoreCase))
+        {
+            var v = Basic.Providers.GmbEnv.GetRegistry(name);
+            if (v != null) return v;
+        }
+        return Basic.Providers.MlxOptions.Get(name);
+    }
 
     /* NOTA DIAGNOSTICA `debug.memory` (2026-11-14). L'opzione è la SUPERFICIE del registro
      * (§2.1): va accettata e elencata anche qui, e il testo dell'elenco resta identico alle
@@ -18653,6 +18672,14 @@ public static double TextWidth(string s)
          * è obbligatorio come per `debug.memory`: `AI LIST OPTIONS` è l'elenco delle voci del
          * registro, non l'inventario di ciò che ogni gamba sa fare. */
         ("engine.present.max_fps", "cap del present grafico in fps (0 = segue il clock)"),
+        /* Flag GLOBALI di accessibilità (voci di `g_opt_core[]` dal 2026-11-28). Il runtime C
+         * li legge a ogni disegno (`gmb_a11y.c`); qui sono superficie del registro, perché
+         * anche `AI LIST OPTIONS` deve elencarli come le altre gambe. I VALORI sono inoltrati
+         * al registro C da `AiSetOption` (namespace `ui.*`). */
+        ("ui.high_contrast", "contrasto massimo: testo AAA (7:1) e bordi 4.5:1 su ruoli e tema (1 = attiva)"),
+        ("ui.text_scale", "scala del testo dell'interfaccia (0.75..3, default 1)"),
+        ("ui.reduce_motion", "riduce il movimento: cursore senza blink e nessun ridisegno periodico (1 = attiva)"),
+        ("ui.focus_always_visible", "il controllo a fuoco ha sempre un anello distinguibile dalla superficie (1 = attiva)"),
     ];
 
     /// <summary>AI LIST OPTIONS — comando-query (§1): stampa nome, descrizione e valore
@@ -18671,7 +18698,13 @@ public static double TextWidth(string s)
             // Se il programma l'ha impostata (anche a ""), il valore è QUELLO: niente ricaduta
             // sui settings — altrimenti un azzeramento esplicito veniva sovrascritto dalla
             // configurazione della macchina (divergenza con `gmb_opt_get` sulle gambe C).
-            var v = Basic.Providers.MlxOptions.Get(name);
+            // Per `ui.*` la verità è il registro C (è lui che il runtime usa per disegnare e
+            // dove `AiSetOption` inoltra): il registro dell'engine può non conoscere il nome.
+            string v;
+            if (!string.IsNullOrEmpty(name) && name.StartsWith("ui.", StringComparison.OrdinalIgnoreCase))
+                v = Basic.Providers.GmbEnv.GetRegistry(name) ?? Basic.Providers.MlxOptions.Get(name);
+            else
+                v = Basic.Providers.MlxOptions.Get(name);
             if (!_optionsSetByLanguage.ContainsKey(name) && string.IsNullOrEmpty(v))
                 v = Basic.Providers.GmbEnv.GetRegistry(name) ?? "";
             sb.Append(name).Append(" | ").Append(desc).Append(" | = ")

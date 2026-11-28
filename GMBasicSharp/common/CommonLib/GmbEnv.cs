@@ -44,6 +44,13 @@ public static class GmbEnv
     [DllImport(LibName, CharSet = CharSet.Ansi)]
     private static extern int gmb_opt_get(string name, byte[] outBuf, int cap);
 
+    // Scrittura nel registro del runtime C (`gmb_opt_set`). Serve alle gambe managed per le
+    // opzioni che il RUNTIME C legge a ogni disegno (namespace `ui.*` di accessibilità): il
+    // registro dell'engine (`llm_ai_mlx_opt_set`, dove scrive `MlxOptions`) è un ALTRO registro
+    // e il codice C che colora non lo vede.
+    [DllImport(LibName, CharSet = CharSet.Ansi)]
+    private static extern int gmb_opt_set(string name, string value);
+
     public static string? GetRegistry(string name)
     {
         try
@@ -57,6 +64,19 @@ public static class GmbEnv
         {
             /* lib non caricata: nessun valore */
             return null;
+        }
+    }
+
+    /// <summary>Scrive una voce nel registro opzioni del runtime C. Ritorna true se la
+    /// libreria nativa è caricata e il set è riuscito. Usata dall'inoltro di `ui.*`
+    /// in IL/PCodeVM, dove il registro dell'engine e quello C sono separati.</summary>
+    public static bool SetRegistry(string name, string value)
+    {
+        try { return gmb_opt_set(name ?? "", value ?? "") == 0; }
+        catch
+        {
+            /* lib non caricata: nessuna scrittura */
+            return false;
         }
     }
 

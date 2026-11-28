@@ -8,6 +8,8 @@
  * ============================================================================ */
 #include "gmb_theme_roles.h"
 #include "gmb_layout.h"
+#include "gmb_a11y.h"       /* flag globali di accessibilità */
+#include "gmb_runtime.h"    /* gmb_opt_set: registro opzioni (sorgente dei flag) */
 
 #include <math.h>
 #include <stdio.h>
@@ -256,12 +258,96 @@ static void test_tui_cascade(void)
           "senza ruolo: inchiostro = testo del tema");
 }
 
+/* ---- accessibilità: flag globali (registro → runtime) ---- */
+
+static void test_a11y(void)
+{
+    /* Parse condivisi booleani. */
+    check(gmb_a11y_parse_bool("1") == 1 && gmb_a11y_parse_bool("on") == 1
+          && gmb_a11y_parse_bool("TRUE") == 1 && gmb_a11y_parse_bool("si") == 1,
+          "parse bool: acceso");
+    check(gmb_a11y_parse_bool("0") == 0 && gmb_a11y_parse_bool("off") == 0
+          && gmb_a11y_parse_bool("") == 0 && gmb_a11y_parse_bool("boh") == 0,
+          "parse bool: spento");
+    check(gmb_a11y_parse_bool("2") == 1, "parse bool: numero > 0 = acceso");
+
+    /* Parse della scala: clamp 0.75..3, default 1, 0/negativo/non numerico = 1. */
+    check(fabs(gmb_a11y_parse_scale("") - 1.0) < 1e-9, "scala vuota = 1");
+    check(fabs(gmb_a11y_parse_scale("0") - 1.0) < 1e-9, "scala 0 = default");
+    check(fabs(gmb_a11y_parse_scale("0.5") - 0.75) < 1e-9, "scala minima 0.75");
+    check(fabs(gmb_a11y_parse_scale("9") - 3.0) < 1e-9, "scala massima 3");
+    check(fabs(gmb_a11y_parse_scale("1.25") - 1.25) < 1e-9, "scala 1.25");
+
+    /* Il registro opzioni e' la SORGENTE: impostare li' i flag li rende attivi. */
+    check(gmb_opt_set(GMB_A11Y_OPT_HIGH_CONTRAST, "1") == 0, "registro: high_contrast");
+    check(gmb_opt_set(GMB_A11Y_OPT_TEXT_SCALE, "2") == 0, "registro: text_scale");
+    check(gmb_opt_set(GMB_A11Y_OPT_REDUCE_MOTION, "1") == 0, "registro: reduce_motion");
+    check(gmb_opt_set(GMB_A11Y_OPT_FOCUS_VISIBLE, "1") == 0, "registro: focus_always_visible");
+
+    gmb_a11y_t a = gmb_a11y_get();
+    check(a.high_contrast == 1 && a.reduce_motion == 1 && a.focus_always_visible == 1,
+          "snapshot dei flag attivi");
+    check(fabs(a.text_scale - 2.0) < 1e-9, "snapshot text_scale");
+    check(gmb_a11y_motion() == 0, "reduce_motion spegne il movimento");
+    check(gmb_a11y_scale_px(16) == 32, "text_scale=2 su 16 -> 32");
+    check(gmb_a11y_scale_px(0) == 0 && gmb_a11y_scale_px(-3) == -3, "0/negativo = auto, invariato");
+    check(fabs(gmb_a11y_min_text_ratio() - 7.0) < 1e-9, "high_contrast: testo AAA");
+    check(fabs(gmb_a11y_min_border_ratio() - 4.5) < 1e-9, "high_contrast: bordo 4.5");
+
+    /* AAA e' raggiungibile su uno sfondo scuro; su ogni preset il contrasto non
+     * peggiora mai rispetto ad AA (puo' solo avvicinarsi al polo migliore). */
+    check(gmb_theme_contrast_ratio(
+              gmb_theme_ensure_contrast(crgb(60, 60, 60), crgb(0, 0, 0), 7.0), crgb(0, 0, 0)) >= 7.0,
+          "AAA raggiungibile su nero");
+    for (size_t i = 0; i < sizeof g_themes / sizeof g_themes[0]; i++)
+    {
+        gmb_theme_t t = gmb_theme_named(g_themes[i]);
+        for (int role = GMB_ROLE_DEFAULT; role <= GMB_ROLE_MUTED; role++)
+        {
+            gmb_cell_color_t s = gmb_theme_role_color(&t, role, GMB_STATE_NORMAL, GMB_PART_SURFACE);
+            gmb_cell_color_t x = gmb_theme_role_color(&t, role, GMB_STATE_NORMAL, GMB_PART_TEXT);
+            if (gmb_theme_contrast_ratio(x, s) < 4.4)
+            {
+                printf("FAIL a11y alto contrasto %s/%s\n", g_themes[i], gmb_theme_role_name(role));
+                g_fails++;
+            }
+        }
+    }
+
+    /* Anello di focus artificiale: senza focuscolor= esplicito e con una coppia di
+     * focus identica a quella normale, il flag rende il focus distinguibile. */
+    gmb_opt_set(GMB_A11Y_OPT_HIGH_CONTRAST, "0");
+    gmb_ui_set_theme_name("midnight");
+    gmb_control_style_t st;
+    memset(&st, 0, sizeof st);
+    gmb_cell_color_t nfg, nbg, ffg, fbg;
+    gmb_control_style_effective(&st, false, false, false, &nfg, &nbg);
+    gmb_control_style_effective(&st, true,  false, false, &ffg, &fbg);
+    check(!(ffg.r == nfg.r && ffg.g == nfg.g && ffg.b == nfg.b
+            && fbg.r == nbg.r && fbg.g == nbg.g && fbg.b == nbg.b),
+          "focus_always_visible: il focus si distingue dal normale");
+
+    /* Spento il flag, il focus torna esattamente alla coppia del tema. */
+    gmb_opt_set(GMB_A11Y_OPT_FOCUS_VISIBLE, "0");
+    gmb_control_style_effective(&st, true, false, false, &ffg, &fbg);
+    check(ffg.r == nfg.r && ffg.g == nfg.g && ffg.b == nfg.b
+          && fbg.r == nbg.r && fbg.g == nbg.g && fbg.b == nbg.b,
+          "senza flag il focus resta quello del tema");
+
+    /* Nessun flag residuo: tornano i valori normali (le altre verifiche non sono
+     * contaminate e un programma che non imposta nulla non cambia comportamento). */
+    gmb_opt_set(GMB_A11Y_OPT_TEXT_SCALE, "1");
+    gmb_opt_set(GMB_A11Y_OPT_REDUCE_MOTION, "0");
+    check(gmb_a11y_motion() == 1 && gmb_a11y_scale_px(10) == 10, "flag spenti = comportamento normale");
+}
+
 int main(void)
 {
     test_contrast();
     test_roles();
     test_tui_cascade();
     test_layout();
+    test_a11y();
     if (g_fails) { printf("%d verifiche fallite\n", g_fails); return 1; }
     printf("gmb_theme_roles_selfcheck: OK\n");
     return 0;

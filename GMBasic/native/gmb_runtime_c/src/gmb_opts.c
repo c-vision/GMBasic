@@ -73,6 +73,14 @@ static const struct { const char* name; const char* desc; } g_opt_core[] = {
      * con cui DOEVENTS parcheggia. Si imposta solo per forzare un tetto diverso (es. 30 su
      * una macchina lenta: si presenta la metà dei frame, ma il ciclo logico resta a 60 Hz). */
     { "engine.present.max_fps", "cap del present grafico in fps (0 = segue il clock)" },
+    /* ── ACCESSIBILITA' (2026-11-28): flag GLOBALI di interfaccia, letti dal runtime a ogni
+     * disegno (include/gmb_a11y.h). Valgono sia sul percorso TEXT/TUI sia su GRAPHICS/PIXEL;
+     * si impostano con `AI SET OPTION` o dalla sezione `engine` dei settings. Non sono
+     * variabili d'ambiente: passano dal registro come ogni altro parametro operativo. */
+    { "ui.high_contrast", "contrasto massimo: testo AAA (7:1) e bordi 4.5:1 su ruoli e tema (1 = attiva)" },
+    { "ui.text_scale", "scala del testo dell'interfaccia (0.75..3, default 1)" },
+    { "ui.reduce_motion", "riduce il movimento: cursore senza blink e nessun ridisegno periodico (1 = attiva)" },
+    { "ui.focus_always_visible", "il controllo a fuoco ha sempre un anello distinguibile dalla superficie (1 = attiva)" },
 };
 #define GMB_OPT_CORE_N ((int)(sizeof g_opt_core / sizeof g_opt_core[0]))
 
@@ -182,7 +190,7 @@ int gmb_opt_count(void) { ensure_init(); return g_nopts; }
  * dipendente dall'engine caricato. */
 const char* gmb_opt_list_text(void) {
     ensure_init();
-    static char buf[4096];
+    static char buf[8192];
     int o = 0;
     buf[0] = '\0';
     for (int i = 0; i < GMB_OPT_CORE_N && i < g_nopts; i++) {

@@ -6,8 +6,11 @@
 > (IL, PCodeVM, VM/C, C99Native) e su **entrambi i percorsi** (GRAPHICS/PIXEL e TEXT/TUI).
 > Implementazione condivisa: `GMBasic/native/gmb_runtime_c/src/gmb_theme_roles.c` e
 > `src/gmb_layout.c`. MiniTest: `shared/minitests/controls/layout_clamp.bas`,
-> `shared/minitests/controls/layout_manager.bas`. Esempio completo:
-> `shared/samples/graphics/ThemeRoles.bas`.
+> `shared/minitests/controls/layout_manager.bas`, `shared/minitests/controls/a11y_options.bas`,
+> `shared/minitests/ai/ai_list_options.bas`. Esempio completo:
+> `shared/samples/graphics/ThemeRoles.bas`. I flag globali di accessibilità
+> (`ui.high_contrast`, `ui.text_scale`, `ui.reduce_motion`,
+> `ui.focus_always_visible`) sono nella **§7**.
 
 ## 1. Sintassi in una schermata
 
@@ -161,3 +164,57 @@ i **limiti e la quota del layout** sì: i rect si possono leggere con
   `shared/minitests/controls/layout_manager.bas` (EXPAND/ANCHOR/ALIGN).
 - Esempio: `shared/samples/graphics/ThemeRoles.bas`,
   `shared/samples/graphics/LayoutManager.bas`.
+
+## 7. Accessibilità runtime — flag globali dell'interfaccia
+
+Quattro flag **globali** (non per controllo) che si attivano **senza toccare il
+programma**: valgono su tutta l'interfaccia, sia sul percorso TEXT/TUI sia su
+GRAPHICS/PIXEL, e anche a runtime (il runtime li rilegge a ogni disegno).
+
+| Voce del registro | Valore | Effetto |
+|---|---|---|
+| `ui.high_contrast` | `1` / `0` (alias `on/off/true/false/si/no`) | testo **AAA (7:1)** e bordi **4.5:1** su ruoli e tema; anche il percorso PIXEL garantisce testo, testo disabilitato, bordo e focus leggibili |
+| `ui.text_scale` | numero `0.75…3`, default `1` | scala il testo dell'interfaccia (font della console, big text, font grafico configurato); `0`/negativo/non numerico = `1` |
+| `ui.reduce_motion` | `1` / `0` | niente blink del cursore (resta acceso) e niente ridisegno periodico ogni 200 ms: si ridisegna solo su danno/forzatura |
+| `ui.focus_always_visible` | `1` / `0` | il controllo a fuoco ha sempre un fondo distinguibile: se il tema non distingue il focus dal normale, se ne deriva uno (superficie normale mescolata con l'accento, o inversione) |
+
+Si impostano dal registro opzioni, quindi **non sono variabili d'ambiente**:
+
+```basic
+AI SET OPTION "ui.high_contrast", "1"
+AI SET OPTION "ui.text_scale", "1.5"
+AI SET OPTION "ui.reduce_motion", "1"
+AI SET OPTION "ui.focus_always_visible", "1"
+```
+
+oppure, per tutta l'applicazione, dalla sezione `engine` dei settings:
+
+```json
+{ "engine": { "ui.high_contrast": "1", "ui.text_scale": "1.5" } }
+```
+
+Lettura: `v = AI.OPTION("ui.high_contrast")`; elenco completo con
+`AI LIST OPTIONS`. Valore vuoto = default (contrasto normale, scala 1.0, movimento
+e focus del tema), quindi un programma che non imposta nulla non cambia
+comportamento.
+
+**Note di semantica.**
+
+- `ui.high_contrast` alza le soglie in **un solo punto** (`gmb_a11y_min_text_ratio` /
+  `gmb_a11y_min_border_ratio`) usato dai ruoli e dalla cascata TUI; sul percorso
+  PIXEL lo stile del widget viene corretto alla creazione. È una scelta
+  dell'**utente**, quindi prevale anche su un `fg=` esplicito del programma.
+  AAA non è sempre fisicamente raggiungibile (sfondi di luminanza media): in quel
+  caso si usa il polo più leggibile (bianco o nero), che è il massimo possibile.
+- `ui.text_scale` non tocca le dimensioni **automatiche** (`0` = eredita): scala solo
+  una dimensione già decisa.
+- `ui.focus_always_visible` non sovrascrive un `focuscolor=` esplicito del programma
+  né un tema che già distingue il focus.
+- Su IL/PCodeVM il valore dei flag viene **inoltrato al registro C** (`gmb_opt_set`)
+  perché è il codice C a disegnare: senza inoltro il set riuscirebbe ma il colore o
+  la scala non cambierebbero.
+
+Test: `shared/minitests/controls/a11y_options.bas` (round-trip del registro),
+`shared/minitests/ai/ai_list_options.bas` (le quattro voci nell'elenco) e
+`tests/gmb_theme_roles_selfcheck.c` (`test_a11y`: parse, registro → snapshot, AAA su
+ogni preset, anello di focus, scala, movimento).

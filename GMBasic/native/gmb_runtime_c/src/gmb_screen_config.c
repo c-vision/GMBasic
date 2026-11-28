@@ -4,6 +4,7 @@
 #include "gmb_screen_config.h"
 #include "gmb_graphics.h"
 #include "gmb_runtime.h"
+#include "gmb_a11y.h"   /* ui.text_scale sul font configurato a startup */
 #include <string.h>
 #include <strings.h>
 #include <stdio.h>
@@ -255,5 +256,5 @@ void gmb_screen_config_apply(const gmb_screen_config_t* cfg)
     }
     /* font */
     if (cfg->font_path && cfg->font_size > 0)
-        gmb_gfx_font(cfg->font_path, cfg->font_size);
+        gmb_gfx_font(cfg->font_path, gmb_a11y_scale_px(cfg->font_size));
 }
