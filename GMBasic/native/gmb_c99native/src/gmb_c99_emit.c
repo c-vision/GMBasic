@@ -34739,11 +34739,11 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
     ind(c);
     sb_put(&c->out, inner_ret);
     sb_put(&c->out, " (*__ffi_fn)(");
-    for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); sb_put(&c->out, FFI_INNER(i)); for (int _x = 0; _x < FFI_RANK(i); _x++) sb_put(&c->out, ", gmb_int_t"); }
+    for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); sb_put(&c->out, FFI_INNER(i)); if (FFI_RANK(i) > 0) sb_put(&c->out, ", gmb_int_t"); }
     sb_put(&c->out, ") = (");
     sb_put(&c->out, inner_ret);
     sb_put(&c->out, " (*)(");
-    for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); sb_put(&c->out, FFI_INNER(i)); for (int _x = 0; _x < FFI_RANK(i); _x++) sb_put(&c->out, ", gmb_int_t"); }
+    for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); sb_put(&c->out, FFI_INNER(i)); if (FFI_RANK(i) > 0) sb_put(&c->out, ", gmb_int_t"); }
     sb_printf(&c->out, "))gmb_ffi_dl_sym(__ffi_lib_h, \"%s\");\n", sym);
     ind(c);
     sb_put(&c->out, "if (__ffi_fn) {\n");
@@ -34950,13 +34950,13 @@ static void emit_ffi_wrapper(ctx_t* c, fn_info_t* fn, const char* vkey) {
         if (strcmp(retC, "void") == 0) sb_put(&c->out, "__ffi_fn(");
         else if (ret_is_str) sb_put(&c->out, "return gmb_string_alloc(__ffi_fn(");
         else sb_put(&c->out, cast_ret ? "return (gmb_double_t)__ffi_fn(" : "return __ffi_fn(");
-        for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); FFI_EMIT_ARG(i); for (int _x = 0; _x < FFI_RANK(i); _x++) { sb_put(&c->out, ", (gmb_int_t)("); sb_bound_ident(&c->out, s->func_params[i], _x); sb_put(&c->out, " + 1)"); } }
+        for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); FFI_EMIT_ARG(i); if (FFI_RANK(i) > 1) { sb_put(&c->out, ", (gmb_int_t)("); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__bT + 1)"); } else if (FFI_RANK(i) == 1) { sb_put(&c->out, ", (gmb_int_t)("); sb_bound_ident(&c->out, s->func_params[i], 0); sb_put(&c->out, " + 1)"); } }
         sb_put(&c->out, ret_is_str && strcmp(retC, "void") != 0 ? "));\n" : ");\n");
     } else {
         ind(c);
         if (strcmp(retC, "void") == 0) sb_put(&c->out, "__ffi_fn(");
         else sb_printf(&c->out, "%s __rr = __ffi_fn(", inner_ret);
-        for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); FFI_EMIT_ARG(i); for (int _x = 0; _x < FFI_RANK(i); _x++) { sb_put(&c->out, ", (gmb_int_t)("); sb_bound_ident(&c->out, s->func_params[i], _x); sb_put(&c->out, " + 1)"); } }
+        for (int i = 0; i < s->n_params; i++) { if (i) sb_put(&c->out, ", "); FFI_EMIT_ARG(i); if (FFI_RANK(i) > 1) { sb_put(&c->out, ", (gmb_int_t)("); emit_ident(c, s->func_params[i]); sb_put(&c->out, "__bT + 1)"); } else if (FFI_RANK(i) == 1) { sb_put(&c->out, ", (gmb_int_t)("); sb_bound_ident(&c->out, s->func_params[i], 0); sb_put(&c->out, " + 1)"); } }
         sb_put(&c->out, ");\n");
         for (int i = 0; i < s->n_params && i < C99_FFI_MAX_ARGS; i++) {
             if (!is_cb_param[i]) continue;
