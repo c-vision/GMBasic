@@ -7088,7 +7088,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "CHOLESKY",
       "id": 645,
       "tokenKind": 377,
@@ -7099,7 +7099,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "COND",
       "id": 646,
       "tokenKind": 2032,
@@ -7110,7 +7110,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "COSM",
       "id": 647,
       "tokenKind": 2024,
@@ -7121,7 +7121,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "DETERMINANT",
       "id": 648,
       "tokenKind": 862,
@@ -7132,7 +7132,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "EIG",
       "id": 649,
       "tokenKind": 2038,
@@ -7143,7 +7143,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "EVD",
       "id": 650,
       "tokenKind": 376,
@@ -7154,7 +7154,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "EXPM",
       "id": 651,
       "tokenKind": 640,
@@ -7165,7 +7165,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "FACTOR",
       "id": 652,
       "tokenKind": 378,
@@ -7176,7 +7176,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "FRACTIONALPOWER",
       "id": 653,
       "tokenKind": 2028,
@@ -7187,7 +7187,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "FROBENIUSNORM",
       "id": 654,
       "tokenKind": 1983,
@@ -7198,7 +7198,7 @@
       "pure": true
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "HESSENBERG",
       "id": 655,
       "tokenKind": 2021,
@@ -7209,7 +7209,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "INFINITYNORM",
       "id": 656,
       "tokenKind": 1985,
@@ -7220,7 +7220,7 @@
       "pure": true
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "INVERSE",
       "id": 657,
       "tokenKind": 371,
@@ -7231,7 +7231,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "LOGM",
       "id": 658,
       "tokenKind": 2020,
@@ -7242,7 +7242,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "LU",
       "id": 659,
       "tokenKind": 373,
@@ -7253,7 +7253,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "NORM",
       "id": 660,
       "tokenKind": 2018,
@@ -7264,7 +7264,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "NUCLEARNORM",
       "id": 661,
       "tokenKind": 2033,
@@ -7275,7 +7275,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "NULLSPACE",
       "id": 662,
       "tokenKind": 2016,
@@ -7286,7 +7286,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "ONENORM",
       "id": 663,
       "tokenKind": 1984,
@@ -7297,7 +7297,7 @@
       "pure": true
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "ORTH",
       "id": 664,
       "tokenKind": 2029,
@@ -7308,7 +7308,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "PINVERSE",
       "id": 665,
       "tokenKind": 2011,
@@ -7319,7 +7319,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "POLAR",
       "id": 666,
       "tokenKind": 2031,
@@ -7330,7 +7330,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "QR",
       "id": 667,
       "tokenKind": 374,
@@ -7341,7 +7341,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "RANK",
       "id": 668,
       "tokenKind": 2012,
@@ -7352,7 +7352,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SCHUR",
       "id": 669,
       "tokenKind": 2039,
@@ -7363,7 +7363,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SIGNM",
       "id": 670,
       "tokenKind": 2027,
@@ -7374,7 +7374,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SINM",
       "id": 671,
       "tokenKind": 2025,
@@ -7385,7 +7385,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SOLVE",
       "id": 672,
       "tokenKind": 825,
@@ -7396,7 +7396,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SOLVETRIANGULAR",
       "id": 673,
       "tokenKind": 2037,
@@ -7407,7 +7407,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SQRTM",
       "id": 674,
       "tokenKind": 2019,
@@ -7418,7 +7418,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SUBSPACEANGLES",
       "id": 675,
       "tokenKind": 2030,
@@ -7429,7 +7429,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SVD",
       "id": 676,
       "tokenKind": 375,
@@ -7440,7 +7440,7 @@
       "pure": false
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "TANM",
       "id": 677,
       "tokenKind": 2026,

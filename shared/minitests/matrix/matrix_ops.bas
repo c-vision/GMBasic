@@ -13,9 +13,9 @@ SUB Main()
     PRINT "colcount: "; MATRIX.COLUMNCOUNT(h)
     PRINT "max: "; MATRIX.MAXVALUE(h)
     PRINT "min: "; MATRIX.MINVALUE(h)
-    PRINT "frobenius: "; LINALG.FROBENIUSNORM(h)
-    PRINT "onenorm: "; LINALG.ONENORM(h)
-    PRINT "infnorm: "; LINALG.INFINITYNORM(h)
+    PRINT "frobenius: "; LINALG_MATRIX.FROBENIUSNORM(h)
+    PRINT "onenorm: "; LINALG_MATRIX.ONENORM(h)
+    PRINT "infnorm: "; LINALG_MATRIX.INFINITYNORM(h)
 
     IF MATRIX.ISSYMMETRIC(h) THEN PRINT "symmetric: si" ELSE PRINT "symmetric: no"
     IF MATRIX.ISUPPERTRIANGULAR(h) THEN PRINT "upper: si" ELSE PRINT "upper: no"

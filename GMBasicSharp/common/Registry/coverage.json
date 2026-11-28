@@ -2,10 +2,10 @@
   "total_canonical": 1364,
   "scope": "DECLARED by BackendSupport/Registry (name-match; NON misurato su dispatch reali)",
   "declared_per_backend": {
-    "IL": 1242,
-    "PCodeVM": 1242,
-    "VMC": 1242,
-    "C99Native": 1242
+    "IL": 1209,
+    "PCodeVM": 1209,
+    "VMC": 1209,
+    "C99Native": 1209
   },
   "alias_only_name_matches": [
     {
@@ -25,16 +25,6 @@
         {
           "name": "CONVERT.Close",
           "kind": "DocClose"
-        }
-      ]
-    },
-    {
-      "name": "COND",
-      "kind": "Cond",
-      "suppliers": [
-        {
-          "name": "LINALG.COND",
-          "kind": "MatrixCond"
         }
       ]
     },
@@ -103,40 +93,40 @@
       "CLOCK.DT",
       "CLOCK.FPS",
       "CLOCK.SCALE",
-      "SCENE.CEILAT",
-      "SCENE.EYE",
-      "SCENE.FLOORAT",
-      "SCENE.HIT"
+      "LINALG_MATRIX.CHOLESKY",
+      "LINALG_MATRIX.COND",
+      "LINALG_MATRIX.COSM",
+      "LINALG_MATRIX.DETERMINANT"
     ],
     "PCodeVM": [
       "CLOCK.ALPHA",
       "CLOCK.DT",
       "CLOCK.FPS",
       "CLOCK.SCALE",
-      "SCENE.CEILAT",
-      "SCENE.EYE",
-      "SCENE.FLOORAT",
-      "SCENE.HIT"
+      "LINALG_MATRIX.CHOLESKY",
+      "LINALG_MATRIX.COND",
+      "LINALG_MATRIX.COSM",
+      "LINALG_MATRIX.DETERMINANT"
     ],
     "VMC": [
       "CLOCK.ALPHA",
       "CLOCK.DT",
       "CLOCK.FPS",
       "CLOCK.SCALE",
-      "SCENE.CEILAT",
-      "SCENE.EYE",
-      "SCENE.FLOORAT",
-      "SCENE.HIT"
+      "LINALG_MATRIX.CHOLESKY",
+      "LINALG_MATRIX.COND",
+      "LINALG_MATRIX.COSM",
+      "LINALG_MATRIX.DETERMINANT"
     ],
     "C99Native": [
       "CLOCK.ALPHA",
       "CLOCK.DT",
       "CLOCK.FPS",
       "CLOCK.SCALE",
-      "SCENE.CEILAT",
-      "SCENE.EYE",
-      "SCENE.FLOORAT",
-      "SCENE.HIT"
+      "LINALG_MATRIX.CHOLESKY",
+      "LINALG_MATRIX.COND",
+      "LINALG_MATRIX.COSM",
+      "LINALG_MATRIX.DETERMINANT"
     ]
   },
   "rows": [
@@ -6582,333 +6572,333 @@
     },
     {
       "id": 645,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "CHOLESKY",
       "kind": "LinAlgCholeskyFunc",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 646,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "COND",
       "kind": "MatrixCond",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 647,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "COSM",
       "kind": "MatrixCosm",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 648,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "DETERMINANT",
       "kind": "Determinant",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 649,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "EIG",
       "kind": "MatrixEig",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 650,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "EVD",
       "kind": "LinAlgEvdFunc",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 651,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "EXPM",
       "kind": "MatrixExp",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 652,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "FACTOR",
       "kind": "LinAlgDecompGetFactorFunc",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 653,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "FRACTIONALPOWER",
       "kind": "MatrixFractionalPower",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 654,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "FROBENIUSNORM",
       "kind": "MatrixFrobeniusNorm",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 655,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "HESSENBERG",
       "kind": "MatrixHessenberg",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 656,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "INFINITYNORM",
       "kind": "MatrixInfinityNorm",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 657,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "INVERSE",
       "kind": "LinAlgInverseFunc",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 658,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "LOGM",
       "kind": "MatrixLogm",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 659,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "LU",
       "kind": "LinAlgLuFunc",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 660,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "NORM",
       "kind": "MatrixNorm",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 661,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "NUCLEARNORM",
       "kind": "MatrixNuclearNorm",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 662,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "NULLSPACE",
       "kind": "MatrixNullSpace",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 663,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "ONENORM",
       "kind": "MatrixOneNorm",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 664,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "ORTH",
       "kind": "MatrixOrth",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 665,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "PINVERSE",
       "kind": "MatrixPseudoInverse",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 666,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "POLAR",
       "kind": "MatrixPolar",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 667,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "QR",
       "kind": "LinAlgQrFunc",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 668,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "RANK",
       "kind": "MatrixRank",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 669,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SCHUR",
       "kind": "MatrixSchur",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 670,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SIGNM",
       "kind": "MatrixSignm",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 671,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SINM",
       "kind": "MatrixSinm",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 672,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SOLVE",
       "kind": "Solve",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 673,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SOLVETRIANGULAR",
       "kind": "MatrixSolveTriangular",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 674,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SQRTM",
       "kind": "MatrixSqrt",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 675,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SUBSPACEANGLES",
       "kind": "MatrixSubspaceAngles",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 676,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SVD",
       "kind": "LinAlgSvdFunc",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 677,
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "TANM",
       "kind": "MatrixTanm",
-      "IL": true,
-      "PCodeVM": true,
-      "VMC": true,
-      "C99Native": true
+      "IL": false,
+      "PCodeVM": false,
+      "VMC": false,
+      "C99Native": false
     },
     {
       "id": 678,

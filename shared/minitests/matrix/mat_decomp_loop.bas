@@ -12,13 +12,13 @@ SUB Main()
   DIM i AS LONG
   DIM s1 AS DOUBLE, s2 AS DOUBLE, s3 AS DOUBLE, s4 AS DOUBLE
   FOR i = 1 TO 140
-    DIM lu = LINALG.LU(a)
+    DIM lu = LINALG_MATRIX.LU(a)
     s1 = s1 + lu.U(0, 0)
-    DIM po = LINALG.POLAR(a)
+    DIM po = LINALG_MATRIX.POLAR(a)
     s2 = s2 + po.P(0, 0)
-    DIM inv = LINALG.INVERSE(a)
+    DIM inv = LINALG_MATRIX.INVERSE(a)
     s3 = s3 + inv(0, 0)
-    DIM pin = LINALG.PINVERSE(a)
+    DIM pin = LINALG_MATRIX.PINVERSE(a)
     s4 = s4 + pin(0, 0)
   NEXT i
   PRINT "lu="; s1

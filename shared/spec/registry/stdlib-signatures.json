@@ -11388,7 +11388,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "CHOLESKY",
       "fn": true,
       "return": "CHOLESKYDECOMPOSITION",
@@ -11403,7 +11403,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "COND",
       "fn": true,
       "return": "double",
@@ -11418,7 +11418,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "COSM",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11433,7 +11433,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "DETERMINANT",
       "fn": true,
       "return": "double",
@@ -11448,7 +11448,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "EIG",
       "fn": true,
       "return": "EIGDECOMPOSITION",
@@ -11463,7 +11463,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "EVD",
       "fn": true,
       "return": "EVDDECOMPOSITION",
@@ -11478,7 +11478,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "EXPM",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11493,7 +11493,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "FACTOR",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11515,7 +11515,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "FRACTIONALPOWER",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11537,7 +11537,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "FROBENIUSNORM",
       "fn": true,
       "return": "double",
@@ -11552,7 +11552,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "HESSENBERG",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11567,7 +11567,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "INFINITYNORM",
       "fn": true,
       "return": "double",
@@ -11582,7 +11582,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "INVERSE",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11597,7 +11597,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "LOGM",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11612,7 +11612,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "LU",
       "fn": true,
       "return": "LUDECOMPOSITION",
@@ -11627,7 +11627,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "NORM",
       "fn": true,
       "return": "double",
@@ -11642,7 +11642,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "NUCLEARNORM",
       "fn": true,
       "return": "double",
@@ -11657,7 +11657,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "NULLSPACE",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11672,7 +11672,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "ONENORM",
       "fn": true,
       "return": "double",
@@ -11687,7 +11687,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "ORTH",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11702,7 +11702,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "PINVERSE",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11717,7 +11717,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "POLAR",
       "fn": true,
       "return": "POLARDECOMPOSITION",
@@ -11732,7 +11732,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "QR",
       "fn": true,
       "return": "QRDECOMPOSITION",
@@ -11747,7 +11747,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "RANK",
       "fn": true,
       "return": "long",
@@ -11762,7 +11762,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SCHUR",
       "fn": true,
       "return": "SCHURDECOMPOSITION",
@@ -11777,7 +11777,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SIGNM",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11792,7 +11792,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SINM",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11807,7 +11807,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SOLVE",
       "fn": true,
       "return": "double[]",
@@ -11829,7 +11829,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SOLVETRIANGULAR",
       "fn": true,
       "return": "double[]",
@@ -11858,7 +11858,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SQRTM",
       "fn": true,
       "return": "MATRIX VALUE",
@@ -11873,7 +11873,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SUBSPACEANGLES",
       "fn": true,
       "return": "double[]",
@@ -11895,7 +11895,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "SVD",
       "fn": true,
       "return": "SVDDECOMPOSITION",
@@ -11910,7 +11910,7 @@
       ]
     },
     {
-      "ns": "LINALG",
+      "ns": "LINALG_MATRIX",
       "name": "TANM",
       "fn": true,
       "return": "MATRIX VALUE",

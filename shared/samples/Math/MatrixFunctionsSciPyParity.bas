@@ -7,11 +7,11 @@ SUB Main()
   h = MATRIX.SETVALUE(h, 0, 0, 2) : h = MATRIX.SETVALUE(h, 0, 1, 1)
   h = MATRIX.SETVALUE(h, 1, 0, 1) : h = MATRIX.SETVALUE(h, 1, 1, 2)
 
-  s = LINALG.SQRTM(h)
+  s = LINALG_MATRIX.SQRTM(h)
   PRINT "sqrtm00  ="; MATRIX.GETVALUE(s, 0, 0)
   PRINT "sqrtm01  ="; MATRIX.GETVALUE(s, 0, 1)
 
-  l = LINALG.LOGM(h)
+  l = LINALG_MATRIX.LOGM(h)
   PRINT "logm00   ="; MATRIX.GETVALUE(l, 0, 0)
   PRINT "logm11   ="; MATRIX.GETVALUE(l, 1, 1)
 
@@ -20,7 +20,7 @@ SUB Main()
   h3 = MATRIX.SETVALUE(h3, 0, 0, 1) : h3 = MATRIX.SETVALUE(h3, 0, 1, 2) : h3 = MATRIX.SETVALUE(h3, 0, 2, 3)
   h3 = MATRIX.SETVALUE(h3, 1, 0, 4) : h3 = MATRIX.SETVALUE(h3, 1, 1, 5) : h3 = MATRIX.SETVALUE(h3, 1, 2, 6)
   h3 = MATRIX.SETVALUE(h3, 2, 0, 7) : h3 = MATRIX.SETVALUE(h3, 2, 1, 8) : h3 = MATRIX.SETVALUE(h3, 2, 2, 10)
-  hh = LINALG.HESSENBERG(h3)
+  hh = LINALG_MATRIX.HESSENBERG(h3)
   PRINT "hess20   ="; MATRIX.GETVALUE(hh, 2, 0)
 
   ' block_diag
@@ -29,7 +29,7 @@ SUB Main()
   PRINT "bd22     ="; MATRIX.GETVALUE(bd, 2, 2)
 
   ' Pseudoinversa Moore-Penrose (per A invertibile coincide con l'inversa)
-  p = LINALG.PINVERSE(h)
+  p = LINALG_MATRIX.PINVERSE(h)
   PRINT "pinv00   ="; MATRIX.GETVALUE(p, 0, 0)
   PRINT "pinv11   ="; MATRIX.GETVALUE(p, 1, 1)
 END SUB

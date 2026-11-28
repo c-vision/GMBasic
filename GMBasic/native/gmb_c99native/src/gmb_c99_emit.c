@@ -2584,13 +2584,15 @@ static int ci_istr(const char* s, const char* needle)
 static int call_ns_is_matrix(gmb_expr_t* e) {
     if (!e) return 1;
     if (e->ns && e->ns[0])
-        return !strcasecmp(e->ns, "MATRIX") || !strcasecmp(e->ns, "LINALG");
+        return !strcasecmp(e->ns, "MATRIX") || !strcasecmp(e->ns, "LINALG")
+            || !strcasecmp(e->ns, "LINALG_MATRIX");
     if (e->var && e->var[0]) {
         const char* dot = strrchr(e->var, '.');
         if (dot) {
             size_t n = (size_t)(dot - e->var);
             return (n == 6 && !strncasecmp(e->var, "MATRIX", 6))
-                || (n == 6 && !strncasecmp(e->var, "LINALG", 6));
+                || (n == 6 && !strncasecmp(e->var, "LINALG", 6))
+                || (n == 13 && !strncasecmp(e->var, "LINALG_MATRIX", 13));
         }
     }
     return 1;
@@ -2605,11 +2607,13 @@ static int is_matrix_factor_call(gmb_expr_t* e) {
     if (e->var && e->var[0]) {
         const char* dot = strrchr(e->var, '.');
         if (dot && !strcasecmp(dot + 1, "FACTOR")
-            && (strncasecmp(e->var, "LINALG.", 7) == 0 || strncasecmp(e->var, "MATRIX.", 7) == 0))
+            && (strncasecmp(e->var, "LINALG.", 7) == 0 || strncasecmp(e->var, "MATRIX.", 7) == 0
+                || strncasecmp(e->var, "LINALG_MATRIX.", 14) == 0))
             return 1;
     }
     if (e->tk == GMB_TOK_Get
-        && ((e->ns && (!strcasecmp(e->ns, "LINALG") || !strcasecmp(e->ns, "MATRIX")))
+        && ((e->ns && (!strcasecmp(e->ns, "LINALG") || !strcasecmp(e->ns, "MATRIX")
+                       || !strcasecmp(e->ns, "LINALG_MATRIX")))
             || (e->args[0] && e->args[0]->kind == GMB_EXPR_CALL
                 && (e->args[0]->tk == GMB_TOK_Cholesky || e->args[0]->tk == GMB_TOK_Lu
                     || e->args[0]->tk == GMB_TOK_Qr || e->args[0]->tk == GMB_TOK_Svd

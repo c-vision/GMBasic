@@ -11,7 +11,7 @@ SUB Main()
   DIM a(1, 1) AS DOUBLE
   a(0, 0) = 1 : a(0, 1) = 2
   a(1, 0) = 3 : a(1, 1) = 4
-  DIM sv = LINALG.SVD(a)
+  DIM sv = LINALG_MATRIX.SVD(a)
   PRINT "s0="; MATH.ROUND(sv.S(0, 0), 6)
   PRINT "s1="; MATH.ROUND(sv.S(1, 1), 6)
 

@@ -5,6 +5,6 @@ SUB Main()
   a = MATRIX.SETVALUE(a,1,0,0) : a = MATRIX.SETVALUE(a,1,1,3)
   DIM b(1)
   b(0)=4 : b(1)=6
-  DIM xs() = LINALG.SOLVETRIANGULAR(a, b, 0)
+  DIM xs() = LINALG_MATRIX.SOLVETRIANGULAR(a, b, 0)
   PRINT "x0="; MATH.ROUND(xs(0),6)
 END SUB

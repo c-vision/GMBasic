@@ -111,14 +111,13 @@ public sealed partial class StdLib
     // ========================================================================
 
     /// <summary>
-    /// Crea e registra tutte le definizioni per il namespace 'LINALG' (API a valori MATRIX:
-    /// decomposizioni con campi, FACTOR, norme, funzioni matriciali). Il namespace `LINALG`
-    /// FFI su array è in `shared/include/linalg.inc`; le due superfici convivono per arità
-    /// disgiunte.
+    /// Registra le operazioni di algebra lineare sui VALORI matrice (decomposizioni con
+    /// campi, FACTOR, norme, funzioni matriciali) nel namespace legacy `LINALG_MATRIX`.
+    /// Il namespace pubblico `LINALG` è **solo FFI su array** (`shared/include/linalg.inc`).
     /// </summary>
     private void CreateLinalgNamespace()
     {
-        const string namespaceName = "LINALG";
+        const string namespaceName = "LINALG_MATRIX";
         const SymbolFlags
             publicFlag = SymbolFlags.IsPublic | SymbolFlags.IsFunction;
         const SymbolFlags noFlags = SymbolFlags.None;

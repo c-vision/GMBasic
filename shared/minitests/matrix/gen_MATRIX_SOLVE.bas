@@ -6,6 +6,6 @@ SUB Main()
   a = MATRIX.SETVALUE(a,1,0,1) : a = MATRIX.SETVALUE(a,1,1,2)
   DIM b(1)
   b(0)=4 : b(1)=5
-  DIM xs() = LINALG.SOLVE(a, b)
+  DIM xs() = LINALG_MATRIX.SOLVE(a, b)
   PRINT "x0="; MATH.ROUND(xs(0),6)
 END SUB

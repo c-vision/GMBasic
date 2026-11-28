@@ -5,8 +5,8 @@
 
 SUB Main()
   h = MATRIX.CREATE(2, 2)
-  e = LINALG.EXPM(h)
-  PRINT "det(expm(I)) ="; LINALG.DETERMINANT(e)
+  e = LINALG_MATRIX.EXPM(h)
+  PRINT "det(expm(I)) ="; LINALG_MATRIX.DETERMINANT(e)
   k = MATRIX.KRONECKER(h, h)
-  PRINT "det(kron(I,I)) ="; LINALG.DETERMINANT(k)
+  PRINT "det(kron(I,I)) ="; LINALG_MATRIX.DETERMINANT(k)
 END SUB
