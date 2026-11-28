@@ -248,6 +248,9 @@ set(GMB_ALL_SRCS
     src/gmb_array.c
     # CommonLib AudioUtils (5 func math, no SDL dep)
     src/gmb_audio.c
+    # Fase 1 ADR audio: motore a 8 voci (puro) + device (mixer via Mix_HookMusic).
+    src/gmb_synth.c
+    src/gmb_audio_dev.c
     # ASR: entry-point P/Invoke `gmb_asr_cmd` (engine in LLMEnv/LLMEngine/asr, target llm_asr).
     src/gmb_workflow.c
     src/gmb_strings.c
@@ -1186,6 +1189,8 @@ add_library(gmb_gfx SHARED
     src/gmb_screen_config.c
     src/gmb_screens_extra.c
     src/gmb_audio.c
+    src/gmb_synth.c
+    src/gmb_audio_dev.c
     src/gmb_joy.c)
 # Moduli TUI aggiunti al dylib gmb_gfx: il managed (CGfx) li chiama (pixel E tui, stessa pipeline).
 target_sources(gmb_gfx PRIVATE ${GMB_TUI_MODULES} src/gmb_tui.c src/gmb_tui_flex.c src/gmb_tui_repl.c src/gmb_ide.c)

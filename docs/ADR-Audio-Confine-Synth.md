@@ -152,10 +152,17 @@ diverso da 44100/S16/2 → **offline automatico**: mai rendere a un rate diverso
   verifica nuova sul loro audio.
 - `SOUND PLAY #h, n` usa il **canale del mixer** `n`, non la voce `n`: i WAV non entrano nel pool delle
   8 voci finché non c'è la fase 2 (`M-AUD-SOUND-WAV`, e l'eccezione in D-9).
+- Anche **controllo** e **stato di riproduzione** restano quelli di oggi per i WAV: in fase 1
+  `gmb_audio_is_playing` è OR delle 8 voci **o** `Mix_Playing(-1)`, e `STOP/PAUSE/RESUME` con `ALL` (o
+  senza argomento) raggiungono anche i canali del mixer. Dalla fase 2 valgono solo le voci.
 - `M-AUD-CLIP` non vede la saturazione dei WAV e `M-AUD-SOUND-VOL` ha due punti di applicazione: sono i
   due prezzi della fase 1, scritti nella specifica.
 - Il master resta **uno** come valore: `SOUND VOLUME v` scrive il gain del synth **e** `Mix_Volume` sui
   canali del mixer, con lo stesso numero. Non è un secondo master, è lo stesso applicato in due punti.
+- Il **selfcheck** perde, in fase 1, le asserzioni su `SOUND LOAD/PLAY/VOLUME`: offline non c'è device e
+  quei comandi sono chunk del mixer. Il blocco è **parcheggiato con un messaggio esplicito** — non reso
+  verde per finta né fatto girare su un device reale — e torna completo in fase 2, quando il decoder è
+  nostro e funziona senza device.
 
 **Alternative rifiutate.**
 1. **Assorbire subito** (prima stesura): paga (a)+(b)+(c) prima che il synth esista e impone il PR
@@ -166,7 +173,7 @@ diverso da 44100/S16/2 → **offline automatico**: mai rendere a un rate diverso
 
 ---
 
-### D-3 — `voice` **è** il canale: 0..7 stabili, e i tre proprietari delle voci
+### D-3 — `voice` **è** il canale: 0..7 stabili, e i proprietari delle voci (tre in fase 1, quattro dalla fase 2)
 
 **Decisione.** La voce (0..7, clamp) è l'identità del canale. Mappatura completa della superficie:
 
@@ -180,8 +187,8 @@ diverso da 44100/S16/2 → **offline automatico**: mai rendere a un rate diverso
 | `FILTER voice, …` | **n** | già per voce (`M-AUD-FILTER`) |
 | `PLAY "mml"` | rotazione 0..7 | `M-AUD-ALLOC`; `ON n` numerico → voce `n`, senza ON → cursore |
 | `PLAY CONCURRENT a$, b$` | una per sequenza | voci diverse, partenza simultanea (`M-AUD-PLAY-CONC`) |
-| `SOUND LOAD "f" AS #h` | — | handle a un **buffer decodificato**, non una voce |
-| `SOUND PLAY #h [, ch] [, LOOPS n]` | **ch** se numerico, altrimenti rotazione | un file può durare più di una nota: la voce si libera a fine buffer |
+| `SOUND LOAD "f" AS #h` | — | handle a un file audio, **non** una voce: in fase 1 è il `Mix_Chunk` del mixer, in fase 2 il buffer decodificato (`M-AUD-SOUND-WAV`, D-2) |
+| `SOUND PLAY #h [, ch] [, LOOPS n]` | **fase 1**: `ch` è un **canale del mixer** (default: primo libero, come oggi), i WAV **non** sono voci. **fase 2**: **ch** è una **voce** (numero, altrimenti rotazione 0..7) | un file può durare più di una nota: in fase 2 la voce si libera a fine buffer, in fase 1 il canale si libera a fine chunk |
 | `SCENE SOUND n, …` (P6) | **derivata dallo slot**, §D-4 | 16 slot → 8 voci, il posizionale non usa `PLAY` |
 
 **Perché.** È l'unica mappatura che non introduce una seconda numerazione: il canale del mixer era
@@ -273,7 +280,11 @@ per famiglia, i campi sono documentati):
 | `AUDIO.STATUS(what)` | 0 = clock, 1 = picco del mix, 2 = campioni saturati, 3 = eventi, 4 = modalità (0 offline, 1 device) |
 | `AUDIO.EVENT(i, what)` | 0 = start in campioni, 1 = frequenza, 2 = durata in campioni, 3 = volume, 4 = tipo, 5 = voce |
 
-`AUDIO OFFLINE` / `AUDIO ONLINE` restano **comandi** (nessun valore di ritorno).
+`AUDIO OFFLINE` / `AUDIO ONLINE` restano **comandi** (nessun valore di ritorno). Il loro corrispondente
+C è **`gmb_audio_set_mode(0|1)`** nella facade (D-8): il comando BASIC è una chiamata a quella funzione,
+così BASIC e test condividono **una** implementazione e la modalità non passa da nessuna variabile
+d'ambiente. È la funzione che il selfcheck C chiama come **prima istruzione** di `main()`, al posto di
+`setenv("SDL_AUDIODRIVER", "dummy", 1)`.
 
 **Perché.** `AGENTS.md` §4.1 impone, per **ogni** funzione nuova, MiniTest + sample + guida: quattro
 funzioni con campi documentati costano quattro guide invece di otto, senza perdere una sola
@@ -319,7 +330,8 @@ la scena 3D nello stesso passo della migrazione del motore. Reimplementare dietr
 tiene il confine **sostituibile** e i diff leggibili.
 
 **Conseguenze.** `gmb_audio_sound` e `gmb_audio_sound_voice` diventano sinonimi (voce 0 vs voce n) e
-la documentazione lo dice; `gmb_audio_is_playing` legge `AUDIO.VOICE(v, 2)`.
+la documentazione lo dice. `gmb_audio_is_playing` in **fase 1** è OR delle 8 voci **o** `Mix_Playing(-1)`
+(un WAV in corso conta come oggi, D-2); dalla fase 2 legge solo `AUDIO.VOICE(v, 2)`.
 
 ---
 
@@ -335,7 +347,7 @@ senza eccezioni di classe:
    comando che parte prende possesso; la voce torna libera alla fine dell'inviluppo (o del buffer) o
    allo `STOP`.
 2. **L'ultimo comando vince, nei due sensi.** `SCENE SOUND` ruba la voce anche a un `SOUND`/`PLAY` in
-   corso; `SOUND ON n`, `PLAY … ON n` e `SOUND PLAY #h` sulla voce di un tono posizionale fanno lo
+   corso; `SOUND ON n` e `PLAY … ON n` — e `SOUND PLAY #h` dalla fase 2, quando i WAV sono voci — sulla voce di un tono posizionale fanno lo
    stesso. Nessuna priorità di classe, nessuna voce riservata al 3D, nessuna coda d'attesa: chi arriva
    dopo prende.
 3. **Il preempted è cancellato, non migrato.** La nota o la sequenza che perde la voce **finisce
@@ -440,7 +452,7 @@ master come valore). Non esiste un «metà» fra le due.
 | Hook senza lock (fase 1) | ispezione del corpo del hook | nessuna chiamata `Mix_*`, nessun `SDL_LockAudio` |
 | WAV assorbito (fase 2) | `SOUND LOAD/PLAY/VOLUME` sui 2 sample | voce campione; formato compresso → errore esplicito |
 | Mixer rimosso (fase 2) | `grep -c "Mix_" gmb_audio.c` | **0** |
-| Niente env | `grep -n getenv` sui file audio | **0** |
+| Niente env | `grep -n "getenv\|setenv"` su `gmb_audio*.c` **e** su `tests/gmb_audio_selfcheck.c` | **0** (fase 1: residuo rimosso, §6) |
 | A/B C | `cc` e `tools/sh/zcc` sul MiniTest toccato | stesso esito |
 | Dimensioni | `bash tools/sh/check_file_size.sh --quiet` | nessun file > 1200 righe |
 
@@ -468,6 +480,8 @@ master come valore). Non esiste un «metà» fra le due.
 | Un effetto posizionale taglia la musica (e un `SOUND` spegne un tono 3D) | **dichiarato**: una voce, un proprietario, l'ultimo comando vince (D-9); per tenerle separate si usano voci diverse (convenzione); priorità di classe e bus sono rinviati (§7) |
 | Test che aprono il device su una macchina con scheda audio | `AUDIO OFFLINE` come primo comando dei MiniTest, **documentato** come obbligatorio |
 | `dlopen` di SDL2 assente | offline automatico; il synth resta testabile e nessun comando fallisce |
+| **Residuo d'ambiente, chiuso in fase 1**: il `setenv("SDL_AUDIODRIVER", "dummy", 1)` che stava in `tests/gmb_audio_selfcheck.c` | **rimosso**: la prima istruzione è `gmb_audio_set_mode(0)` (offline, nessun device; D-6), i comandi che non riproducono (`FILTER`, volume, stop) non aprono il mixer e il blocco WAV è parcheggiato (D-2, torna col decoder in fase 2). Gate: `grep -c "setenv" tests/gmb_audio_selfcheck.c` = **0** |
+| Letture `AUDIO.*` senza token BASIC (fase 1) | **dichiarato**: esistono come API C (`gmb_audio_render`, `gmb_audio_voice_read`, `gmb_audio_status`, `gmb_audio_event`) e sono verificate dal selfcheck C; MiniTest, sample e guida in `AGENTS.md` §4.1 arrivano col token BASIC, che richiede lexer/parser/emitter/VM/C/IL/PCode |
 | Fase 1: il mixer resta (`dlopen` dei ~18 lib, due punti per il master, clipping dei WAV non contato) | **dichiarato** (D-2); la fase 2 è opzionale e non ha una data |
 | Le due fasi si allontanano | la fase 1 è un punto d'arrivo valido: un device, un motore, un master come **valore**; non esiste uno stato «metà» |
 

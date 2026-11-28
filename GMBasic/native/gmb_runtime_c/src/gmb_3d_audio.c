@@ -92,7 +92,12 @@ void gmb_3d_sound_reset(void)
 void gmb_3d_sound_update(void)
 {
     for (int i = 0; i < GMB_3D_SOUND_SLOTS; i++)
-        if (g_sounds[i].used) sound_place(&g_sounds[i]);
+        if (g_sounds[i].used)
+        {
+            sound_place(&g_sounds[i]);
+            /* P6 live: lo slot aggiorna la SUA voce (D-9), non una qualsiasi. */
+            gmb_audio_update_panned(i + 1, g_sounds[i].gain, g_sounds[i].pan);
+        }
 }
 
 int64_t gmb_scene_sound(int64_t n, double freq, double dur, double x, double y, double z,
@@ -137,8 +142,9 @@ int64_t gmb_scene_sound(int64_t n, double freq, double dur, double x, double y, 
     sound_place(s);
 
     gmb_3d_set_error("");
-    /* Pan sul PCM: la sorgente suona con il guadagno e il pan di ADESSO. */
-    gmb_audio_sound_panned((int)(freq + 0.5), dur, s->gain, s->pan);
+    /* Pan sul PCM: la sorgente suona con il guadagno e il pan di ADESSO, sulla voce che
+     * lo slot possiede — (slot-1) mod 8 (M-SND-VOICE). */
+    gmb_audio_sound_panned_slot((int)n, freq, dur, s->gain, s->pan);
     return GMB_3D_OK;
 }
 
