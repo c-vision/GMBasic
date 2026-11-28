@@ -73,10 +73,10 @@ SUB Main()
     ' ── 1. Input: copione o dispositivi, stessa forma ────────────────────────────
     IF LIVE = 1 THEN
       m = JOY.MASK(0)
-      dx = MOUSE.X - lastmx
+      dx = MOUSE.X - lastmx       ' una lettura sola: la posizione si aggiorna col delta
       dy = MOUSE.Y - lastmy
-      lastmx = MOUSE.X
-      lastmy = MOUSE.Y
+      lastmx = lastmx + dx
+      lastmy = lastmy + dy
     ELSE
       m = 0
       dx = 0
@@ -112,10 +112,11 @@ SUB Main()
     strafe = b3 - b2
 
     ' ── 3. Mouse-look (il clamp è qui: TURN rifiuta ±89) ───────────────────────────
-    dp = SCENE.PITCH() - dy * SENS
+    p0 = SCENE.PITCH()            ' una lettura sola: serve al bersaglio e al delta
+    dp = p0 - dy * SENS
     IF dp > PLIM THEN dp = PLIM
     IF dp < -PLIM THEN dp = -PLIM
-    SCENE TURN dx * SENS, dp - SCENE.PITCH()
+    SCENE TURN dx * SENS, dp - p0
 
     ' ── 4. Salto e gravità: si atterra sulla quota chiesta a FLOORAT ──────────────
     IF b4 = 1 AND grounded = 1 THEN
@@ -145,18 +146,13 @@ SUB Main()
       SCENE MOVE fwd * SPD, strafe * SPD
     END IF
 
-    ' ── 6. Accovacciato: cambia l'occhio, non i piedi ─────────────────────────────
-    IF b5 = 1 THEN
-      SCENE PLAYER 14, 56, 20, 24
-    ELSE
-      SCENE PLAYER 14, 56, 46, 24
-    END IF
+    ' ── 6. Accovacciato: cambia l'occhio (20), non i piedi → una sola PLAYER ───────
+    SCENE PLAYER 14, 56, 46 - 26 * b5, 24
 
     ' ── 7. Disegno del frame (in una finestra qui va anche `SCENE PRESENT`) ────────
     SCENE RENDER
   NEXT fr
 
-  PRINT "frame="; NF
   PRINT "x="; SCENE.X()
   PRINT "z="; SCENE.Z()
   PRINT "y="; SCENE.Y() - SCENE.EYE()

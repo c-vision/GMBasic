@@ -1,4 +1,4 @@
-' EXPECT: x= 0|z= 3|yaw= 40|p=-20|wz= 6|wh= 1|cp= 88|jp= 20|jy= 0|jg= 1|sy= 0|sh= 4|ce= 20|cy= 0|se= 46
+' EXPECT: mx= 1|x= 0|z= 3|yaw= 40|p=-20|wz= 6|wh= 1|cp= 88|jp= 20|jy= 0|jg= 1|sy= 0|sh= 4|ce= 20|cy= 0
 ' scene_walk — il primo passo del ciclo di gioco: input → corpo (P6, piano §6).
 '
 ' Perché un MiniTest di input senza dispositivo. Il ciclo di un gioco 3D è una funzione
@@ -33,7 +33,6 @@ SUB Main()
   SCENE OBJECT 120, 120, 120
   SCENE BOX -30, 0, 20, 30, 100, 30
 
-  spd = 1
   sens = 2
   plim = 88
 
@@ -58,6 +57,7 @@ SUB Main()
   mdx(8) = 10
   mdy(8) = 5
 
+  mx = 0                            ' massimo x raggiunto: prova che destra ha MOSSO
   FOR fr = 0 TO 8
     m = bm(fr)
     b0 = m MOD 2
@@ -66,13 +66,24 @@ SUB Main()
     b3 = (m \ 8) MOD 2
     fwd = b0 - b1
     strafe = b3 - b2
-    SCENE MOVE fwd * spd, strafe * spd
+    SCENE MOVE fwd, strafe
+    IF SCENE.X() > mx THEN mx = SCENE.X()
     dp = SCENE.PITCH() - mdy(fr) * sens
     IF dp > plim THEN dp = plim
     IF dp < -plim THEN dp = -plim
     SCENE TURN mdx(fr) * sens, dp - SCENE.PITCH()
   NEXT fr
 
+  ' Ogni valore è l'unica prova di un comportamento: mx e x la coppia di strafe (destra
+  ' muove, sinistra riporta), z avanti + indietro + annullamento di 1 e 2, yaw e p il
+  ' mouse (delta per frame, non posizione), wz e wh la collisione e il suo bit, cp il
+  ' clamp del pitch, jp e jy l'arco del salto e l'atterraggio, sy e sh il riappoggio del
+  ' MOVE da in aria, ce e cy l'occhio che scende e i piedi che restano.
+  ' `jg` NON è ridondante con `jy`: l'arco finisce a 0 esatto per aritmetica (8+6+4+2+0
+  ' −2−4−6−8), quindi senza il ramo di atterraggio `jy` darebbe 0 lo stesso — `jg` è
+  ' l'unica prova che il ramo è scattato. `se` (la quota ripristinata) è invece stato
+  ' tolto: rifaceva la stessa `PLAYER` già coperta da `ce`/`cy`.
+  PRINT "mx="; mx
   PRINT "x="; SCENE.X()
   PRINT "z="; SCENE.Z()
   PRINT "yaw="; SCENE.YAW()
@@ -84,7 +95,7 @@ SUB Main()
   SCENE CAMERA 0, 46, 0, 0, 0
   SCENE MOVE 10, 0
   PRINT "wz="; SCENE.Z()
-  PRINT "wh="; (SCENE.HIT() MOD 2)
+  PRINT "wh="; SCENE.HIT()                  ' bit 1 = urto, e nessun altro bit
 
   ' ── Mouse-look con clamp: dy = −100 px × 2 = +200 → si ferma a 88 ──────────────
   dp = SCENE.PITCH() - (-100) * sens
@@ -109,8 +120,7 @@ SUB Main()
     fl = SCENE.FLOORAT(SCENE.X(), feet, SCENE.Z())
     IF fl > -1000000 THEN
       IF feet <= fl THEN
-        SCENE LIFT fl - feet
-        feet = fl
+        SCENE LIFT fl - feet       ' i piedi sono fl: LIFT li ha già portati lì
         vy = 0
         grounded = 1
       END IF
@@ -135,6 +145,4 @@ SUB Main()
   SCENE PLAYER 14, 56, 20, 24
   PRINT "ce="; SCENE.EYE()
   PRINT "cy="; SCENE.Y() - SCENE.EYE()
-  SCENE PLAYER 14, 56, 46, 24
-  PRINT "se="; SCENE.EYE()
 END SUB
