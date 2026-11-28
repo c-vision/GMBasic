@@ -124,6 +124,13 @@ typedef struct gmb_control_style {
     bool has_fg, has_bg, has_fg_focus, has_bg_focus, has_fg_error, has_bg_error, has_sel_fg, has_sel_bg;
     gmb_cell_color_t fg, bg, fg_focus, bg_focus, fg_error, bg_error, sel_fg, sel_bg;
     char fill_char;
+    /* Ruolo semantico (`STYLE "role=danger"`): 0 = nessuno, il controllo si comporta
+     * come prima. I colori del ruolo NON sono congelati qui: sono risolti dal tema
+     * corrente a ogni disegno (gmb_control_style_effective → gmb_theme_roles.h), così
+     * un cambio tema a runtime non lascia colori stantii. */
+    int role;
+    int role_aa;   /* 0 = nessuna garanzia; altrimenti rapporto minimo di contrasto ×10
+                    * (45 = WCAG AA 4.5:1, 70 = AAA). Default 45 quando si imposta un ruolo. */
 } gmb_control_style_t;
 
 void gmb_control_style_init(gmb_control_style_t* s);
@@ -235,6 +242,11 @@ typedef struct gmb_control {
     int layout_align_v;       /* GMB_LAYOUT_ALIGN_* */
     int layout_base_x, layout_base_y, layout_base_w, layout_base_h;
     int layout_base_win_w, layout_base_win_h;
+    /* Limiti dichiarati (`STYLE "minw=240 maxh=400"`) e quota del delta
+     * (`STYLE "grow=50"`): 0 = nessun limite, 100 = assorbe tutto il delta.
+     * Vedi include/gmb_layout.h. */
+    int layout_min_w, layout_min_h, layout_max_w, layout_max_h;
+    int layout_grow;
     /* Dimensione font ESPLICITA per il controllo (`STYLE "font=NN"`), 0 = dal tema.
      * Serve ai controlli che disegnano testo proprio (BIGTEXT, LABEL…): senza, la
      * dimensione era fissa/derivata e non regolabile dal programma. */

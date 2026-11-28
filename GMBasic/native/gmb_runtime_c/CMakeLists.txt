@@ -255,6 +255,7 @@ set(GMB_ALL_SRCS
     src/gmb_workflow.c
     src/gmb_strings.c
     src/gmb_layout.c   # LAYOUT MANAGER (EXPAND/ANCHOR/ALIGN) condiviso FORM/TUI
+    src/gmb_theme_roles.c  # ruoli semantici del tema (role=…/tone=…) + contrasto WCAG, FORM+TUI
     src/gmb_stringbuilder.c
     # Accumulatore growable per il pattern s$=s$+expr riconosciuto dal codegen C99 (§11)
     src/gmb_strbuf.c
@@ -1657,6 +1658,13 @@ add_executable(gmb_clock_selfcheck tests/gmb_clock_selfcheck.c)
 target_link_libraries(gmb_clock_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_clock_selfcheck PRIVATE include)
 add_test(NAME gmb_clock_selfcheck COMMAND gmb_clock_selfcheck)
+
+# Ruoli semantici del tema (STYLE "role=…") e limiti/quota del layout manager:
+# verifica pura dei colori (WCAG AA su ogni preset) e dei rect, senza interfaccia.
+add_executable(gmb_theme_roles_selfcheck tests/gmb_theme_roles_selfcheck.c)
+target_link_libraries(gmb_theme_roles_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_theme_roles_selfcheck PRIVATE include)
+add_test(NAME gmb_theme_roles_selfcheck COMMAND gmb_theme_roles_selfcheck)
 
 
 add_executable(gmb_sb_selfcheck tests/gmb_sb_selfcheck.c)

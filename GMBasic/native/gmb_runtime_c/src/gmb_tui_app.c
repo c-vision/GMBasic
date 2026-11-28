@@ -6,6 +6,7 @@
 extern gmb_control_t* g_reg_ctrl[]; extern int g_reg_n; extern int g_reg_focus;
 #include "gmb_ui_gfx.h"
 #include "gmb_tui_widgets.h"
+#include "gmb_theme_roles.h"
 #include "gmb_tui_io.h"
 #include "gmb_tui_clipper.h"
 #include "gmb_graphics.h"
@@ -798,6 +799,29 @@ static void apply_style_kv(gmb_control_t* c, const char* spec)
             /* Dimensione font ESPLICITA del controllo (vedi gmb_control_t.font_size). */
             p += 5;
             c->font_size = atoi(p);
+        }
+        else if (strncasecmp(p, "role=", 5) == 0 || strncasecmp(p, "tone=", 5) == 0) {
+            /* RUOLO SEMANTICO: il programma dice COSA è il controllo, il tema decide i
+             * colori (gmb_theme_roles.h). I colori del ruolo NON si congelano qui: sono
+             * risolti a ogni disegno, così seguono anche un cambio tema a runtime. */
+            p += 5;
+            char tok[32]; int n = 0;
+            while (*p && *p != ' ' && n < 31) tok[n++] = *p++;
+            tok[n] = '\0';
+            int role = gmb_theme_role_parse(tok);
+            if (role >= 0) { c->style.role = role; c->style.role_aa = 45; }   /* default: WCAG AA */
+            continue;
+        }
+        else if (strncasecmp(p, "contrast=", 9) == 0) {
+            /* Contrasto minimo del testo del ruolo: `off`/`0` lo disattiva, un numero è il
+             * rapporto richiesto (4.5 = AA, 7 = AAA). Vale solo per i controlli con ruolo. */
+            p += 9;
+            if (!strncasecmp(p, "off", 3) || !strncasecmp(p, "none", 4)) c->style.role_aa = 0;
+            else {
+                double v = atof(p);
+                if (v <= 0.0) c->style.role_aa = 0;
+                else { int t = (int)(v * 10.0 + 0.5); if (t < 10) t = 10; if (t > 210) t = 210; c->style.role_aa = t; }
+            }
         }
         while (*p && *p != ' ') p++;
     }

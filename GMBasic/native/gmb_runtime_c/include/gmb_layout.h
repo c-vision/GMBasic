@@ -17,7 +17,17 @@
  *    EXPAND BOTH = tutti e quattro, EXPAND NONE = nessuno. ANCHOR esplicito ha
  *    la precedenza sull'asse che specifica;
  *  - ALIGN (start/center/end) sceglie dove sta il controllo quando su quell'asse
- *    non è agganciato a un bordo.
+ *    non è agganciato a un bordo;
+ *  - MINW/MINH/MAXW/MAXH limitano il rect calcolato: il controllo non si stringe
+ *    sotto un minimo leggibile né si allarga oltre un tetto (0 = nessun limite);
+ *  - GROW (percento, default 100) è la QUOTA del delta che il controllo assorbe:
+ *    due pannelli affiancati che crescono entrambi "tutto" si sovrappongono,
+ *    con GROW=50 ognuno prende metà della crescita. Il residuo resta al
+ *    contenitore, quindi la somma delle quote non deve fare 100.
+ *
+ * I limiti e la quota sono PROPRIETÀ del controllo come EXPAND/ANCHOR/ALIGN:
+ * arrivano dalla stessa spec (`STYLE "expand=h grow=50 minw=240"`), quindi non
+ * servono né nuove clausole BASIC né nuovi syscall.
  *
  * Unità: la stessa del rect del controllo (pixel nel percorso GRAPHICS, celle
  * nel percorso TEXT). Nessuna conversione qui.
@@ -56,6 +66,9 @@ typedef struct gmb_layout_spec {
     int anchor;    /* bitmask GMB_LAYOUT_* oppure -1 */
     int align_h;   /* GMB_LAYOUT_ALIGN_* oppure -1 */
     int align_v;   /* GMB_LAYOUT_ALIGN_* oppure -1 */
+    int min_w, min_h;   /* dimensione minima, -1 = non specificata (0 = nessun limite) */
+    int max_w, max_h;   /* dimensione massima, -1 = non specificata (0 = nessun limite) */
+    int grow;           /* percento del delta assorbito, -1 = non specificato (100) */
 } gmb_layout_spec_t;
 
 struct gmb_control;   /* gmb_tui_widgets.h definisce la struct completa */

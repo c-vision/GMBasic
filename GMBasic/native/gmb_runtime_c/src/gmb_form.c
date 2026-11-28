@@ -12,6 +12,7 @@
 #include <time.h>
 static long long form_now_ms(void){ struct timespec ts; clock_gettime(CLOCK_MONOTONIC,&ts); return (long long)ts.tv_sec*1000 + ts.tv_nsec/1000000; }
 #include "gmb_tui_widgets.h"   /* gmb_widget_style_t + tema corrente */
+#include "gmb_theme_roles.h"    /* ruoli semantici del tema (STYLE "role=…") */
 #include "gmb_tui_tbrowse.h"   /* gmb_browse_t (props CONTROL SET/GET TBROWSE) */
 #ifdef GMB_GFX_SDL_PRESENT
 #include "gmb_gfx_present.h"
@@ -751,6 +752,13 @@ static void style_apply(gmb_widget_style_t* s, const char* spec)
         else if (!strcasecmp(key,"disabled"))  { s->fill_disabled = parse_color(val); }
         else if (!strcasecmp(key,"fg") || !strcasecmp(key,"text")) { s->text = parse_color(val); }
         else if (!strcasecmp(key,"border"))    { int w=1; char c[32]=""; if (sscanf(val,"%d,%31s",&w,c)==2){ s->border_w=w; s->border=parse_color(c); } else if (*val) { s->border_w=1; s->border=parse_color(val); } }
+        else if (!strcasecmp(key,"role") || !strcasecmp(key,"tone")) {
+            /* Ruolo semantico nel percorso PIXEL: stessa semantica dello STYLE TUI
+             * (gmb_theme_roles.h). Colori derivati dal tema corrente; forma, ombre,
+             * raggi e gradienti già scelti restano quelli del widget. */
+            int rl = gmb_theme_role_parse(val);
+            if (rl > 0) { gmb_theme_t th = gmb_ui_theme(); gmb_theme_apply_role_px(s, &th, rl); }
+        }
         else if (!strcasecmp(key,"font")) {
             const char* comma = strchr(val, ',');
             if (comma) {

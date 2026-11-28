@@ -81,6 +81,11 @@ int gmb_layout_parse(const char* spec, gmb_layout_spec_t* out)
     out->anchor  = -1;
     out->align_h = -1;
     out->align_v = -1;
+    out->min_w   = -1;
+    out->min_h   = -1;
+    out->max_w   = -1;
+    out->max_h   = -1;
+    out->grow    = -1;
 
     if (layout_find_val(spec, "expand", v, sizeof v)) {
         any = 1;
@@ -108,6 +113,17 @@ int gmb_layout_parse(const char* spec, gmb_layout_spec_t* out)
             else if (!strcasecmp(it, "bottom"))                              out->align_v = GMB_LAYOUT_ALIGN_END;
         }
     }
+    /* Limiti di dimensione e quota del delta. 0 = nessun limite / assorbe tutto. */
+    if (layout_find_val(spec, "minw", v, sizeof v)) { any = 1; out->min_w = atoi(v); if (out->min_w < 0) out->min_w = 0; }
+    if (layout_find_val(spec, "minh", v, sizeof v)) { any = 1; out->min_h = atoi(v); if (out->min_h < 0) out->min_h = 0; }
+    if (layout_find_val(spec, "maxw", v, sizeof v)) { any = 1; out->max_w = atoi(v); if (out->max_w < 0) out->max_w = 0; }
+    if (layout_find_val(spec, "maxh", v, sizeof v)) { any = 1; out->max_h = atoi(v); if (out->max_h < 0) out->max_h = 0; }
+    if (layout_find_val(spec, "grow", v, sizeof v)) {
+        any = 1;
+        out->grow = atoi(v);
+        if (out->grow < 0)   out->grow = 0;
+        if (out->grow > 200) out->grow = 200;
+    }
     return any;
 }
 
@@ -122,7 +138,9 @@ void gmb_layout_configure(struct gmb_control* cc, int is_tui,
 {
     gmb_control_t* c = (gmb_control_t*)cc;
     if (!c || !ls) return;
-    if (ls->expand < 0 && ls->anchor < 0 && ls->align_h < 0 && ls->align_v < 0) return;
+    if (ls->expand < 0 && ls->anchor < 0 && ls->align_h < 0 && ls->align_v < 0
+        && ls->min_w < 0 && ls->min_h < 0 && ls->max_w < 0 && ls->max_h < 0 && ls->grow < 0)
+        return;
 
     if (!c->layout_on) {
         /* Prima configurazione: il rect DICHIARATO e la finestra di adesso sono
@@ -132,6 +150,11 @@ void gmb_layout_configure(struct gmb_control* cc, int is_tui,
         c->layout_anchor    = -1;                       /* non specificato */
         c->layout_align_h   = GMB_LAYOUT_ALIGN_START;
         c->layout_align_v   = GMB_LAYOUT_ALIGN_START;
+        c->layout_min_w     = 0;
+        c->layout_min_h     = 0;
+        c->layout_max_w     = 0;
+        c->layout_max_h     = 0;
+        c->layout_grow      = 100;                      /* assorbe tutto il delta */
         c->layout_base_x    = c->x;
         c->layout_base_y    = c->y;
         c->layout_base_w    = c->width;
@@ -148,7 +171,20 @@ void gmb_layout_configure(struct gmb_control* cc, int is_tui,
     if (ls->anchor  >= 0) c->layout_anchor  = ls->anchor;
     if (ls->align_h >= 0) c->layout_align_h = ls->align_h;
     if (ls->align_v >= 0) c->layout_align_v = ls->align_v;
+    if (ls->min_w   >= 0) c->layout_min_w   = ls->min_w;
+    if (ls->min_h   >= 0) c->layout_min_h   = ls->min_h;
+    if (ls->max_w   >= 0) c->layout_max_w   = ls->max_w;
+    if (ls->max_h   >= 0) c->layout_max_h   = ls->max_h;
+    if (ls->grow    >= 0) c->layout_grow    = ls->grow;
     c->layout_is_tui = is_tui ? 1 : 0;
+
+    /* I limiti sono proprietà del CONTROLLO, non solo del reflow: valgono anche
+     * alla creazione (un minimo dichiarato non può essere ignorato fino al primo
+     * resize). La base del delta resta il rect DICHIARATO. */
+    if (c->layout_min_w > 0 && c->width  < c->layout_min_w) c->width  = c->layout_min_w;
+    if (c->layout_min_h > 0 && c->height < c->layout_min_h) c->height = c->layout_min_h;
+    if (c->layout_max_w > 0 && c->width  > c->layout_max_w) c->width  = c->layout_max_w;
+    if (c->layout_max_h > 0 && c->height > c->layout_max_h) c->height = c->layout_max_h;
 }
 
 int gmb_layout_reflow(struct gmb_control* cc, int is_tui, int win_w, int win_h)
@@ -161,6 +197,15 @@ int gmb_layout_reflow(struct gmb_control* cc, int is_tui, int win_w, int win_h)
 
     int dx = win_w - c->layout_base_win_w;
     int dy = win_h - c->layout_base_win_h;
+
+    /* GROW = quota del delta assorbita dal controllo (100 = tutto). Serve a due
+     * pannelli affiancati che crescono entrambi: ciascuno prende la sua parte
+     * invece di sovrapporsi all'altro (il modello è per-controllo, senza
+     * conoscenza dei fratelli). */
+    if (c->layout_grow >= 0 && c->layout_grow != 100) {
+        dx = dx * c->layout_grow / 100;
+        dy = dy * c->layout_grow / 100;
+    }
 
     int a = c->layout_anchor;   /* -1 = non specificato */
     int aleft = 0, aright = 0, atop = 0, abot = 0;
@@ -195,6 +240,13 @@ int gmb_layout_reflow(struct gmb_control* cc, int is_tui, int win_w, int win_h)
         if (c->layout_align_v == GMB_LAYOUT_ALIGN_CENTER)    ny = c->layout_base_y + dy / 2;
         else if (c->layout_align_v == GMB_LAYOUT_ALIGN_END)  ny = c->layout_base_y + dy;
     }
+
+    /* Limiti dichiarati: prima il minimo leggibile, poi il tetto (se i due si
+     * contraddicono vince il tetto, che è il vincolo visivo). */
+    if (c->layout_min_w > 0 && nw < c->layout_min_w) nw = c->layout_min_w;
+    if (c->layout_min_h > 0 && nh < c->layout_min_h) nh = c->layout_min_h;
+    if (c->layout_max_w > 0 && nw > c->layout_max_w) nw = c->layout_max_w;
+    if (c->layout_max_h > 0 && nh > c->layout_max_h) nh = c->layout_max_h;
 
     /* Un controllo non può avere dimensione nulla: il layout non deve mai
      * renderlo invisibile (né dipingere un rect degenere). */

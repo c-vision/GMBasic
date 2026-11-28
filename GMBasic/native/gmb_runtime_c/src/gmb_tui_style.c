@@ -3,6 +3,7 @@
  * File per-modulo: piccolo, verificabile e committabile singolarmente.
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
+#include "gmb_theme_roles.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -131,20 +132,50 @@ void gmb_control_style_effective(const gmb_control_style_t* s, bool focused, boo
     gmb_theme_t th = gmb_ui_theme();
     gmb_cell_color_t base_fg = s->has_fg ? s->fg : th.text;
     gmb_cell_color_t base_bg = s->has_bg ? s->bg : th.window_bg;
+
+    /* RUOLO SEMANTICO (STYLE "role=…"): superficie e inchiostro vengono dal tema
+     * CORRENTE, quindi il controllo segue anche un cambio tema a runtime. Gli
+     * override espliciti del programma restano sempre vincenti. */
+    gmb_cell_color_t role_focus_fg = base_fg, role_focus_bg = base_bg;
+    gmb_cell_color_t role_sel_fg   = base_fg, role_sel_bg   = base_bg;
+    if (s->role > 0)
+    {
+        if (!s->has_bg) base_bg = gmb_theme_role_color(&th, s->role, GMB_STATE_NORMAL, GMB_PART_SURFACE);
+        if (!s->has_fg)
+        {
+            base_fg = gmb_theme_role_color(&th, s->role, GMB_STATE_NORMAL, GMB_PART_TEXT);
+            if (s->role_aa > 0) base_fg = gmb_theme_ensure_contrast(base_fg, base_bg, s->role_aa / 10.0);
+        }
+        /* focus = anello del ruolo, selezione = superficie selezionata del ruolo */
+        role_focus_bg = gmb_theme_role_color(&th, s->role, GMB_STATE_FOCUSED,  GMB_PART_FOCUS);
+        role_focus_fg = gmb_theme_text_on(role_focus_bg);
+        role_sel_bg   = gmb_theme_role_color(&th, s->role, GMB_STATE_SELECTED, GMB_PART_SURFACE);
+        role_sel_fg   = gmb_theme_text_on(role_sel_bg);
+    }
+
     if (error)
     {
-        *fg = s->has_fg_error ? s->fg_error : base_fg;
-        *bg = s->has_bg_error ? s->bg_error : base_bg;
+        /* Lo stato di errore è SEMANTICAMENTE "danger", qualunque sia il ruolo del
+         * controllo: un campo primary in errore deve diventare rosso, non restare
+         * accento. Senza ruolo restano i colori errore del tema (comportamento storico). */
+        gmb_cell_color_t e_fg = base_fg, e_bg = base_bg;
+        if (s->role > 0)
+        {
+            e_bg = gmb_theme_role_color(&th, GMB_ROLE_DANGER, GMB_STATE_NORMAL, GMB_PART_SURFACE);
+            e_fg = gmb_theme_role_color(&th, GMB_ROLE_DANGER, GMB_STATE_NORMAL, GMB_PART_TEXT);
+        }
+        *fg = s->has_fg_error ? s->fg_error : e_fg;
+        *bg = s->has_bg_error ? s->bg_error : e_bg;
     }
     else if (selected)
     {
-        *fg = s->has_sel_fg ? s->sel_fg : base_fg;
-        *bg = s->has_sel_bg ? s->sel_bg : base_bg;
+        *fg = s->has_sel_fg ? s->sel_fg : role_sel_fg;
+        *bg = s->has_sel_bg ? s->sel_bg : role_sel_bg;
     }
     else if (focused)
     {
-        *fg = s->has_fg_focus ? s->fg_focus : base_fg;
-        *bg = s->has_bg_focus ? s->bg_focus : base_bg;
+        *fg = s->has_fg_focus ? s->fg_focus : role_focus_fg;
+        *bg = s->has_bg_focus ? s->bg_focus : role_focus_bg;
     }
     else
     {
