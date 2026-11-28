@@ -11458,6 +11458,13 @@ static void gmb_bf_scene_hit(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, in
 { (void)vm; (void)args; (void)argc; (void)func_code; (void)task; bout->result = gmb_scene_hit(); }
 static double scene_arg(gmb_stack_entry_t* args, int argc, int i)
 { return i < argc ? vm_num(&args[i]) : 0.0; }
+/* Argomento stringa di una lettura SCENE: "" quando manca o non è una stringa. */
+static const char* scene_str_arg(gmb_stack_entry_t* args, int argc, int i)
+{
+    if (i >= argc || args[i].type != 2 || args[i].ref == NULL
+        || args[i].ref->kind != GMB_OBJ_STRING) return "";
+    return ((gmb_obj_string_t*)args[i].ref)->data;
+}
 static void gmb_bf_scene_floorat(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)func_code; (void)task;
@@ -11508,9 +11515,7 @@ static void gmb_bf_scene_shotz(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, 
 static void gmb_bf_scene_stats(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)func_code; (void)task;
-    const char* name = (argc >= 1 && args[0].type == 2 && args[0].ref && args[0].ref->kind == GMB_OBJ_STRING)
-                       ? ((gmb_obj_string_t*)args[0].ref)->data : "";
-    bout->result = gmb_scene_stats(name);
+    bout->result = gmb_scene_stats(scene_str_arg(args, argc, 0));
 }
 /* P6/M-SND: gain e pan della sorgente posizionale, calcolati dalla camera
  * (listener). Sentinelle -1 (gain) / -2 (pan) per slot vuoto: sono letture. */

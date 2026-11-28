@@ -254,11 +254,15 @@ internal sealed partial class MethodEmitter
                 return;
             }
             if (b.Aux is SqlExecFnPark sef) { EmitSqlExecFnParkValue(b, sef); return; }
+            if (b.Aux is SleepFnPark sfp) { EmitSleepFnParkValue(b, sfp); return; }
             var stmt = b.AstNode as Stmt;
             switch (stmt)
             {
                 case SleepStmt sleep:
                     EmitSleep(b, sleep);
+                    break;
+                case TickEndStmt tickEnd:
+                    EmitTickEnd(b, tickEnd);
                     break;
                 case CondWaitStmt cw:
                     EmitCondWait(b, cw);
@@ -415,6 +419,30 @@ internal sealed partial class MethodEmitter
             EmitStringArg(e);
         }
 
+        /// <summary>Park della forma FUNZIONE AWAIT CONCURRENCY.SLEEPASYNC(ms): SleepStep
+        /// (IlTimerAwait, generation-safe) — parcheggia il TASK, non il worker; al wake lo slot
+        /// riceve "" (la funzione ritorna stringa vuota, come sulla gamba flat).</summary>
+        private void EmitSleepFnParkValue(IlCoroutineBlock b, SleepFnPark sfp)
+        {
+            EmitLdarg(_taskArg);
+            EmitLdarg(_frameArg);
+            if (sfp.Ms is not null) EmitExprDouble(sfp.Ms);
+            else _il.Emit(OpCodes.Ldc_R8, 0.0);
+            _il.Emit(OpCodes.Call, SleepStepMethod);
+            var ok = DefineLabel();
+            _il.Emit(OpCodes.Brtrue, ok);
+            EmitSetPc(b.Pc);
+            EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
+            EmitReturnTransition();
+            MarkLabel(ok);
+            if (sfp.TargetSlot >= 0)
+            {
+                _il.Emit(OpCodes.Ldstr, "");
+                StoreSlotObject(SlotOf(sfp.TargetSlot));
+            }
+            EmitContinueTo(b.Terminator.ResumePc);
+        }
+
         /// <summary>Park SQL.EXEC forma FUNZIONE (con valore): TrySqlExecFnPark(task, frame,
         /// alias, sql, params, out changes); al ritorno scrive changes nello slot target.</summary>
         private void EmitSqlExecFnParkValue(IlCoroutineBlock b, SqlExecFnPark sef)
@@ -484,6 +512,26 @@ internal sealed partial class MethodEmitter
             EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
             EmitReturnTransition();
             MarkLabel(ok);
+            EmitContinueTo(b.Terminator.ResumePc);
+        }
+
+        private void EmitTickEnd(IlCoroutineBlock b, TickEndStmt tickEnd)
+        {
+            // END TICK: park a scadenza del frame (TickStep, cadenza per task) e SOLO dopo il
+            // risveglio il present una volta sola (TickPresent) — ordine attesa → present, come
+            // su C99Native. Niente Thread.Sleep: un worker GPM non deve mai bloccarsi (§0ter).
+            EmitLdarg(_taskArg);
+            EmitLdarg(_frameArg);
+            _il.Emit(OpCodes.Ldc_R8, tickEnd.TickRate);
+            _il.Emit(OpCodes.Call, TickStepMethod);
+            var ok = DefineLabel();
+            _il.Emit(OpCodes.Brtrue, ok);
+            // parcheggiato: retry sullo stesso block (il wake rientra qui → TryConsume).
+            EmitSetPc(b.Pc);
+            EmitTransition(IlStepKind.Park, b.Pc, 0, null, IlReturnDestination.Discard, null);
+            EmitReturnTransition();
+            MarkLabel(ok);
+            _il.Emit(OpCodes.Call, TickPresentMethod);
             EmitContinueTo(b.Terminator.ResumePc);
         }
 

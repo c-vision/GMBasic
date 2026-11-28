@@ -171,6 +171,11 @@ typedef struct gmb_scheduler gmb_scheduler_t;
 struct gmb_scheduler {
     gmb_task_t** queue; int qcap, qhead, qtail, qcount;
     gmb_mutex_t qlock; gmb_cond_t qcond;
+    /* Sveglia del watcher dei park: il watcher dorme sull'attesa più vicina, ma un
+     * task può parcheggiarsi MENTRE dorme (tipico i cicli TICK/SLEEP: park → wake →
+     * park). Senza segnale il park veniva scoperto solo al giro dopo (≤50 ms), quindi
+     * ogni SLEEP/TICK dentro un task costava ~60 ms invece del passo richiesto. */
+    gmb_mutex_t wlock; gmb_cond_t wcond;
     int shutdown;
     gmb_task_t** all; int all_cap, all_count;
     gmb_mutex_t all_lock;
@@ -178,6 +183,10 @@ struct gmb_scheduler {
 static gmb_scheduler_t g_sched;
 static volatile int g_gpm_active = 0;   /* 1 tra gmb_gpm_start e lo shutdown: scheduler GPM attivo */
 int gmb_c99gpm_active(void) { return g_gpm_active; }
+/* §0ter: predicato della guardia del percorso TICK (gmb_runtime_c): task corrente non NULL e
+ * scheduler attivo = worker GPM. Qui un'attesa reale deve essere un park (gmb_gpm_sleep), mai
+ * gmb_sleep_ms — la guardia lo rende esplicito invece di uno stallo silenzioso. */
+static int c99_on_gpm_worker(void) { return g_gpm_active && gmb_cur() != NULL; }
 #if defined(_WIN32) || defined(_WIN64)
 static __thread LPVOID g_worker_fiber;   /* fiber del worker (resume point) */
 #else
@@ -407,19 +416,21 @@ void gmb_yield_ticks(long long ms) { gmb_task_t* g_current = gmb_cur();
     gmb_lock(&g_current->lock);
     g_current->state = GMB_TS_BLOCKED; g_current->sleep_until_ms = gmb_c99_now_ms() + ms;
     gmb_unlock(&g_current->lock);
+    /* Il watcher dorme sull'attesa più vicina: se si parcheggia mentre dorme va
+     * svegliato, altrimenti scopre questo park solo al giro dopo (~50 ms) e ogni
+     * SLEEP/TICK nel task sfora la scadenza. Segnale fuori dal lock del task. */
+    GMB_MUTEX_LOCK(&g_sched.wlock);
+    GMB_COND_SIGNAL(&g_sched.wcond);
+    GMB_MUTEX_UNLOCK(&g_sched.wlock);
     gmb_block();
 }
 
-/* SLEEP cooperativo: dentro un task GPM PARCHEGGIA la coroutine (il worker torna a
- * eseguire gli altri task, es. altri handler HTTP mentre uno stream SSE attende);
- * fuori da un task (programma lineare, bootstrap) attende davvero.
- * Prima SLEEP era `gmb_sleep_ms` anche nei worker: uno stream SSE teneva occupato un
- * worker per tutta la durata della connessione (5 minuti nel webapp). */
-void gmb_gpm_sleep(int ms) {
-    if (ms <= 0) return;
-    if (gmb_cur()) { gmb_yield_ticks(ms); return; }
-    gmb_sleep_ms(ms);
-}
+/* §0ter: il park del C99Native è la coroutine (gmb_yield_ticks) — il worker torna a
+ * eseguire gli altri task, es. altri handler HTTP mentre uno stream SSE attende. Lo registra
+ * gmb_gpm_start: da lì in poi gmb_gpm_sleep (runtime condiviso) parcheggia invece di dormire,
+ * per SLEEP, TICK, SOUND/MML e il polling dei canali. Prima SLEEP era `gmb_sleep_ms` anche nei
+ * worker: uno stream SSE teneva occupato un worker per tutta la durata della connessione. */
+static void c99_park_sleep(int ms) { if (gmb_cur()) gmb_yield_ticks(ms); else gmb_sleep_ms(ms); }
 
 int gmb_c99_sched_has_active(void) {
     int active = 0;
@@ -583,6 +594,18 @@ static void* gmb_worker(void* arg) {
     }
     return NULL;
 }
+#if !defined(_WIN32) && !defined(_WIN64)
+/* Attesa a scadenza sul cond (variante POSIX di GMB_COND_WAIT_MS). */
+int gmb_cond_wait_ms(gmb_cond_t* c, gmb_mutex_t* m, int ms) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_sec += ms / 1000;
+    ts.tv_nsec += (long)(ms % 1000) * 1000000L;
+    if (ts.tv_nsec >= 1000000000L) { ts.tv_sec += 1; ts.tv_nsec -= 1000000000L; }
+    return pthread_cond_timedwait(c, m, &ts);
+}
+#endif
+
 static void* gmb_sleep_watcher(void* arg) {
     (void)arg;
     /* Watchdog deadlock (parità Go): stessa condizione confermata per 2 giri
@@ -617,7 +640,12 @@ static void* gmb_sleep_watcher(void* arg) {
         } else stuck_streak = 0;
         int wait_ms = next < 0 ? 50 : (next - gmb_c99_now_ms() > 250 ? 250 : (int)(next - gmb_c99_now_ms()));
         if (wait_ms < 1) wait_ms = 1;
-        gmb_sleep_ms(wait_ms);
+        /* Attesa a scadenza sul cond (non gmb_sleep_ms: questo non è un thread UI e
+         * i suoi pump qui sono no-op; soprattutto il cond si sveglia SUBITO se un
+         * task si parcheggia durante l'attesa — vedi gmb_yield_ticks. */
+        GMB_MUTEX_LOCK(&g_sched.wlock);
+        GMB_COND_WAIT_MS(&g_sched.wcond, &g_sched.wlock, wait_ms);
+        GMB_MUTEX_UNLOCK(&g_sched.wlock);
     }
     return NULL;
 }
@@ -665,6 +693,8 @@ int gmb_gomaxprocs(int n) {
 
 void gmb_gpm_start(void (*main_entry)(void*)) {
     g_gpm_active = 1;
+    gmb_gpm_set_on_worker_query(c99_on_gpm_worker);
+    gmb_gpm_set_park_hook(c99_park_sleep);   /* §0ter: gmb_gpm_sleep parcheggia la coroutine */
 #if !defined(_WIN32) && !defined(_WIN64)
     /* Handler process-wide; l'altstack serve solo ai thread che eseguono task
        (installato in gmb_worker), non al thread chiamante che qui aspetta. */
@@ -672,6 +702,8 @@ void gmb_gpm_start(void (*main_entry)(void*)) {
 #endif
     GMB_MUTEX_INIT(&g_sched.qlock);
     GMB_COND_INIT(&g_sched.qcond);
+    GMB_MUTEX_INIT(&g_sched.wlock);
+    GMB_COND_INIT(&g_sched.wcond);
     GMB_MUTEX_INIT(&g_sched.all_lock);
     GMB_MUTEX_INIT(&g_gmp_lock);
     g_sched.qcap = 64; g_sched.queue = (gmb_task_t**)calloc(64, sizeof(gmb_task_t*));

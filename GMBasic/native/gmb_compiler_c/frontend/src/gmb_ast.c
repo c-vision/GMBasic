@@ -237,6 +237,7 @@ void gmb_stmt_free(gmb_stmt_t* s)
     for (int i = 0; i < s->nprint; i++) gmb_expr_free(s->print_args[i]);
     free(s->print_args);
     free(s->print_comma);
+    if (s->print_using) gmb_expr_free(s->print_using);
     if (s->target) free(s->target);
     gmb_expr_free(s->value);
     gmb_expr_free(s->array_index);

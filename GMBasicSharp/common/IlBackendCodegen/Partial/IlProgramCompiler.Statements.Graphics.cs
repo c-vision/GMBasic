@@ -657,15 +657,17 @@ public sealed partial class IlProgramCompiler
 
     private void EmitTickStatement(TickStmt stmt)
     {
-        // TICK rate: registra l'inizio frame (schema PCodeVM TICK loop).
-        _il.Emit(OpCodes.Ldc_I4, stmt.TickRate);
-        _il.Emit(OpCodes.Call, IlRuntimeTickBeginMethod);
+        // TICK: inizio frame. Nessuna attesa e nessun present qui: tutto sta in END TICK, come
+        // su C99Native (`gmb_tick_pace` + present in coda al corpo del ciclo).
+        _ = stmt;
     }
 
     private void EmitTickEndStatement(TickEndStmt stmt)
     {
-        // END TICK: attende il tempo residuo per mantenere il frame rate target.
-        _il.Emit(OpCodes.Ldc_I4, stmt.TickRate);
+        // END TICK: attende il confine del frame per TickRate fps (0 = nessun limiter) e
+        // presenta UNA volta (IlRuntime.TickEnd). Prima l'IL dormiva il passo INTERO dopo il
+        // lavoro (periodo = lavoro + passo) e non presentava mai.
+        _il.Emit(OpCodes.Ldc_R8, stmt.TickRate);
         _il.Emit(OpCodes.Call, IlRuntimeTickEndMethod);
     }
     private void EmitUnloadResourceStatement(UnloadResourceStmt stmt) { /* headless no-op */ }

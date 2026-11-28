@@ -297,7 +297,7 @@ static void walk_stmt(gmb_stmt_t* s) {
         case GMB_STMT_FOR: walk_expr(s->for_from); walk_expr(s->for_to); walk_expr(s->for_step); walk_body(s->for_body, s->n_for); break;
         case GMB_STMT_WHILE: walk_expr(s->cond); walk_body(s->while_body, s->n_while); break;
         case GMB_STMT_DO: walk_expr(s->do_until); walk_expr(s->do_while); walk_body(s->do_body, s->n_do); break;
-        case GMB_STMT_PRINT: for (int i = 0; i < s->nprint; i++) walk_expr(s->print_args[i]); break;
+        case GMB_STMT_PRINT: if (s->print_using) walk_expr(s->print_using); for (int i = 0; i < s->nprint; i++) walk_expr(s->print_args[i]); break;
         case GMB_STMT_RETURN: walk_expr(s->value); break;
         case GMB_STMT_EXPR: walk_expr(s->expr); break;
         case GMB_STMT_DIM: walk_expr(s->array_size); break;

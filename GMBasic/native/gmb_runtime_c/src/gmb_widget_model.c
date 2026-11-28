@@ -8,10 +8,42 @@
 #include "gmb_tui_widgets.h"
 #include "gmb_graphics.h"
 #include "gmb_tui_app.h"
+#include "gmb_textview.h"
+#include "gmb_theme_roles.h"
+#include "gmb_a11y.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+
+/* Colore di una riga della vista testuale (`mode=markdown|diff`). Lo stile è
+ * simbolico (gmb_textview.h): qui si sceglie il ruolo del tema. Con il contrasto
+ * alto attivo la soglia di leggibilità resta quella degli altri testi. */
+static void tv_row_colors(int st, gmb_cell_color_t base_fg, gmb_cell_color_t base_bg,
+                          gmb_cell_color_t* fg, gmb_cell_color_t* bg)
+{
+    gmb_theme_t th = gmb_ui_theme();
+    *fg = base_fg; *bg = base_bg;
+    switch (st)
+    {
+        case GMB_TV_S_HEAD1: *fg = th.accent; break;
+        case GMB_TV_S_HEAD2: *fg = th.accent; break;
+        case GMB_TV_S_HEAD3: *fg = th.accent; break;
+        case GMB_TV_S_CODE:
+            *fg = (th.editor_fg.r | th.editor_fg.g | th.editor_fg.b) ? th.editor_fg : th.text;
+            *bg = (th.editor_bg.r | th.editor_bg.g | th.editor_bg.b) ? th.editor_bg : th.window_bg;
+            break;
+        case GMB_TV_S_QUOTE: *fg = th.dim; break;
+        case GMB_TV_S_RULE:  *fg = th.dim; break;
+        case GMB_TV_S_META:  *fg = th.dim; break;
+        case GMB_TV_S_HUNK:  *fg = th.accent; break;
+        case GMB_TV_S_ADD:   { gmb_cell_color_t c = { 0x2E, 0xA0, 0x4E, 0 }; *fg = c; break; }
+        case GMB_TV_S_DEL:   { gmb_cell_color_t c = { 0xC0, 0x3A, 0x3A, 0 }; *fg = c; break; }
+        default: return;
+    }
+    if (gmb_a11y_get().high_contrast)
+        *fg = gmb_theme_ensure_contrast(*fg, *bg, gmb_a11y_min_text_ratio());
+}
 
 /* ── RENDERER a CELLE ───────────────────────────────────────────────────────
  * Legge lo STESSO modello del renderer pixel: cambia solo la superficie. */
@@ -152,6 +184,7 @@ void gmb_widget_draw_cells(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
         }
         case W_LISTBOX:
         {
+            if (g->tv) gmb_listbox_sync(g, c->width);
             for (int i = 0; i < c->height; i++)
             {
                 int idx = g->first + i;
@@ -159,6 +192,7 @@ void gmb_widget_draw_cells(void* u, gmb_control_t* c, gmb_screen_buffer_t* buf)
                 bool sel = idx == (int)g->ival;
                 gmb_cell_color_t fg, bg;
                 gmb_control_style_effective(&c->style, c->focused, false, sel, &fg, &bg);
+                if (!sel && g->tv) tv_row_colors(gmb_textview_row_style((gmb_textview_t*)g->tv, idx), fg, bg, &fg, &bg);
                 char line[256], cased[320];
                 gmb_listbox_render_line(g, idx, line, (int)sizeof(line));
                 gmb_control_apply_case(c, line, cased, (int)sizeof(cased));

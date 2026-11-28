@@ -164,6 +164,9 @@ int main(void)
         EXPECT("solo testo", NULL, 0, "solo testo", "senza valori il formato è tutto testo");
     }
     {
+        EXPECT("[_#]", NULL, 0, "[#]", "escape '_' anche senza valori");
+    }
+    {
         gmb_using_value_t v[] = { N(5) };
         EXPECT("### ###", v, 1, "  5 ", "coda fino al campo senza valore");
     }

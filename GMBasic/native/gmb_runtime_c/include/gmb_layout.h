@@ -59,6 +59,15 @@ extern "C" {
 #define GMB_LAYOUT_ALIGN_CENTER 1   /* center / middle */
 #define GMB_LAYOUT_ALIGN_END    2   /* right / bottom */
 
+/* FLOW: disposizione automatica dei FIGLI di un contenitore (WrapBox / Grid).
+ * È una proprietà del contenitore, non del singolo controllo: il contenitore
+ * dichiara `STYLE "flow=wrap"` (o `flow=grid cols=3`) e i figli entrano nel
+ * gruppo con `STYLE "group=<nome del contenitore>"`. Nessun nuovo comando:
+ * sono due chiavi dati nello STYLE, quindi nessun TokenKind nuovo. */
+#define GMB_LAYOUT_FLOW_NONE 0
+#define GMB_LAYOUT_FLOW_WRAP 1   /* righe, a capo quando la riga è piena */
+#define GMB_LAYOUT_FLOW_GRID 2   /* celle uguali in `cols` colonne */
+
 /* Clausole lette dalla spec; -1 = non specificata (non tocca la configurazione
  * corrente, così più passaggi di proprietà sullo stesso controllo si sommano). */
 typedef struct gmb_layout_spec {
@@ -69,6 +78,12 @@ typedef struct gmb_layout_spec {
     int min_w, min_h;   /* dimensione minima, -1 = non specificata (0 = nessun limite) */
     int max_w, max_h;   /* dimensione massima, -1 = non specificata (0 = nessun limite) */
     int grow;           /* percento del delta assorbito, -1 = non specificato (100) */
+    int flow;           /* GMB_LAYOUT_FLOW_*, -1 = non specificato */
+    int cols;           /* grid: numero di colonne, -1 = non specificato (auto) */
+    int gap;            /* spazio fra celle/righe, -1 = non specificato (0) */
+    int pad;            /* margine interno del contenitore, -1 = non specificato (0) */
+    int has_group;      /* 1 se `group=` era presente */
+    char group[64];     /* nome del contenitore ospite ("" = nessun gruppo) */
 } gmb_layout_spec_t;
 
 struct gmb_control;   /* gmb_tui_widgets.h definisce la struct completa */
@@ -90,6 +105,16 @@ int gmb_layout_reflow(struct gmb_control* c, int is_tui, int win_w, int win_h);
 
 /* 1 se il controllo partecipa al layout (EXPAND/ANCHOR/ALIGN dichiarato). */
 int gmb_layout_active(const struct gmb_control* c);
+
+/* Dispone i figli di un contenitore (WrapBox/Grid). `kids` sono i controlli del
+ * gruppo, `area_*` il rect del contenitore nell'unità dei controlli (celle per la
+ * TUI, pixel per la grafica). `mode` = GMB_LAYOUT_FLOW_*, `cols` = colonne della
+ * griglia (<=0 = auto), `gap` = spazio fra celle/righe, `pad` = margine interno.
+ * I limiti `minw=/maxw=/minh=/maxh=` di ogni figlio sono rispettati.
+ * Ritorna quanti rect sono cambiati. Funzione PURA: nessun accesso al registro. */
+int gmb_layout_flow_apply(struct gmb_control* const* kids, int n,
+                          int area_x, int area_y, int area_w, int area_h,
+                          int mode, int cols, int gap, int pad);
 
 #ifdef __cplusplus
 }

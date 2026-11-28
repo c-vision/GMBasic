@@ -1090,13 +1090,16 @@ public sealed partial class Parser
     {
         var tickToken = parser.Consume(TokenKind.Tick, "Expected 'TICK'.");
 
-        // Optional rate (FPS), default 60
-        int tickRate = 60;
+        // Rate (FPS) opzionale; 0 = NESSUN limiter (parità C99Native: `TICK` nudo presenta una
+        // volta per iterazione senza attesa). Il rate viaggia come int nell'AST (TickStmt /
+        // TickEndStmt), quindi deve essere una COSTANTE numerica: un'espressione prima veniva
+        // ignorata in silenzio (restava 60) mentre C99Native la valutava — divergenza fra gambe.
+        double tickRate = 0;
         if (!parser.Check(TokenKind.Newline) && !parser.Check(TokenKind.EndTick) && !parser.IsAtEnd())
         {
             var rateExpr = parser.ParseExpression();
-            if (rateExpr is NumberExpr numExpr)
-                tickRate = Math.Max(1, (int)numExpr.Value);
+            if (rateExpr is NumberExpr numExpr) tickRate = numExpr.Value;
+            else throw CreateError(tickToken, "TICK rate must be a numeric literal.");
         }
         parser.Consume(TokenKind.Newline, "Expected newline after TICK.");
 
@@ -1112,6 +1115,16 @@ public sealed partial class Parser
 
         parser.Consume(TokenKind.EndTick, "Expected 'END TICK' to close the block.");
 
+        // END TICK [rate]: sovrascrive il rate del frame (il parser C sostituisce `s->value`).
+        // Stesso vincolo del TICK: costante numerica.
+        double endRate = tickRate;
+        if (!parser.Check(TokenKind.Newline) && !parser.IsAtEnd())
+        {
+            var endRateExpr = parser.ParseExpression();
+            if (endRateExpr is NumberExpr endNum) endRate = endNum.Value;
+            else throw CreateError(tickToken, "END TICK rate must be a numeric literal.");
+        }
+
         parser._loopKindTokens.Pop();
         parser._loopStartLabels.Pop();
         parser._loopContinueLabels.Pop();
@@ -1123,7 +1136,7 @@ public sealed partial class Parser
             new LabelStmt(loopStartLabel),
             new TickStmt(tickRate, tickToken),
             ..body,
-            new TickEndStmt(tickRate, tickToken),
+            new TickEndStmt(endRate, tickToken),
             new JumpStmt(loopStartLabel),
             new ExitLoopStmt(tickToken),
             new LabelStmt(loopExitLabel)

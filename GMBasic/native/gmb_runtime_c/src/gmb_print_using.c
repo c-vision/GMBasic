@@ -8,6 +8,7 @@
  * non c'è niente di implicito — ogni caso non rappresentabile ritorna -1 con un messaggio.
  */
 #include "gmb_print_using.h"
+#include "gmb_runtime.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -255,8 +256,16 @@ int gmb_print_using_format(const char* format, const gmb_using_value_t* values, 
 
     if (n == 0)
     {
-        /* nessun valore: il formato è tutto testo (i campi restano letterali) */
-        for (int i = 0; format[i]; i++) PU_PUT(format[i]);
+        /* nessun valore: il formato è tutto testo (i campi restano letterali), ma l'escape
+         * `_` vale anche qui: senza, `PRINT USING "[_#]"` stampava il carattere di escape
+         * invece del carattere protetto (trovato dal MiniTest del linguaggio). */
+        int i = 0;
+        while (format[i])
+        {
+            if (format[i] == '_' && format[i + 1]) { PU_PUT(format[i + 1]); i += 2; continue; }
+            PU_PUT(format[i]);
+            i++;
+        }
         out[o] = 0;
         return o;
     }
@@ -324,4 +333,58 @@ int gmb_print_using_format(const char* format, const gmb_using_value_t* values, 
     out[o] = 0;
     return o;
 #undef PU_PUT
+}
+
+/* ---- innesto nel linguaggio: `PRINT USING <fmt>; v1; v2 …` (contratto in gmb_print_using.h) ----
+ *
+ * L'emitter C99 emette UNA chiamata a questa funzione: niente logica di formato nel codice
+ * generato e niente tabella di tipi duplicata per gamba (§0bis). La capienza del buffer è
+ * calcolata dai valori reali (formato + 32 byte per valore numerico + la lunghezza delle
+ * stringhe), quindi `&` non può troncare e l'unico errore possibile è quello di formato. */
+int gmb_print_using_stmt(gmb_string_t fmt, const gmb_val_t* vals, int n, gmb_string_t* out)
+{
+    gmb_using_value_t local[8];
+    gmb_using_value_t* uv = local;
+    const char* f = fmt.data ? fmt.data : "";
+    char* buf;
+    size_t cap;
+    int i, len;
+
+    pu_error("");
+    if (!out || n < 0 || (n > 0 && !vals)) { pu_error("argomenti non validi"); return -1; }
+    if (n > (int)(sizeof(local) / sizeof(local[0])))
+    {
+        uv = (gmb_using_value_t*)malloc((size_t)n * sizeof(*uv));
+        if (!uv) { pu_error("memoria esaurita"); return -1; }
+    }
+
+    cap = strlen(f) + 2;
+    for (i = 0; i < n; i++)
+    {
+        if (vals[i].kind == GMB_TYPE_STRING)
+        {
+            const char* s = vals[i].v_string.data ? vals[i].v_string.data : "";
+            uv[i].is_string = 1;
+            uv[i].num = 0.0;
+            uv[i].str = s;
+            cap += strlen(s);
+        }
+        else
+        {
+            uv[i].is_string = 0;
+            uv[i].num = gmb_val_to_double(vals[i]);
+            uv[i].str = NULL;
+        }
+        cap += 32;   /* segno, cifre, separatori, dollaro/asterischi: abbondante */
+    }
+    if (cap > (size_t)1 << 24) { if (uv != local) free(uv); pu_error("formato troppo grande"); return -1; }
+
+    buf = (char*)malloc(cap);
+    if (!buf) { if (uv != local) free(uv); pu_error("memoria esaurita"); return -1; }
+    len = gmb_print_using_format(f, uv, n, buf, (int)cap);
+    if (uv != local) free(uv);
+    if (len < 0) { free(buf); return -1; }
+    *out = gmb_string_from_bytes(buf, (gmb_int_t)len);
+    free(buf);
+    return 0;
 }

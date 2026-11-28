@@ -61,6 +61,7 @@ extern "C" {
     #define GMB_COND_SIGNAL(c)   WakeConditionVariable(c)
     #define GMB_COND_BROADCAST(c) WakeAllConditionVariable(c)
     #define GMB_COND_WAIT(c,m)   SleepConditionVariableSRW((c),(m),INFINITE,0)
+    #define GMB_COND_WAIT_MS(c,m,ms) SleepConditionVariableSRW((c),(m),(DWORD)(ms),0)
 #else
     #define GMB_MUTEX_INIT(m)    pthread_mutex_init((m),NULL)
     #define GMB_MUTEX_LOCK(m)    pthread_mutex_lock(m)
@@ -69,6 +70,10 @@ extern "C" {
     #define GMB_COND_SIGNAL(c)   pthread_cond_signal(c)
     #define GMB_COND_BROADCAST(c) pthread_cond_broadcast(c)
     #define GMB_COND_WAIT(c,m)   pthread_cond_wait((c),(m))
+    /* Attesa a scadenza sul cond (pthread_cond_timedwait è POSIX). Definita in
+     * gmb_c99gpm.c: serve al watcher dei park, che deve svegliarsi al confine. */
+    int gmb_cond_wait_ms(gmb_cond_t* c, gmb_mutex_t* m, int ms);
+    #define GMB_COND_WAIT_MS(c,m,ms) gmb_cond_wait_ms((c),(m),(ms))
 #endif
 
 /* --- Tipi GPM (struct interne opache salvo gmb_task, usata dal codice emesso) --- */
@@ -127,6 +132,10 @@ struct gmb_task {
      * (bug 2026-10-01). Vive quanto il task (mai liberato prima, come i wg). */
     gmb_wg_t* implicit_wg;
     long long sleep_until_ms;
+    /* Cadenza TICK (§0ter): scadenza del frame corrente PER TASK, non per thread —
+     * un task migra tra worker, quindi un __thread la perderebbe (e il TICK perderebbe
+     * il ritmo). 0 = nessun frame in corso. */
+    int64_t tick_deadline_ms;
     gmb_task_t* next;
     gmb_task_t* all_next;
     gmb_lock_t lock;

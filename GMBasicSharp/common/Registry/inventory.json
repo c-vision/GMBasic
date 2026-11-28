@@ -1,8 +1,8 @@
 {
-  "count": 1222,
+  "count": 1246,
   "namespaces": 61,
-  "distinctTokenKinds": 1118,
-  "namesInMultipleNamespaces": 87,
+  "distinctTokenKinds": 1142,
+  "namesInMultipleNamespaces": 89,
   "namesInMultipleNamespacesSample": [
     "Count",
     "Embed",
@@ -19,11 +19,11 @@
     "RemoveSource",
     "Search",
     "STORE",
+    "Stats",
     "Click",
     "Find",
     "Screenshot",
-    "CREATE",
-    "GET"
+    "CREATE"
   ],
   "sameNsNameDifferentKinds": []
 }

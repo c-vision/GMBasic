@@ -1811,7 +1811,9 @@ public sealed partial class Parser
     /// </summary>
     /// <param name="expr">L'espressione da controllare.</param>
     /// <returns>True se l'espressione è o potrebbe essere una stringa.</returns>
-    private static bool IsStringExpression(Expr expr)
+    // Pubblica: la usa anche IlBackendCodegen (assembly separato) per scegliere la forma
+    // stringa dei comandi polimorfi come `SCENE TEXTURE "file.png"`.
+    public static bool IsStringExpression(Expr expr)
     {
         return expr switch
         {

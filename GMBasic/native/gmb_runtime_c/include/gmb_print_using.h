@@ -44,6 +44,9 @@
 #ifndef GMB_PRINT_USING_H
 #define GMB_PRINT_USING_H
 
+/* gmb_print_using_stmt lavora sui VALORI già tipizzati del runtime (gmb_val_t). */
+#include "gmb_runtime.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -57,6 +60,15 @@ typedef struct {
 int gmb_print_using_format(const char* format, const gmb_using_value_t* values, int n,
                            char* out, int cap);
 const char* gmb_print_using_error(void);
+
+/* ---- innesto nel linguaggio: `PRINT USING <fmt>; v1; v2 …` ----
+ * Unico ingresso per i backend (emesso dall'emitter C99 come una chiamata): prende il
+ * formato e i valori già valutati come `gmb_val_t` — la distinzione stringa/numero la fa
+ * il VALORE (kind), non una tabella di tipi duplicata per gamba — formatta e restituisce in
+ * `*out` una stringa POSseduta dal chiamante (da liberare con gmb_string_free).
+ * 0 = fatto; -1 = errore di formato (motivo in gmb_print_using_error()), nessuna stampa
+ * parziale. */
+int gmb_print_using_stmt(gmb_string_t fmt, const gmb_val_t* vals, int n, gmb_string_t* out);
 
 #ifdef __cplusplus
 }

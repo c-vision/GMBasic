@@ -759,6 +759,13 @@ public sealed class PCodeTask
     }
     public long SleepGeneration => Volatile.Read(ref _sleepGeneration);
 
+    /// <summary>Confine dell'ultimo frame TICK di QUESTO task (ms monotoni, stessa scala del
+    /// runtime C `gmb_ticks_ms`; 0 = nessuna scadenza). La cadenza è per task e non per thread
+    /// perché sotto GOMAXPROCS un task verde migra tra i worker; la calcola
+    /// <c>TickPacing.Advance</c> e l'handler TICK parcheggia il task fino a lì (mai un
+    /// Thread.Sleep sul worker, regola GPM §0ter).</summary>
+    public long TickDeadlineMs;
+
     /// <summary>Parcheggia questo PCB su una deadline usando la registration generazionale
     /// comune. Usato sia dagli opcode P-Code sia da IslandRuntime.</summary>
     public void ParkUntil(long deadlineMs, PCodeWaitRegistration registration)

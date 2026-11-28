@@ -514,6 +514,10 @@ struct gmb_stmt {
     char* imp_ns;
     char* imp_alias;
     char** imp_members; int n_imp_members, cap_imp_members;
+    /* PRINT USING <fmt>; v1; v2 …: espressione del FORMATO (NULL = PRINT normale). I valori
+     * restano in print_args/print_comma, così il percorso normale (staging, separatori,
+     * print_hold) vale identico; l'emitter C99 li formatta con gmb_print_using_stmt. */
+    gmb_expr_t* print_using;
 };
 typedef struct gmb_go_case { gmb_stmt_t* comm; gmb_stmt_t** body; int n_body; } gmb_go_case_t;
 

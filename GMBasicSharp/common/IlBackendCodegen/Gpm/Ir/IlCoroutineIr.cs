@@ -13,6 +13,13 @@ namespace Basic.IlBackend.Gpm.Ir;
 /// al ritorno, scrive il valore (changes) nello slot TargetSlot (-1 = scartato).</summary>
 internal sealed record SqlExecFnPark(Basic.BuiltinFunctionCallExpr Call, int TargetSlot);
 
+/// <summary>Park della forma FUNZIONE <c>AWAIT CONCURRENCY.SLEEPASYNC(ms)</c>: il blocco chiama
+/// IlGpmRuntime.SleepStep (IlTimerAwait, generation-safe) e, se non è parcheggiato, scrive ""
+/// nello slot target. Senza questo, la procedura con solo SLEEP-as-funzione restava FLAT e la
+/// call girava sul worker con Task.Delay bloccante (IlRuntime.SleepAsync) — §0ter violato:
+/// 32 sleeper da 600 ms impiegavano due ondate invece di una (misurato 2026-11-23).</summary>
+internal sealed record SleepFnPark(Basic.Expr? Ms, int TargetSlot);
+
 /// <summary>Regione di protezione (TRY/CATCH/FINALLY/USING) a cui un blocco appartiene.
 /// RegionPath di un blocco = lista delle regioni aperte, da esterna a interna.</summary>
 public enum IlIrRegionKind { Try, Catch, Finally, Using }

@@ -247,6 +247,13 @@ typedef struct gmb_control {
      * Vedi include/gmb_layout.h. */
     int layout_min_w, layout_min_h, layout_max_w, layout_max_h;
     int layout_grow;
+    /* FLOW (WrapBox/Grid): `STYLE "flow=wrap"`/`"flow=grid cols=3"` sul CONTENITORE,
+     * `STYLE "group=<nome>"` sui FIGLI. Vedi GMB_LAYOUT_FLOW_* in gmb_layout.h. */
+    int layout_flow;          /* GMB_LAYOUT_FLOW_NONE / WRAP / GRID */
+    int layout_cols;          /* grid: colonne (0 = 1) */
+    int layout_gap;           /* spazio fra celle/righe */
+    int layout_pad;           /* margine interno del contenitore */
+    char layout_group[64];    /* contenitore a cui il controllo appartiene ("" = nessuno) */
     /* Dimensione font ESPLICITA per il controllo (`STYLE "font=NN"`), 0 = dal tema.
      * Serve ai controlli che disegnano testo proprio (BIGTEXT, LABEL…): senza, la
      * dimensione era fissa/derivata e non regolabile dal programma. */
@@ -295,6 +302,10 @@ typedef struct gmb_widget {
     union { double ival; double value; };   /* valore o indice selezionato (unica fonte) */
     double vmin, vmax, vstep;      /* slider/progress: range */
     int first;                     /* listbox/grid: prima riga visibile */
+    /* VISTA TESTUALE VIRTUALE (LISTBOX con STYLE `mode=markdown|diff` o
+     * `virtual=1`): righe impaginate su richiesta, solo quelle visibili.
+     * NULL = la lista usa `items`. Vedi gmb_textview.h. */
+    void* tv; int tv_mode;
     int open;                      /* popup aperto (combobox/date) */
     int highlight;                 /* combobox: voce evidenziata */
     int drop_down_height;          /* combobox: altezza lista (default 5) */
@@ -641,6 +652,15 @@ int  gmb_combobox_render_line(gmb_combobox_t* c, char* out, int cap);
 typedef gmb_widget_t gmb_listbox_t;
 void gmb_listbox_init(gmb_listbox_t* l, int x, int y, int w, int h);
 void gmb_listbox_set_items(gmb_listbox_t* l, const char* const* items, int count);
+/* Vista testuale virtuale: `text` sostituisce le voci con righe impaginate
+ * (mode = GMB_TV_PLAIN/DIFF/MARKDOWN; -1 = usa il modo dello STYLE).
+ * `NULL`/"" azzera la vista e torna alle voci. */
+void gmb_listbox_set_text(gmb_listbox_t* l, const char* text, int mode);
+/* Riallinea l'impaginato alla larghezza in CELLE del controllo (chiamata dal
+ * disegno: il Markdown si reimpagina solo quando la larghezza cambia). */
+void gmb_listbox_sync(gmb_listbox_t* l, int cells_width);
+/* 1 se la lista sta mostrando una vista testuale (non `items`). */
+int  gmb_listbox_has_text(gmb_listbox_t* l);
 const char* gmb_listbox_selected_value(gmb_listbox_t* l);
 int  gmb_listbox_render_line(gmb_listbox_t* l, int idx, char* out, int cap);
 

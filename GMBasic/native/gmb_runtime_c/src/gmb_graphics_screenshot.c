@@ -1,6 +1,7 @@
 /* gmb_graphics_screenshot.c — screenshot PNG (estratto da gmb_graphics.c per evitare monolite) */
 #include "gmb_graphics.h"
 #include "gmb_graphics_internal.h"
+#include "gmb_color_filter.h"   /* ui.color_filter: SAVE SCREEN mostra ciò che si vede */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -120,7 +121,8 @@ int gmb_gfx_save_screen_png(const char* path)
     gmb_gfx_page_t* p = &g_gfx.pages[vi];
     if (!p->in_use || !p->pixels) return -1;
     /* Finestra reale: gli sprite sono composti dalla GPU e non sono nella pagina.
-     * Rendi offscreen pagina+sprite e salva quel buffer (parità con ciò che si vede). */
+     * Rendi offscreen pagina+sprite e salva quel buffer (parità con ciò che si vede).
+     * La cattura applica già `ui.color_filter` (stessa copia del present). */
     if (path)
     {
         size_t n = (size_t)p->w * (size_t)p->h;
@@ -136,5 +138,17 @@ int gmb_gfx_save_screen_png(const char* path)
             free(cap);
         }
     }
-    return save_png_rgb24(path, p->pixels, p->w, p->h);
+    /* Headless (nessuna cattura GPU): qui la pagina è grezza, quindi il filtro
+     * va applicato prima di scrivere il file — l'immagine salvata è ciò che si vede. */
+    {
+        int mode = gmb_color_filter_mode();
+        if (mode <= GMB_CVF_NONE) return save_png_rgb24(path, p->pixels, p->w, p->h);
+        size_t n = (size_t)p->w * (size_t)p->h;
+        uint32_t* f = (uint32_t*)malloc(n * sizeof(uint32_t));
+        if (!f) return save_png_rgb24(path, p->pixels, p->w, p->h);
+        for (size_t i = 0; i < n; i++) f[i] = gmb_color_filter_rgba(p->pixels[i], mode);
+        int r = save_png_rgb24(path, f, p->w, p->h);
+        free(f);
+        return r;
+    }
 }

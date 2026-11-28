@@ -86,7 +86,7 @@ int gmb_agent_fabric_select(const char* const* agents, int n, char* out, int cap
                 return i;
             }
         }
-        gmb_sleep_ms(10);
+        gmb_gpm_sleep(10);   /* §0ter: park fra un poll e l'altro, il worker resta libero */
     }
     return -1;
 }

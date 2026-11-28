@@ -855,8 +855,7 @@ public sealed partial class IlProgramCompiler
         typeof(IlGpmRuntime).GetMethod(nameof(IlGpmRuntime.ThrowIfWorker), [typeof(string)])!;
     private static readonly MethodInfo IlRuntimeEmptyDoubleArrayMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.EmptyDoubleArray))!;
     private static readonly MethodInfo IlRuntimeCopyIntArrayToMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.CopyIntArrayTo), [typeof(int[]), typeof(Array)])!;
-    private static readonly MethodInfo IlRuntimeTickBeginMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.TickBegin), [typeof(int)])!;
-    private static readonly MethodInfo IlRuntimeTickEndMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.TickEnd), [typeof(int)])!;
+    private static readonly MethodInfo IlRuntimeTickEndMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.TickEnd), [typeof(double)])!;
     private static readonly MethodInfo IlRuntimeAtGetMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.AtGet))!;
     private static readonly MethodInfo IlRuntimeStatusBarMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.StatusBar))!;
     private static readonly MethodInfo IlRuntimeScrollRegionMethod = typeof(IlRuntime).GetMethod(nameof(IlRuntime.ScrollRegion))!;

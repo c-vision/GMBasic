@@ -7962,7 +7962,7 @@
         {
           "name": "dateValue",
           "type": "DATETIME",
-          "optional": false,
+          "optional": true,
           "byRef": false,
           "array": false
         }
@@ -8081,7 +8081,7 @@
         {
           "name": "timeValue",
           "type": "DATETIME",
-          "optional": false,
+          "optional": true,
           "byRef": false,
           "array": false
         }
@@ -8141,7 +8141,7 @@
         {
           "name": "timeValue",
           "type": "DATETIME",
-          "optional": false,
+          "optional": true,
           "byRef": false,
           "array": false
         }
@@ -8156,7 +8156,7 @@
         {
           "name": "dateValue",
           "type": "DATETIME",
-          "optional": false,
+          "optional": true,
           "byRef": false,
           "array": false
         }
@@ -8178,7 +8178,7 @@
         {
           "name": "timeValue",
           "type": "DATETIME",
-          "optional": false,
+          "optional": true,
           "byRef": false,
           "array": false
         }
@@ -8301,7 +8301,7 @@
         {
           "name": "dateValue",
           "type": "DATE",
-          "optional": false,
+          "optional": true,
           "byRef": false,
           "array": false
         }
@@ -8316,7 +8316,7 @@
         {
           "name": "dateValue",
           "type": "DATETIME",
-          "optional": false,
+          "optional": true,
           "byRef": false,
           "array": false
         }
@@ -15603,6 +15603,35 @@
     },
     {
       "ns": "SCENE",
+      "name": "CEILAT",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "z",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SCENE",
       "name": "CULLED",
       "fn": true,
       "return": "double",
@@ -15617,7 +15646,79 @@
     },
     {
       "ns": "SCENE",
+      "name": "EYE",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "FLOORAT",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "z",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SCENE",
       "name": "HASH",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "HIT",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "PICK",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SCENE",
+      "name": "PITCH",
       "fn": true,
       "return": "double",
       "params": []
@@ -15653,6 +15754,123 @@
     },
     {
       "ns": "SCENE",
+      "name": "SEES",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "n",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SCENE",
+      "name": "SHOOT",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "range",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SCENE",
+      "name": "SHOTDIST",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "SHOTKIND",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "SHOTOBJ",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "SHOTX",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "SHOTY",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "SHOTZ",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "SOUNDGAIN",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "n",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SCENE",
+      "name": "SOUNDPAN",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "n",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SCENE",
+      "name": "STATS",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SCENE",
       "name": "TRIS",
       "fn": true,
       "return": "double",
@@ -15660,10 +15878,97 @@
     },
     {
       "ns": "SCENE",
+      "name": "USE",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "reach",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SCENE",
       "name": "VERTS",
       "fn": true,
       "return": "double",
       "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "X",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "Y",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "YAW",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "Z",
+      "fn": true,
+      "return": "double",
+      "params": []
+    },
+    {
+      "ns": "SCENE",
+      "name": "ZONE",
+      "fn": true,
+      "return": "double",
+      "params": [
+        {
+          "name": "x",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "y",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        },
+        {
+          "name": "z",
+          "type": "double",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
+    },
+    {
+      "ns": "SCENE",
+      "name": "ZONETAG",
+      "fn": true,
+      "return": "string",
+      "params": [
+        {
+          "name": "id",
+          "type": "long",
+          "optional": false,
+          "byRef": false,
+          "array": false
+        }
+      ]
     },
     {
       "ns": "SPEED",

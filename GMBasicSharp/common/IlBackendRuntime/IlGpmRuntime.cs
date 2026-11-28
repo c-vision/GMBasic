@@ -386,6 +386,31 @@ public static class IlGpmRuntime
         return false;
     }
 
+    /// <summary>END TICK unificato G5 (§0ter): fine del frame di un ciclo TICK. true = si continua
+    /// subito (rate ≤ 0 = nessun limiter, oppure il confine del frame è già passato), false =
+    /// il task è PARCHEGGIATO fino al confine. La cadenza è per TASK
+    /// (<see cref="PCodeTask.TickDeadlineMs"/>): sotto GOMAXPROCS il task migra tra i worker, una
+    /// scadenza per thread la perderebbe. Niente Thread.Sleep qui: era la violazione GPM del
+    /// vecchio <c>IlRuntime.TickEnd</c> (dormiva il worker). Il present NON è qui: il blocco lo
+    /// accoda dopo il risveglio (IlRuntime.TickPresent), così l'ordine è attesa → present come su
+    /// C99Native (<c>gmb_tick_pace</c> + <c>gmb_gfx_present_frame</c>).</summary>
+    public static bool TickStep(PCodeTask task, IlActivationFrame frame, double rate)
+    {
+        if (rate <= 0.0) return true;   // TICK senza rate: nessun limiter
+        // Re-entry (wake): la scadenza è già stata avanzata quando il park è stato creato, quindi
+        // qui NON si tocca di nuovo — consuma solo a deadline passata; un wake prematuro
+        // (arrotondamento del timer) ri-parka sulla STESSA deadline. Chiamare Advance anche sul
+        // re-entry aggiungerebbe un passo di ritardo a ogni risveglio spurio.
+        if (frame.Await is IlTimerAwait ta)
+            return ta.TryConsume(out _, out _);
+        var wait = TickPacing.Advance(ref task.TickDeadlineMs, rate);
+        if (wait <= 0) return true;     // confine già raggiunto: il frame parte subito
+        var op = new IlTimerAwait(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + wait);
+        frame.Await = op;
+        op.TryStart(task, frame);
+        return false;
+    }
+
     /// <summary>RECEIVE unificato G5 (IlChannelReceiveAwait): registra il receiver una volta,
     /// consuma al wake. true = valore ricevuto (out value), false = parcheggiato.</summary>
     public static bool ReceiveStep(PCodeTask task, IlActivationFrame frame, ChannelInfo? ch, out object? value)

@@ -6,6 +6,7 @@
  * ============================================================================ */
 #include "gmb_tui_widgets.h"
 #include "gmb_graphics.h"
+#include "gmb_textview.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -110,6 +111,44 @@ void gmb_listbox_set_items(gmb_listbox_t* l, const char* const* items, int count
     for (int i = 0; i < g->nitems && items; i++)
         snprintf(g->items[i], sizeof(g->items[i]), "%s", items[i] ? items[i] : "");
 }
+
+/* ── vista testuale virtuale (Markdown / diff / lista grande) ───────────── */
+void gmb_listbox_set_text(gmb_listbox_t* l, const char* text, int mode)
+{
+    gmb_widget_t* g = (gmb_widget_t*)l;
+    if (g->tv) { gmb_textview_free((gmb_textview_t*)g->tv); g->tv = NULL; }
+    if (!text || !*text) { g->nitems = 0; g->first = 0; g->ival = 0; return; }
+    if (mode < 0) mode = g->tv_mode;
+    g->tv_mode = mode;
+    /* Larghezza in CELLE: il renderer a celle prima del primo frame ha la
+     * larghezza dichiarata; in PIXEL il rect arriva da `gmb_listbox_sync`. */
+    int w = g->base.width > 3 ? g->base.width : 40;
+    g->tv = gmb_textview_new(text, mode, w);
+    g->nitems = gmb_textview_rows((gmb_textview_t*)g->tv);
+    g->first = 0;
+    g->ival = 0;
+}
+
+int gmb_listbox_has_text(gmb_listbox_t* l)
+{
+    gmb_widget_t* g = (gmb_widget_t*)l;
+    return g && g->tv ? 1 : 0;
+}
+
+void gmb_listbox_sync(gmb_listbox_t* l, int cells_width)
+{
+    gmb_widget_t* g = (gmb_widget_t*)l;
+    if (!g || !g->tv || cells_width <= 0) return;
+    gmb_textview_t* tv = (gmb_textview_t*)g->tv;
+    int n = gmb_textview_layout(tv, cells_width);
+    if (n != g->nitems)
+    {
+        g->nitems = n;
+        if ((int)g->ival >= n) g->ival = n > 0 ? n - 1 : 0;
+        if (g->first >= n) g->first = n > 1 ? n - 1 : 0;
+        if (g->first < 0) g->first = 0;
+    }
+}
 const char* gmb_listbox_selected_value(gmb_listbox_t* l)
 {
     gmb_widget_t* g = (gmb_widget_t*)l;
@@ -121,7 +160,8 @@ int gmb_listbox_render_line(gmb_listbox_t* l, int idx, char* out, int cap)
 {
     /* TV TListViewer: item a col 1, ultima colonna riservata alla barra `│`. */
     gmb_widget_t* g = (gmb_widget_t*)l;
-    const char* v = idx < g->nitems ? g->items[idx] : "";
+    const char* v = (g->tv) ? gmb_textview_row((gmb_textview_t*)g->tv, idx)
+                            : (idx < g->nitems ? g->items[idx] : "");
     int w = g->base.width > 1 ? g->base.width - 1 : g->base.width;
     int o = 0;
     out[o++] = ' ';

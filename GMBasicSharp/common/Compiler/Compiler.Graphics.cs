@@ -559,8 +559,20 @@ public sealed partial class Compiler
     // Stesso schema di VisitSpriteDefStmtC: il nome del sottocomando e' pushato per ULTIMO
     // cosi' l'handler lo poppa per primo (vedi PCodeProcessor case SysCall.TILEMAP_CMD).
     private void VisitTilemapCmdStmtC(TilemapCommandStmt stmt) { foreach (var a in stmt.Arguments) VisitExpression(a); EmitConstant(stmt.Command.Lexeme.ToUpperInvariant()); EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.TILEMAP_CMD); EmitByte((byte)(stmt.Arguments.Length + 1)); }
+    // TICK = inizio frame: argomenti 0, la PCodeVM consegna solo le collisioni del frame
+    // precedente (nessuna attesa, nessun present).
     private void VisitTickStmtC(TickStmt stmt) { EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.TICK_PROCESS); EmitByte((byte)0); }
-    private void VisitTickEndStmtC(TickEndStmt stmt) { EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.TICK_PROCESS); EmitByte((byte)0); }
+    // END TICK = fine frame. Due syscall, nell'ordine del riferimento C99Native
+    // (`gmb_tick_pace` poi `gmb_gfx_present_frame`): il rate (0 = nessun limiter) è l'argomento
+    // di TICK_PROCESS, che PARCHEGGIA il task fino al confine del frame (mai Thread.Sleep su un
+    // worker GPM); il SYNC emesso subito dopo è l'UNICO present del frame, eseguito quindi al
+    // risveglio. La scadenza è per task (PCodeTask.TickDeadlineMs), non per thread.
+    private void VisitTickEndStmtC(TickEndStmt stmt)
+    {
+        EmitConstant(stmt.TickRate);
+        EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.TICK_PROCESS); EmitByte((byte)1);
+        EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.SYNC_PROCESS); EmitByte((byte)0);
+    }
     private void VisitSyncStmtC(SyncStmt stmt) { EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.SYNC_PROCESS); EmitByte((byte)0); }
     private void VisitViewStmtC(ViewStmt stmt) { VisitExpression(stmt.X1); VisitExpression(stmt.Y1); VisitExpression(stmt.X2); VisitExpression(stmt.Y2); EmitByte((byte)OpCode.OP_SYSCALL); EmitSysCall(SysCall.VIEW_GFX); EmitByte((byte)4); }
 }

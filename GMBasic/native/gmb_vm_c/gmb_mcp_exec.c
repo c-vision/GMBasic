@@ -232,10 +232,11 @@ static int vmc_mcp_exec(void* ctx, const char* tool_name, const char* proc_name,
     t->ip = addr;
     gmb_sched_enqueue(vm->scheduler, t);
 
-    struct timespec ts = { 0, 2000000 }; /* 2ms */
-    int guard = 0;
-    while (t->sync_active && guard++ < 15000)   /* ~30s */
-        nanosleep(&ts, NULL);
+    /* §0ter: attesa SULL'EVENTO della chiusura del frame sync — prima era un poll di 2 ms per
+     * 15000 giri (30s). Il tool gira nel GPM (task `t`), il chiamante è il thread HTTP dell'MCP
+     * server che deve consegnare la risposta: si dorme sulla condizione del task e ci si sveglia
+     * quando il task chiude il frame (o muore), con la stessa deadline di 30s di prima. */
+    (void)gmb_sched_wait_task_event(t, GMB_TASK_WAIT_SYNC_CLOSED, 30000);
 
     if (t->sync_active) {
         t->sync_active = 0;

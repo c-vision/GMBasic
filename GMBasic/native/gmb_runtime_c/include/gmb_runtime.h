@@ -24,6 +24,7 @@
 #include "gmb_matrix.h"
 #include "gmb_matrix_value.h"   /* descrittore MATRIX OF a valore (ADR-MATRIX, backend C) */
 #include "gmb_compress.h"
+#include "gmb_audio.h"        /* gmb_audio_sound_voice / gmb_audio_mml_parse
 
 /* XOR LOGICO BASIC (keyword XOR): -1 se i due valori differiscono per truthiness, 0 altrimenti. */
 static inline double gmb_logic_xor(double a, double b)
@@ -656,11 +657,54 @@ void gmb_set_color(int fg, int bg);
 void gmb_set_color_spec(const char* spec);
 void gmb_color_reset(void);
 void gmb_sleep_ms(int ms);
-/* Versione COOPERATIVA per il codice emesso (SLEEP): dentro un task GPM parcheggia la
- * coroutine e libera il worker; fuori dal GPM si comporta come gmb_sleep_ms. */
+/* Versione COOPERATIVA: l'UNICA attesa ammessa dentro un task (SLEEP, TICK, SOUND/MML,
+ * polling del fabric). Se il backend ha registrato un park (gmb_gpm_set_park_hook) parcheggia
+ * il task e libera SUBITO il worker; altrimenti (main/lineare, o backend senza park) attende
+ * davvero come gmb_sleep_ms. */
 void gmb_gpm_sleep(int ms);
-/* TICK <fps>: frame limiter + pompa present (thread UI). */
+/* §0ter — PARK del backend, registrato a inversione di controllo (stesso schema di
+ * gmb_gpm_set_on_worker_query). Firma: parcheggia il task corrente per ms e ritorna quando è
+ * riprendibile. C99Native registra gmb_yield_ticks (coroutine). */
+typedef void (*gmb_gpm_park_fn)(int ms);
+void gmb_gpm_set_park_hook(gmb_gpm_park_fn fn);
+/* 1 = il backend sa parcheggiare la coroutine (quindi un gmb_sleep_ms su un worker è sempre
+ * un errore). */
+int  gmb_gpm_park_available(void);
+/* §0ter — PARK AL CONFINE DEL SYSCALL (VM/C). Non c'è una coroutine per il frame C: il park lo
+ * fa il syscall che deve attendere (sleep_until_ms + timer, il task riprende dopo la syscall).
+ * Da lì gmb_gpm_sleep NON è utilizzabile: le attese del runtime condiviso sono ASINCRONE
+ * (gmb_audio_sound_async / gmb_audio_mml_async) e il chiamante parcheggia la durata ritornata.
+ * Dichiararlo rende FATALE ogni attesa reale su un worker — la guardia vale anche qui. */
+void gmb_gpm_set_park_at_syscall(int on);
+int  gmb_gpm_park_at_syscall(void);
+/* TICK <fps>: attende il confine del frame (rate <= 0 = nessun limiter). NON presenta: il
+ * present del frame lo emette il chiamante dopo (gmb_gfx_present_frame), come nel codice
+ * emesso dal C99Native — l'ordine canonico è attesa → present. */
 void gmb_tick_pace(double fps);
+/* FORMULA UNICA del frame limiter TICK: aggiorna *deadline_ms (confine del frame corrente, per
+ * TASK o per thread) e ritorna il RESIDUO da attendere in ms — 0 = il frame può partire
+ * subito, fps <= 0 = nessun limiter (la scadenza non viene toccata). Non attende: chi chiama
+ * parcheggia (task) o dorme (main). Consumatori: gmb_tick_pace (C99Native), il syscall
+ * TICK_PROCESS della VM/C e — stessa formula, riscritta in managed perché il backend IL/PCode
+ * gira anche senza il runtime nativo caricato — TickPacing.Advance del C#; il loro ritmo è
+ * confrontato dai test di parità, quindi una modifica qui va replicata là. */
+long long gmb_tick_advance(int64_t* deadline_ms, double fps);
+/* §0ter — GUARDIA anti-regressione delle attese BLOCCANTI sul percorso TICK. È lo stesso
+ * meccanismo di GpmWorkerGuard/MarkDriverThread del backend IL, qui a inversione di controllo:
+ * ogni backend GPM registra come riconoscere "sto girando su un worker GPM".
+ * Perché: END TICK deve PARCHEGGIARE il task (IL: IlTimerAwait · PCode: wait Timer · C99:
+ * gmb_gpm_sleep · VM/C: sleep_until_ms + GMB_TS_BLOCKED). Se una futura modifica torna a
+ * dormire il worker — gmb_sleep_ms dentro un task — il processo si ferma
+ * SUBITO con la causa dichiarata, invece di produrre uno stallo intermittente che nessuna
+ * gamba di test attribuisce alla cadenza (caso reale: la VM/C dormiva il worker proprio qui).
+ * Nessuna query registrata (oracoli, selfcheck, runtime senza scheduler) = controllo no-op.
+ * Prova eseguibile: tests/gmb_tick_guard_selfcheck.c (ctest -R gmb_tick_guard_selfcheck). */
+typedef int (*gmb_on_gpm_worker_fn)(void);
+void gmb_gpm_set_on_worker_query(gmb_on_gpm_worker_fn fn);
+int  gmb_gpm_on_worker(void);
+/* §0ter — la guardia d'attesa NON è esportata: vive come `wait_guard` statica dentro gmb_sleep_ms,
+ * l'unico punto d'attesa che oggi può essere raggiunto da un task. Chi cerca un simbolo per coprire
+ * una nuova attesa deve prima avere un chiamante reale (vedi il commento in gmb_console.c). */
 /* Present del frame dal loop TICK (main-thread-safe). */
 void gmb_gfx_present_frame(void);
 int64_t gmb_ticks_ms(void);
@@ -1115,7 +1159,7 @@ int gmb_audio_synth(int frequency, double duration, int waveform,
  * corrente per comando (NULL = non richiesto). N<n> = nota MIDI assoluta 0..127,
  * L a più cifre (L16 = 1/16). */
 int gmb_audio_mml_parse(const char* mml, double* out_freq, double* out_dur, int* out_type,
-                        int* out_vol, int max_cmds);
+                        int* out_vol, int max_cmds);        /* gmb_audio.h (incluso sotto) */
 void gmb_audio_sound(int frequency, double duration, int volume);
 void gmb_audio_play_mml(const char* mml);
 /* SOUND [ON voice,] freq, dur[, vol[, wave[, att,dec,sus,rel[, pw]]]] — voice 0..7 con canale

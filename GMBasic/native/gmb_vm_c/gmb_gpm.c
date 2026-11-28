@@ -590,6 +590,7 @@ gmb_task_t* gmb_task_create(gmb_scheduler_t* s, int start_ip)
     t->error_line_ip = -1;
     t->error_resume_next_ip = -1;
     pthread_mutex_init(&t->lock, NULL);
+    pthread_cond_init(&t->fin_cond, NULL);   /* attesa su evento (thread HTTP/WS/MCP) */
     pthread_mutex_lock(&s->all_lock);
     if (s->all_count >= s->all_cap)
     {
@@ -618,6 +619,7 @@ gmb_task_t* gmb_task_create_unregistered(int start_ip)
     t->error_line_ip = -1;
     t->error_resume_next_ip = -1;
     pthread_mutex_init(&t->lock, NULL);
+    pthread_cond_init(&t->fin_cond, NULL);   /* attesa su evento (thread HTTP/WS/MCP) */
     return t;
 }
 
@@ -939,6 +941,66 @@ int gmb_sched_wait_all_done_ms(gmb_scheduler_t* s, int64_t timeout_ms)
     }
     pthread_mutex_unlock(&s->clock);
     return done;
+}
+
+void gmb_task_signal_event(gmb_task_t* t)
+{
+    if (!t) return;
+    pthread_mutex_lock(&t->lock);
+    pthread_cond_broadcast(&t->fin_cond);
+    pthread_mutex_unlock(&t->lock);
+}
+
+/* PARK a tempo, punto unico (§0ter). Prima questo blocco era copiato in vm_park_task_ms e nel
+ * builtin 1271; scritto due volte divergeva: il builtin dormiva il worker con un usleep. */
+void gmb_task_park_ms(gmb_task_t* t, gmb_scheduler_t* sched, int64_t ms)
+{
+    if (!t || ms <= 0) return;
+    if (!sched) sched = t->scheduler;
+    if (!sched) return;
+    pthread_mutex_lock(&t->lock);
+    t->sleep_until_ms = gmb_now_ms() + ms;
+    t->state = GMB_TS_BLOCKED;
+    pthread_mutex_unlock(&t->lock);
+    gmb_sched_arm_timer(sched, t);
+}
+
+/* Predicato dei due eventi che interessano ai thread del runtime: sync chiuso (il tool ha
+ * restituito, il risultato è già in task->sync_*) e task FINISHED (l'handler HTTP ha finito,
+ * oppure il task è morto e attendere il sync non ha più senso). Da valutare sotto t->lock. */
+static int task_event_reached(const gmb_task_t* t, int what)
+{
+    if (what == GMB_TASK_WAIT_FINISHED) return t->state == GMB_TS_FINISHED;
+    return t->sync_active == 0 || t->state == GMB_TS_FINISHED;
+}
+
+/* Attesa sull'evento. Chi scrive il predicato (worker_loop per FINISHED, ritorno del frame sync)
+ * deve chiamare gmb_task_signal_event: la deadline copre solo il caso patologico; non è un
+ * timeout di protocollo, quindi ritardarla per un salto dell'orologio di sistema non cambia
+ * l'esito (resta un caso d'errore). Clock REALTIME di proposito: macOS non ha
+ * pthread_condattr_setclock, e un comportamento diverso per piattaforma sarebbe peggio di questo
+ * trascurabile margine. timeout_ms<=0 = un solo controllo del predicato, senza attendere. */
+int gmb_sched_wait_task_event(gmb_task_t* t, int what, int64_t timeout_ms)
+{
+    struct timespec ab;
+    int ok;
+    if (!t) return 0;
+    if (timeout_ms > 0)
+    {
+        clock_gettime(CLOCK_REALTIME, &ab);
+        ab.tv_sec += (time_t)(timeout_ms / 1000);
+        ab.tv_nsec += (long)(timeout_ms % 1000) * 1000000L;
+        if (ab.tv_nsec >= 1000000000L) { ab.tv_sec++; ab.tv_nsec -= 1000000000L; }
+    }
+    pthread_mutex_lock(&t->lock);
+    /* Un solo ciclo: timedwait torna 0 anche su risveglio spuro (si rivaluta), ETIMEDOUT chiude
+     * con la valutazione finale del predicato. */
+    while (!(ok = task_event_reached(t, what)) && timeout_ms > 0 &&
+           pthread_cond_timedwait(&t->fin_cond, &t->lock, &ab) != ETIMEDOUT)
+        ;
+    ok = task_event_reached(t, what);
+    pthread_mutex_unlock(&t->lock);
+    return ok;
 }
 
 static void timer_heap_push(gmb_scheduler_t* s, gmb_timer_node_t n)
@@ -1992,6 +2054,7 @@ void gmb_sched_destroy(gmb_scheduler_t* s)
 void gmb_task_free(gmb_task_t* t)
 {
     if (!t) return;
+    pthread_cond_destroy(&t->fin_cond);
     /* Rimuove il task dalla lista all_tasks dello scheduler: un task può essere liberato
      * PRIMA dello shutdown (es. il route task HTTP, gmb_task_free in gmb_vm_http_handler)
      * ma resta in all_tasks → gmb_sched_destroy lo liberava di nuovo (double-free → abort). */

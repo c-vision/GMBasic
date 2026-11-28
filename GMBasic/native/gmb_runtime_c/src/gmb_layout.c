@@ -86,6 +86,12 @@ int gmb_layout_parse(const char* spec, gmb_layout_spec_t* out)
     out->max_w   = -1;
     out->max_h   = -1;
     out->grow    = -1;
+    out->flow    = -1;
+    out->cols    = -1;
+    out->gap     = -1;
+    out->pad     = -1;
+    out->has_group = 0;
+    out->group[0] = '\0';
 
     if (layout_find_val(spec, "expand", v, sizeof v)) {
         any = 1;
@@ -124,6 +130,36 @@ int gmb_layout_parse(const char* spec, gmb_layout_spec_t* out)
         if (out->grow < 0)   out->grow = 0;
         if (out->grow > 200) out->grow = 200;
     }
+
+    /* FLOW (contenitore): `flow=wrap` / `flow=grid`, con `cols=`, `gap=`, `pad=`.
+     * Alias comodi: `wrap=1` (flow=wrap) e `grid=3` (flow=grid cols=3). */
+    if (layout_find_val(spec, "flow", v, sizeof v)) {
+        any = 1;
+        if      (!strcasecmp(v, "wrap") || !strcasecmp(v, "flow") || !strcmp(v, "1")) out->flow = GMB_LAYOUT_FLOW_WRAP;
+        else if (!strcasecmp(v, "grid") || !strcasecmp(v, "table") || !strcmp(v, "2")) out->flow = GMB_LAYOUT_FLOW_GRID;
+        else if (!strcasecmp(v, "none") || !strcmp(v, "0")) out->flow = GMB_LAYOUT_FLOW_NONE;
+    }
+    if (layout_find_val(spec, "cols", v, sizeof v)) { any = 1; out->cols = atoi(v); if (out->cols < 0) out->cols = 0; }
+    if (layout_find_val(spec, "gap", v, sizeof v))  { any = 1; out->gap  = atoi(v); if (out->gap  < 0) out->gap  = 0; }
+    if (layout_find_val(spec, "pad", v, sizeof v))  { any = 1; out->pad  = atoi(v); if (out->pad  < 0) out->pad  = 0; }
+    if (layout_find_val(spec, "wrap", v, sizeof v)) {
+        any = 1;
+        if (atoi(v) != 0 || !strcasecmp(v, "wrap")) out->flow = GMB_LAYOUT_FLOW_WRAP;
+        else out->flow = GMB_LAYOUT_FLOW_NONE;
+    }
+    if (layout_find_val(spec, "grid", v, sizeof v)) {
+        any = 1;
+        out->flow = GMB_LAYOUT_FLOW_GRID;
+        out->cols = atoi(v);
+        if (out->cols < 0) out->cols = 0;
+    }
+    /* GRUPPO: il figlio dichiara a quale contenitore appartiene. La chiave è il
+     * NOME del contenitore, quindi il contenitore deve avere un `name=`. */
+    if (layout_find_val(spec, "group", v, sizeof v)) {
+        any = 1;
+        out->has_group = 1;
+        snprintf(out->group, sizeof out->group, "%s", v);
+    }
     return any;
 }
 
@@ -139,7 +175,8 @@ void gmb_layout_configure(struct gmb_control* cc, int is_tui,
     gmb_control_t* c = (gmb_control_t*)cc;
     if (!c || !ls) return;
     if (ls->expand < 0 && ls->anchor < 0 && ls->align_h < 0 && ls->align_v < 0
-        && ls->min_w < 0 && ls->min_h < 0 && ls->max_w < 0 && ls->max_h < 0 && ls->grow < 0)
+        && ls->min_w < 0 && ls->min_h < 0 && ls->max_w < 0 && ls->max_h < 0 && ls->grow < 0
+        && ls->flow < 0 && ls->cols < 0 && ls->gap < 0 && ls->pad < 0 && !ls->has_group)
         return;
 
     if (!c->layout_on) {
@@ -155,6 +192,11 @@ void gmb_layout_configure(struct gmb_control* cc, int is_tui,
         c->layout_max_w     = 0;
         c->layout_max_h     = 0;
         c->layout_grow      = 100;                      /* assorbe tutto il delta */
+        c->layout_flow      = GMB_LAYOUT_FLOW_NONE;
+        c->layout_cols      = 0;
+        c->layout_gap       = 0;
+        c->layout_pad       = 0;
+        c->layout_group[0]  = '\0';
         c->layout_base_x    = c->x;
         c->layout_base_y    = c->y;
         c->layout_base_w    = c->width;
@@ -176,6 +218,11 @@ void gmb_layout_configure(struct gmb_control* cc, int is_tui,
     if (ls->max_w   >= 0) c->layout_max_w   = ls->max_w;
     if (ls->max_h   >= 0) c->layout_max_h   = ls->max_h;
     if (ls->grow    >= 0) c->layout_grow    = ls->grow;
+    if (ls->flow    >= 0) c->layout_flow    = ls->flow;
+    if (ls->cols    >= 0) c->layout_cols    = ls->cols;
+    if (ls->gap     >= 0) c->layout_gap     = ls->gap;
+    if (ls->pad     >= 0) c->layout_pad     = ls->pad;
+    if (ls->has_group)    snprintf(c->layout_group, sizeof c->layout_group, "%s", ls->group);
     c->layout_is_tui = is_tui ? 1 : 0;
 
     /* I limiti sono proprietà del CONTROLLO, non solo del reflow: valgono anche
@@ -256,4 +303,93 @@ int gmb_layout_reflow(struct gmb_control* cc, int is_tui, int win_w, int win_h)
     if (nx == c->x && ny == c->y && nw == c->width && nh == c->height) return 0;
     c->x = nx; c->y = ny; c->width = nw; c->height = nh;
     return 1;
+}
+
+/* ---------------------------------------------------------------------------
+ * FLOW (WrapBox / Grid) — dispone i FIGLI di un contenitore.
+ *
+ * Il modello delta per-controllo non può sapere che i fratelli si spingono a
+ * capo: serve una funzione che li guardi insieme. Qui è pura (nessun registro):
+ * il chiamante le passa i controlli del gruppo e il rect del contenitore.
+ *
+ * WRAP: riga per riga, ognuno con la sua larghezza dichiarata; quando la riga è
+ * piena si va a capo. L'altezza della riga è quella del figlio più alto.
+ * GRID: `cols` colonne di celle uguali; righe = ceil(n/cols); ogni figlio riempie
+ * la cella. In entrambi i casi valgono i limiti min/max del figlio.
+ * ------------------------------------------------------------------------- */
+static int flow_clamp(int v, int lo, int hi)
+{
+    if (v < 1) v = 1;
+    if (hi > 0 && v > hi) v = hi;
+    if (lo > 0 && v < lo) v = lo;
+    if (v < 1) v = 1;
+    return v;
+}
+
+int gmb_layout_flow_apply(struct gmb_control* const* kids, int n,
+                          int area_x, int area_y, int area_w, int area_h,
+                          int mode, int cols, int gap, int pad)
+{
+    if (!kids || n <= 0) return 0;
+    if (mode != GMB_LAYOUT_FLOW_WRAP && mode != GMB_LAYOUT_FLOW_GRID) return 0;
+    if (gap < 0) gap = 0;
+    if (pad < 0) pad = 0;
+    if (area_w < 1) area_w = 1;
+    if (area_h < 1) area_h = 1;
+
+    int ox = area_x + pad;
+    int oy = area_y + pad;
+    int inner_w = area_w - pad * 2;
+    int inner_h = area_h - pad * 2;
+    if (inner_w < 1) inner_w = 1;
+    if (inner_h < 1) inner_h = 1;
+
+    int moved = 0;
+
+    if (mode == GMB_LAYOUT_FLOW_GRID) {
+        if (cols < 1) cols = 1;
+        int rows = (n + cols - 1) / cols;
+        int cell_w = (inner_w - gap * (cols - 1)) / cols;
+        int cell_h = (inner_h - gap * (rows - 1)) / rows;
+        if (cell_w < 1) cell_w = 1;
+        if (cell_h < 1) cell_h = 1;
+        for (int i = 0; i < n; i++) {
+            gmb_control_t* c = (gmb_control_t*)kids[i];
+            if (!c) continue;
+            int r = i / cols, col = i % cols;
+            int x = ox + col * (cell_w + gap);
+            int y = oy + r * (cell_h + gap);
+            int w = flow_clamp(cell_w, c->layout_min_w, c->layout_max_w);
+            int h = flow_clamp(cell_h, c->layout_min_h, c->layout_max_h);
+            if (c->x != x || c->y != y || c->width != w || c->height != h) {
+                c->x = x; c->y = y; c->width = w; c->height = h;
+                moved++;
+            }
+        }
+        return moved;
+    }
+
+    /* WRAP */
+    int x = ox, y = oy, row_h = 0;
+    int right = ox + inner_w;
+    for (int i = 0; i < n; i++) {
+        gmb_control_t* c = (gmb_control_t*)kids[i];
+        if (!c) continue;
+        int w = c->layout_on ? c->layout_base_w : c->width;
+        int h = c->layout_on ? c->layout_base_h : c->height;
+        if (w < 1) w = 1;
+        if (h < 1) h = 1;
+        w = flow_clamp(w, c->layout_min_w, c->layout_max_w);
+        h = flow_clamp(h, c->layout_min_h, c->layout_max_h);
+        if (w > inner_w) w = inner_w;      /* un figlio più largo del contenitore non esce */
+        /* Va a capo se non è il primo della riga e non ci sta più. */
+        if (x > ox && x + w > right) { x = ox; y += row_h + gap; row_h = 0; }
+        if (c->x != x || c->y != y || c->width != w || c->height != h) {
+            c->x = x; c->y = y; c->width = w; c->height = h;
+            moved++;
+        }
+        x += w + gap;
+        if (h > row_h) row_h = h;
+    }
+    return moved;
 }

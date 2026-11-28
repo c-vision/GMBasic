@@ -22,6 +22,7 @@
 #include "gmb_graphics.h"
 #include "gmb_gfx_input.h"
 #include "gmb_clock.h"   /* il cap del present segue il passo del clock (present_cap_elapsed) */
+#include "gmb_color_filter.h"  /* ui.color_filter: filtro sui pixel all'uscita (present) */
 #include <stdlib.h>
 
 #ifdef GMB_GFX_VULKAN
@@ -434,6 +435,29 @@ static int present_cap_elapsed(void)
     return 1;
 }
 
+/* ============================ ui.color_filter ============================
+ * Unico punto di uscita dei PIXEL verso lo schermo. La pagina resta la verità
+ * (GRAPHICS.POINT/IMAGEGET leggono i colori originali); qui si trasforma una
+ * COPIA, che il present carica in texture. Spento = si usa la pagina stessa,
+ * quindi il percorso comune non paga nulla (né memoria né copia). */
+static const uint32_t* cvf_output_pixels(const uint32_t* src, int w, int h, int* mode_out)
+{
+    static uint32_t* buf = NULL;
+    static size_t cap = 0;
+    int mode = gmb_color_filter_mode();
+    if (mode_out) *mode_out = mode;
+    if (mode <= GMB_CVF_NONE || !src || w <= 0 || h <= 0) return src;
+    size_t n = (size_t)w * (size_t)h;
+    if (n > cap)
+    {
+        uint32_t* nb = (uint32_t*)realloc(buf, n * sizeof(uint32_t));
+        if (!nb) return src;            /* senza memoria si mostra la pagina: mai un crash */
+        buf = nb; cap = n;
+    }
+    for (size_t i = 0; i < n; i++) buf[i] = gmb_color_filter_rgba(src[i], mode);
+    return buf;
+}
+
 void gmb_gfx_present_tick(void)
 {
     /* Hook di test FORM (main thread = unico scrittore delle code input): dopo
@@ -479,6 +503,8 @@ void gmb_gfx_present_tick(void)
     int w = 0, h = 0;
     const uint32_t* pixels = gmb_gfx_visible_pixels(&w, &h);
     if (!pixels || w <= 0 || h <= 0) return;
+    int cvf_mode = GMB_CVF_NONE;
+    pixels = cvf_output_pixels(pixels, w, h, &cvf_mode);
 
     /* Il blit lo limita il CAP del present, che segue il clock (present_cap_elapsed):
      * un 33 ms fisso scartava metà dei frame anche quando il ciclo girava a 60 Hz. Gli
@@ -490,11 +516,13 @@ void gmb_gfx_present_tick(void)
      * Ogni word copre 4 byte, quindi nessun pixel può sfuggire. */
     {
         static uint32_t s_last_hash = 0; static int s_last_w = -1, s_last_h = -1;
+        static int s_last_cvf = -1;
         uint32_t hh = 2166136261u;
         size_t nwords = (size_t)w * (size_t)h;
         for (size_t i = 0; i < nwords; i++) { hh ^= pixels[i]; hh *= 16777619u; }
-        if (hh == s_last_hash && w == s_last_w && h == s_last_h && g_pres_sprite_count == 0) return;
-        s_last_hash = hh; s_last_w = w; s_last_h = h;
+        if (hh == s_last_hash && w == s_last_w && h == s_last_h && cvf_mode == s_last_cvf
+            && g_pres_sprite_count == 0) return;
+        s_last_hash = hh; s_last_w = w; s_last_h = h; s_last_cvf = cvf_mode;
     }
 
     ensure_window(w, h);
@@ -502,6 +530,7 @@ void gmb_gfx_present_tick(void)
      * rileggi il puntatore (nativo) prima di presentare. */
     pixels = gmb_gfx_visible_pixels(&w, &h);
     if (!pixels || w <= 0 || h <= 0) return;
+    pixels = cvf_output_pixels(pixels, w, h, &cvf_mode);
 #ifdef GMB_GFX_VULKAN
     if (g_vk_active)
     {
@@ -559,6 +588,9 @@ int gmb_gfx_present_capture(uint32_t* out, int w, int h)
     if (!g_renderer) return -1;
     const uint32_t* page = gmb_gfx_visible_pixels(NULL, NULL);
     if (!page) return -1;
+    /* ui.color_filter: la cattura (SAVE SCREEN/IMAGEGET) deve mostrare ciò che si
+     * vede, quindi passa la stessa copia filtrata del present. */
+    page = cvf_output_pixels(page, w, h, NULL);
     if (!g_texture || g_tex_w != w || g_tex_h != h)
     {
         if (g_texture) SDL_DestroyTexture(g_texture);

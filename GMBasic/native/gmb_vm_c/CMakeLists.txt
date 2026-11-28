@@ -239,6 +239,13 @@ target_include_directories(gmb_agent_tool_loop_selfcheck PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include)
 add_test(NAME gmb_agent_tool_loop_selfcheck COMMAND gmb_agent_tool_loop_selfcheck)
 
+# Attesa su EVENTO del task (§0ter): handler HTTP/WS e tool MCP non pollano piu' con nanosleep.
+add_executable(gmb_park_wait_selfcheck tests/park_wait_selfcheck.c)
+target_link_libraries(gmb_park_wait_selfcheck PRIVATE gmb_vm gmb_runtime pthread)
+target_include_directories(gmb_park_wait_selfcheck PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include)
+add_test(NAME gmb_park_wait_selfcheck COMMAND gmb_park_wait_selfcheck)
+
 # gmb_opt_env (ponte env->registro) — infra 2026-09-29
 target_include_directories(gmb_vm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../gmb_runtime_c/include)
 # --- GUARDIA ANTI-STALE (2026-10-01): le lib AI PRECOMPILATE (libgmbllm.a / libgmb_runtime.a) sono

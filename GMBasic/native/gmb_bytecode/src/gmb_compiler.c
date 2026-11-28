@@ -4389,6 +4389,13 @@ static void cc_stmt(gmb_cc_t* c, const gmb_stmt_t* s)
     }
     switch (s->kind) {
     case GMB_STMT_PRINT: {
+        /* PRINT USING: il formattatore a campi è nel runtime condiviso (§0bis) e su questa
+         * gamba non è ancora collegato. Errore ESPLICITO in compilazione, non una stampa
+         * senza formato: meglio un programma che non compila di uno che mente. */
+        if (s->print_using) {
+            cc_err(c, "PRINT USING non ancora supportato su questa gamba (C99Native sì)");
+            return;
+        }
         if (s->nprint == 0) { cc_byte(c, GMB_OP_PRINT_NEWLINE); break; }
         for (int i = 0; i < s->nprint; i++) {
             cc_expr(c, s->print_args[i]);

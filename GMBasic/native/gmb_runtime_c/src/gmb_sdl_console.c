@@ -11,6 +11,7 @@
 #include "gmb_tui_clipper.h"
 #include "gmb_tui_widgets.h"
 #include "gmb_a11y.h"   /* ui.text_scale sul font della console */
+#include "gmb_color_filter.h"   /* ui.color_filter: celle→pixel diretti di SDLConsole */
 #include "gmb_gfx_input.h"
 #include <stdlib.h>
 #include <string.h>
@@ -609,6 +610,15 @@ void gmb_sdl_console_render(gmb_sdl_console_t* c){
             sdlcon_palette_rgb(c, cell.fg_palette, &cell.fg_rgb, &fr, &fg, &fb);
             sdlcon_palette_rgb(c, cell.bg_palette, &cell.bg_rgb, &br, &bg, &bb);
             if (inv) { int t; t = fr; fr = br; br = t; t = fg; fg = bg; bg = t; t = fb; fb = bb; bb = t; }
+            /* ui.color_filter: SDLConsole disegna le celle in pixel senza passare
+             * dalla pagina grafica, quindi è un punto di uscita finale a sé. */
+            if (gmb_color_filter_active())
+            {
+                gmb_cell_color_t cf = { (uint8_t)fr, (uint8_t)fg, (uint8_t)fb, 0 };
+                gmb_cell_color_t cb = { (uint8_t)br, (uint8_t)bg, (uint8_t)bb, 0 };
+                cf = gmb_color_filter_cell_now(cf); cb = gmb_color_filter_cell_now(cb);
+                fr = cf.r; fg = cf.g; fb = cf.b; br = cb.r; bg = cb.g; bb = cb.b;
+            }
             int x0 = x * cw, y0 = y * ch;
             gmb_sdl_render_fill(ctx->renderer_handle, x0, y0, cw, ch, br, bg, bb);
             if (cell.character > 0x20u)

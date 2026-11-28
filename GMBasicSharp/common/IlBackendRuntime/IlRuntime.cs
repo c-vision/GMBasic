@@ -16581,22 +16581,29 @@ public static double TextWidth(string s)
         return Array.Empty<int>();
     }
 
-    // ─── TICK / END TICK (frame pacing, schema PCodeVM TICK loop) ───
-    private static int _tickStartMs;
-    private static int _tickRate;
-
-    public static void TickBegin(int rate)
+    // ─── END TICK (frame pacing + present, parità C99Native) ───
+    /// <summary>Chiusura del frame di un ciclo TICK: attende il confine del frame per
+    /// <paramref name="rate"/> fps (0 = nessun limiter) e presenta UNA volta, come
+    /// <c>gmb_tick_pace</c> + <c>gmb_gfx_present_frame</c> su C99Native. L'attesa è a SCADENZA
+    /// (TickPacing): dormendo il passo intero DOPO il lavoro il periodo diventava
+    /// lavoro + passo e <c>TICK 60</c> misurava 50 fps.</summary>
+    public static void TickEnd(double rate)
     {
-        _tickStartMs = Environment.TickCount;
-        _tickRate = Math.Max(1, rate);
+        // Percorso FLAT (non GPM): gira sul thread chiamante, quindi può attendere davvero.
+        // Dentro un task GPM l'END TICK è un park point v2 (IlGpmRuntime.TickStep + questo
+        // TickPresent dopo il risveglio): dormire qui bloccherebbe un worker (§0ter).
+        TickPacing.Pace(rate);
+        TickPresent();
     }
 
-    public static void TickEnd(int rate)
+    /// <summary>Present del frame di un ciclo TICK, SENZA attesa: il blocco v2 lo emette dopo il
+    /// risveglio dal park (<see cref="TickStep"/>), così l'ordine è attesa → present una volta
+    /// sola, come su C99Native. Nessun dispatch delle collisioni: il TICK presenta, il sync
+    /// completo resta SYNC.</summary>
+    public static void TickPresent()
     {
-        int target = Math.Max(1, 1000 / Math.Max(1, rate));
-        int elapsed = Environment.TickCount - _tickStartMs;
-        int wait = target - elapsed;
-        if (wait > 0) System.Threading.Thread.Sleep(wait);
+        if (Current.Graphics is CGfxGraphicsService cg) cg.Sync();
+        else Current.Graphics.Sync();
     }
 
     /// <summary>Copia un int[] in un array target (limite = lunghezza minore; converte il

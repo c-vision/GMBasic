@@ -4,6 +4,7 @@
  * ============================================================================ */
 
 #include "gmb_runtime.h"
+#include "gmb_c99gpm.h"   /* gmb_task_t: la cadenza TICK vive sul task (migra col task) */
 #include "gmb_ui_gfx.h"
 extern int gmb_gfx_present_video_is_real(void);
 #include "gmb_graphics.h"
@@ -14,6 +15,8 @@ extern int gmb_gfx_present_video_is_real(void);
 #include "gmb_console_extra.h"
 #include "gmb_iconsole.h"
 #include "gmb_form.h"
+
+#include <stdlib.h>   /* _Exit: guardia §0ter delle attese bloccanti (gmb_sleep_ms) */
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
@@ -1081,7 +1084,77 @@ int64_t gmb_ticks_ms(void) {
 #endif
 }
 
+/* ── §0ter: guardia delle attese BLOCCANTI e park cooperativo ──
+ * Tre superfici registrate dai backend (inversione di controllo, lo stesso schema di
+ * GpmWorkerGuard/MarkDriverThread del backend IL):
+ *   "sto su un worker GPM?"  — C99: scheduler attivo + task corrente; VM/C: task TLS con
+ *                              scheduler. Senza query il controllo è un no-op (oracoli,
+ *                              selfcheck, runner senza scheduler).
+ *   "sai parcheggiare?"      — C99: gmb_yield_ticks (coroutine). gmb_gpm_sleep la usa.
+ *   "parcheggi al syscall?"  — VM/C: nessuna coroutine per il frame C di un syscall; il park
+ *                              è quello del syscall (sleep_until_ms + timer, il task riprende
+ *                              dopo). Da lì gmb_gpm_sleep NON è utilizzabile: le attese del
+ *                              runtime condiviso sono ASINCRONE (gmb_audio_sound_async /
+ *                              gmb_audio_mml_async + park del chiamante). Dichiararlo rende
+ *                              fatale ogni attesa reale su un worker: la guardia vale anche lì.
+ * Perché la guardia: un'attesa reale su un worker lo tiene occupato per tutta la durata e
+ * azzera la cooperazione — invisibile nei test, letale con GOMAXPROCS piccolo. */
+static gmb_on_gpm_worker_fn g_on_worker_query = NULL;
+static gmb_gpm_park_fn g_park_hook = NULL;
+static int g_park_at_syscall = 0;
+void gmb_gpm_set_on_worker_query(gmb_on_gpm_worker_fn fn) { g_on_worker_query = fn; }
+int  gmb_gpm_on_worker(void) { return g_on_worker_query ? g_on_worker_query() : 0; }
+void gmb_gpm_set_park_hook(gmb_gpm_park_fn fn) { g_park_hook = fn; }
+int  gmb_gpm_park_available(void) { return g_park_hook != NULL; }
+void gmb_gpm_set_park_at_syscall(int on) { g_park_at_syscall = on != 0; }
+int  gmb_gpm_park_at_syscall(void) { return g_park_at_syscall; }
+
+static void gmb_gpm_blocking_fail(const char* who)
+{
+    fprintf(stderr,
+        "[GMBASIC] FATAL (§0ter): attesa BLOCCANTE da un worker GPM (%s).\n"
+        "[GMBASIC]   Un worker non si blocca MAI: l'attesa va PARCHEGGIATA (gmb_gpm_sleep):\n"
+        "[GMBASIC]   IL: IlTimerAwait  |  PCode: wait Timer  |  C99: gmb_yield_ticks\n"
+        "[GMBASIC]   VM/C: sleep_until_ms + GMB_TS_BLOCKED (al confine del bytecode)\n"
+        "[GMBASIC]   gmb_sleep_ms diretto (invece di gmb_gpm_sleep) tiene il worker occupato\n"
+        "[GMBASIC]   per tutta l'attesa e falsa cadenza, fairness e GOMAXPROCS.\n",
+        who ? who : "?");
+    fflush(stderr);
+    _Exit(2);
+}
+
+/* SLEEP cooperativo, UNICA attesa ammessa dentro un task: se il backend sa parcheggiare lo
+ * fa (il worker torna subito libero), altrimenti attende davvero (main/lineare, o backend
+ * senza park — VM/C, dove SOUND/MML devono comunque aspettare la fine del suono). */
+void gmb_gpm_sleep(int ms)
+{
+    if (ms <= 0) return;
+    if (g_park_hook) { g_park_hook(ms); return; }
+    gmb_sleep_ms(ms);
+}
+
+/* §0ter — GUARDIA DELL'ATTESA. Vive qui, dentro l'unica attesa che può arrivare da un task
+ * (gmb_sleep_ms): NON è un'API del runtime. I punti d'attesa scritti a mano non esistono più — i
+ * task dormono col park (gmb_task_park_ms) e i thread del runtime HTTP/WS/MCP attendono sull'evento
+ * del task (gmb_sched_wait_task_event) — quindi non esiste un secondo chiamante da servire, e un
+ * simbolo in più nel runtime condiviso per un "domani" ipotetico sarebbe un'API morta. Se nasce un
+ * nuovo punto d'attesa raggiungibile da un task, si ri-estrae con quel chiamante in mano.
+ * Su un worker GPM con una strategia di park dichiarata (coroutine o confine del syscall) il
+ * processo si ferma con la causa, invece di tenere occupato il worker in modo invisibile.
+ * NON si chiama dai thread dedicati del runtime (driver host 60 Hz, pump dei messaggi, handler
+ * HTTP, attesa del tool MCP): lì nessun task gira mai, sarebbe peso morto. */
+static void wait_guard(const char* who)
+{
+    if (gmb_gpm_on_worker() && (gmb_gpm_park_available() || g_park_at_syscall))
+        gmb_gpm_blocking_fail(who);
+}
+
 void gmb_sleep_ms(int ms) {
+    /* §0ter — guardia su TUTTE le attese di questa funzione, per entrambe le strategie di park:
+     * coroutine (C99) e confine del syscall (VM/C). Un'attesa reale su un worker è sempre un
+     * errore: si arriva qui perché il chiamante ha usato gmb_sleep_ms invece del park
+     * (gmb_gpm_sleep, o un'attesa asincrona + park del syscall). */
+    if (ms > 0) wait_guard("gmb_sleep_ms dentro un task");
     /* Pompa il present SOLO se siamo sul thread UI (gmb_tui_present_gfx lo verifica):
      * sui worker GPM è no-op, quindi nessuna violazione (SDL solo sul main). */
     extern void gmb_tui_present_gfx(void);
@@ -1683,16 +1756,71 @@ int gmb_c64_is_vfill(int cp)
     }
 }
 
-/* TICK <fps>: frame limiter (1000/fps ms) con pompa del present sul thread UI.
- * Prima il rate era ignorato: il loop girava a migliaia di fps e la presentazione
- * risultava instabile (finestra nera nei demo con TICK). */
+/* TICK <fps>: attende il confine del frame. NON presenta — il present lo emette il codice
+ * emesso subito dopo (gmb_gfx_present_frame), quindi l'ordine è attesa → present e il frame
+ * dopo il risveglio. Prima il rate era ignorato: il loop girava a migliaia di fps e la
+ * presentazione risultava instabile (finestra nera nei demo con TICK). */
 void gmb_tick_pace(double fps)
 {
-    if (fps <= 0) return;
+    /* Limiter a DEADLINE, non `sleep(passo)` dopo il lavoro: dormendo il passo INTERO dopo
+     * il frame, il periodo diventava lavoro + passo — misurato con TICK 60: 101 iterazioni
+     * in 2001 ms (50 fps, 19,9 ms per frame), cioè il rate dichiarato non veniva rispettato.
+     * Qui si attende solo fino al confine del frame, quindi il periodo è il passo; se il
+     * lavoro sfora il confine non si accumula ritardo (in ritardo di un passo o più si
+     * riparte da adesso, altrimenti si mantiene la cadenza).
+     *
+     * La scadenza sta sul TASK GPM (`tick_deadline_ms`), non in `__thread`: il task migra tra
+     * worker, quindi una scadenza per-thread la perderebbe a ogni migrazione (e due task che si
+     * alternano sullo stesso worker si contenderebbero il confine, dettandosi il ritmo a
+     * vicenda). Fuori da un task (programma lineare, main thread) resta un `__thread` per
+     * thread, così un TICK su un worker e uno sul main thread non si contendono la scadenza.
+     * Due cicli TICK consecutivi nello stesso task la condividono (il secondo prosegue la
+     * cadenza del primo, al più attende un passo) e dopo una pausa lunga il ramo "in ritardo"
+     * riparte da adesso:
+     * misurato con `TICK 60` per 400 ms poi `TICK 30` per 600 ms → 42-43 present in 1 s, con un
+     * solo intervallo di 37-39 ms al cambio (48 col cap acceso, che rifiuta quel frame). Un
+     * reset esplicito al cambio di rate è stato provato e RIMOSSO: spostava quel buco, non lo
+     * toglieva.
+     *
+     * Nesting: due TICK annidati condividono la scadenza, quindi il pace esterno e quello
+     * interno si alternano sul confine più vicino — nessun blocco, e il loop interno (più
+     * lento) detta il ritmo. Pattern non supportato, ma innocuo. */
+    static __thread int64_t main_deadline_ms = 0;   /* fuori dai task: confine del frame; 0 = nessuno */
+    gmb_task_t* task = gmb_cur();
+    int64_t* deadline_ms = task ? &task->tick_deadline_ms : &main_deadline_ms;
+    int64_t wait = gmb_tick_advance(deadline_ms, fps);
+    if (wait <= 0) return;                     /* confine già raggiunto: il frame parte subito */
+    /* Anticipo: si attende il confine. Dentro un task si PARCHEGGIA la coroutine
+     * (gmb_gpm_sleep -> gmb_yield_ticks, §0ter): il worker torna a eseguire gli altri
+     * task, l'attesa non lo blocca. Fuori da un task (main/lineare) attesa reale. */
+    if (task) { gmb_gpm_sleep((int)wait); }
+    else
+    {
+        /* Main/lineare, non un worker: `gmb_cur()` è NULL qui, e il predicato C99 di §0ter è
+         * "scheduler attivo && gmb_cur() != NULL" — quindi `gmb_gpm_on_worker()` è false per
+         * costruzione e nemmeno la guardia di gmb_sleep_ms può scattare. L'attesa reale è
+         * legittima: nessuna guardia dedicata (l'aveva gmb_tick_sync_wait, con un solo
+         * chiamante, ed era un caso impossibile). */
+        gmb_sleep_ms((int)wait);
+    }
+}
+
+/* Formula UNICA del frame limiter (§0bis: C99Native e VM/C la condividono, nessuna copia nei
+ * backend). Passo = 1000/fps con lo stesso clamp del canone; la scadenza avanza SEMPRE di un
+ * passo (in ritardo di un passo o più si riparte da adesso, altrimenti la cadenza si mantiene). */
+long long gmb_tick_advance(int64_t* deadline_ms, double fps)
+{
+    if (!deadline_ms || fps <= 0.0) return 0;
     double ms = 1000.0 / fps;
     if (ms < 1.0) ms = 1.0;
     if (ms > 1000.0) ms = 1000.0;
-    gmb_sleep_ms((int)(ms + 0.5));
+    long long step = (long long)(ms + 0.5);
+    long long now = gmb_ticks_ms();
+    long long wait = 0;
+    if (*deadline_ms > now) wait = *deadline_ms - now;                          /* anticipo: si attende il confine */
+    else if (*deadline_ms <= 0 || now - *deadline_ms >= step) *deadline_ms = now;  /* primo frame o in ritardo di un passo */
+    *deadline_ms += step;
+    return wait;
 }
 
 /* Frame present per i loop TICK: solo sul thread UI (gmb_tui_present_gfx verifica

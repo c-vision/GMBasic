@@ -51,6 +51,7 @@ Il dominio segue la regola del linguaggio: **il comando scrive, la funzione legg
 | Comando | `SCENE RENDER` | rasterizza la scena nel target |
 | Comando | `SCENE PRESENT` | copia il target 3D nella pagina 2D corrente |
 | Comando | `SCENE SAVE path$` | salva il frame corrente in PNG |
+| Comando | `SCENE SOUND n, freq, dur, x, y, z, dist, vol` | sorgente audio posizionale nello slot `n` (`1..16`): il listener è la camera |
 | Funzione | `SCENE.VERTS()` | vertici dichiarati |
 | Funzione | `SCENE.TRIS()` | triangoli dichiarati |
 | Funzione | `SCENE.DRAWN()` | triangoli effettivamente rasterizzati nell'ultimo `RENDER` |
@@ -67,6 +68,8 @@ Il dominio segue la regola del linguaggio: **il comando scrive, la funzione legg
 | Funzione | `SCENE.CEILAT(x, y, z)` | soffitto più basso a o sopra `y`, `−1000000` se nessuno |
 | Funzione | `SCENE.ZONE(x, y, z)` | id della prima zona che contiene il punto, `−1` se nessuna |
 | Funzione | `SCENE.ZONETAG(id)` | tag della zona, `""` se l'id non esiste |
+| Funzione | `SCENE.SOUNDGAIN(n)` | gain `0..1` della sorgente `n`, `−1` se vuoto o fuori `1..16` |
+| Funzione | `SCENE.SOUNDPAN(n)` | pan `−1` sinistra … `+1` destra della sorgente `n`, `−2` se vuoto o fuori `1..16` |
 
 `IMPORT SCENE` è **obbligatoria**: il dominio non è implicito (come `WORLD` e `CLOCK`). Senza
 l'import il programma non compila, sia per il comando sia per le letture qualificate:
@@ -555,6 +558,65 @@ e il 3D fornisce solo il puntatore e le dimensioni del frame.
 Scrive il frame corrente in PNG (stessa risoluzione del target, nessuna scala). È l'unico comando
 del dominio che tocca il filesystem: serve ai test e alle catture, non al ciclo di gioco.
 
+### `SCENE SOUND n, freq, dur, x, y, z, dist, vol`
+
+Suona un tono e lo **lascia nella scena** come sorgente posizionale nello slot `n`: le due letture
+`SCENE.SOUNDGAIN`/`SOUNDPAN` continuano a rispondere su quella sorgente finché lo slot non viene
+riusato o la scena non viene azzerata. Il listener è la **camera**: non c'è un secondo listener da
+configurare, gain e pan si calcolano dall'occhio e dallo `yaw` di `SCENE CAMERA`.
+
+| argomento | significato |
+|---|---|
+| `n` | slot della sorgente, `1..16`; riusare uno slot ne **sostituisce** la sorgente |
+| `freq` | frequenza del tono in Hz, `1..20000` |
+| `dur` | durata in secondi, `0..30` (lo zero è rifiutato) |
+| `x`, `y`, `z` | posizione della sorgente nel mondo; `y` è l'altezza, come tutto il dominio |
+| `dist` | distanza entro cui la sorgente si sente, `≥ 0`; **`0` = nessuna attenuazione** |
+| `vol` | volume della sorgente, `0..100` (100 = pieno) |
+
+**Gain — attenuazione lineare.** `gain = clamp(1 − d / dist, 0, 1) × vol / 100`, con `d` la distanza
+fra occhio e sorgente: sulla sorgente vale `vol/100`, a metà di `dist` la metà, oltre `dist` è `0`
+(clampato, mai negativo). Con `dist = 0` non c'è caduta: il gain resta `vol/100` a qualunque
+distanza — è la forma giusta per un suono d'interfaccia o per una musica.
+
+**Pan.** Proiezione della direzione camera→sorgente sull'**asse destro** della camera, `−1`
+sinistra … `+1` destra, clampata. A `yaw 0` il **+x è a sinistra**, la convenzione dello schermo
+(la stessa di `SCENE.PIXEL`): una sorgente a `x` positivo dà pan **negativo**. Il **pitch non
+entra** nel pan e una sorgente sull'occhio dà pan `0`.
+
+**Dove si applica.** Nei campioni che il motore sintetizza, per canale: nessun mixer esterno, nessun
+simbolo in più. Il tono parte con il gain e il pan del **momento del comando** (uno scatto);
+`RENDER` ricalcola i valori della sorgente dalla camera corrente — sono gli stessi che leggono
+`SOUNDGAIN`/`SOUNDPAN` — e il tono in corso li segue dal blocco successivo, senza ripartire. Una
+sorgente ferma che finisce dietro le spalle cambia lato da sola.
+
+**Gain `0` = nessun tono.** Oltre `dist` (o con `vol 0`) il gain è `0` e il motore non avvia proprio
+il tono: la sorgente resta dichiarata nello slot, le due letture rispondono `0`, ma non si sente
+niente — non è un errore, è l'attenuazione che ha fatto il suo lavoro.
+
+**Voci.** Suonano insieme al massimo **8 sorgenti**: la voce di uno slot è `(n − 1) MOD 8` ed è
+condivisa con `SOUND`/`PLAY_FILE`. La nona sorgente prende la voce di quella che la occupava — quel
+tono si interrompe, ma lo slot **non** si svuota: le due letture restano per slot.
+
+**Non attende.** È un effetto one-shot: il comando ritorna subito e non blocca il worker GPM
+(§0ter), quindi si chiama dentro il ciclo che disegna il frame. Senza device (headless) non si
+sente nulla, ma gain e pan si calcolano lo stesso: è esattamente ciò che rende la superficie
+verificabile in CI.
+
+`SCENE RESET` svuota gli slot con il resto della scena.
+
+```
+SCENE CAMERA 0, 46, 0, 0, 0
+SCENE SOUND 1, 440, 0.15, 0, 46, 60, 0, 100     ' davanti, alla stessa quota dell'occhio
+PRINT "g="; SCENE.SOUNDGAIN(1)                 ' g= 1  (dist 0 = nessuna attenuazione)
+PRINT "p="; SCENE.SOUNDPAN(1)                  ' p= 0
+SCENE SOUND 2, 880, 0.15, -40, 46, 10, 0, 60   ' a −x = a DESTRA dell'occhio
+PRINT "p="; SCENE.SOUNDPAN(2)                  ' p≈ 0.97
+```
+
+MiniTest: `shared/minitests/3d/scene_sound.bas`, con gli stessi valori su C99Native, IL, PCode e
+VM/C.
+
 ---
 
 ## 3. Letture
@@ -612,6 +674,17 @@ dove avevi chiesto di metterlo.
 richiesta non ha spostato nulla: eri già addosso), `4` = la quota è cambiata (gradino salito,
 pavimento caduto). I valori si sommano (`3` = parete e fermo), quindi si leggono con `AND`, non
 con `=`. Prima di ogni `MOVE` vale `0`.
+
+### Audio posizionale: `SCENE.SOUNDGAIN(n)` / `SCENE.SOUNDPAN(n)`
+
+Gain (`0..1`) e pan (`−1` … `+1`) della sorgente nello slot `n`: sono gli **stessi numeri** che il
+motore applica ai campioni, cioè la parte verificabile di `SCENE SOUND` — quella che si legge in CI
+senza device. Li aggiorna `RENDER`, ricalcolandoli dall'occhio e dallo `yaw` della camera corrente.
+
+Le sentinelle seguono la convenzione del dominio (un numero, non un errore di superficie): `−1` per
+il gain e `−2` per il pan quando lo slot è **vuoto** o fuori `1..16`. Il pan valido include `−1`
+(sorgente tutta a sinistra), quindi la sua sentinella non può essere `−1`: è `−2`. Dopo
+`SCENE RESET` le due letture tornano alle sentinelle.
 
 ### Quote: `SCENE.FLOORAT(x, y, z)` / `SCENE.CEILAT(x, y, z)`
 
@@ -946,6 +1019,7 @@ metà.
 | `THING` | slot 0..255; `w`,`h` > 0 e finiti | `SCENE THING: indice tra 0 e 255` |
 | `RENDER`/`SAVE`/`PRESENT` | target creato da `VIEW`/`RENDER` | `SCENE RENDER: nessun target (SCENE VIEW prima)` |
 | `OBJECT` | massimo 256 oggetti per scena | `SCENE OBJECT: massimo 256 oggetti per scena` |
+| `SOUND` | slot `1..16`; `freq` 1..20000 Hz; `dur` 0..30 s (escluso 0); posizione finita; `dist` ≥ 0; `vol` 0..100 | `SCENE SOUND: …` |
 
 I colori di `OBJECT` e i livelli di `LIGHT`/`LAMP` restano **clampati** 0..255 (comportamento
 documentato, non un errore).
@@ -1029,7 +1103,7 @@ geometria dichiarata. Per questo i contatori si leggono insieme, mai come somma.
 ## 6. Che cosa non c'è ancora
 
 La superficie `SCENE` copre oggi tutti i verbi e le letture elencati in §1 (P3 + P4 + la
-superficie interattiva di P5). Mancano, e arriveranno con le fasi successive del piano:
+superficie interattiva di P5 + l'audio posizionale di P6). Mancano, e arriveranno con le fasi successive del piano:
 
 * `CLEAR`, `WORLD`, `SOFTWARE`/`HARDWARE`;
 * le forme a **id oggetto esplicito** (`VERTEX o, …`, `OBJECT o, flags, light`, `BOX o, …`), la

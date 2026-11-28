@@ -708,10 +708,10 @@ public sealed record SyncStmt(Token Token)
 }
 
 /// <summary>
-/// Istruzione TICK: registra l'inizio del frame (tempo).
-/// Inserita dal parser all'inizio del blocco TICK...END TICK.
+/// Istruzione TICK: segna l'INIZIO del frame (nessuna attesa: tempo e present stanno in
+/// TickEndStmt). Inserita dal parser all'inizio del blocco TICK...END TICK.
 /// </summary>
-public sealed record TickStmt(int TickRate, Token Token)
+public sealed record TickStmt(double TickRate, Token Token)
     : Stmt(Token.Position)
 {
     public override string ToString() => $"TICK {TickRate}";
@@ -723,10 +723,11 @@ public sealed record TickStmt(int TickRate, Token Token)
 }
 
 /// <summary>
-/// Istruzione END TICK: attende il tempo rimanente del frame.
-/// Inserita dal parser alla fine del blocco TICK...END TICK.
+/// Istruzione END TICK: attende il confine del frame per <c>TickRate</c> fps (0 = nessun
+/// limiter) e presenta UNA volta (parità C99Native: <c>gmb_tick_pace</c> + present in coda al
+/// corpo del ciclo). Inserita dal parser alla fine del blocco TICK...END TICK.
 /// </summary>
-public sealed record TickEndStmt(int TickRate, Token Token)
+public sealed record TickEndStmt(double TickRate, Token Token)
     : Stmt(Token.Position)
 {
     public override string ToString() => $"END TICK (rate={TickRate})";

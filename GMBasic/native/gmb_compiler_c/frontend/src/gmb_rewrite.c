@@ -67,7 +67,7 @@ static void rw_stmt(gmb_stmt_t* s, const gmb_symtab_t* st, const gmb_typereg_t* 
             rw_body(s->for_body, s->n_for, st, tr); break;
         case GMB_STMT_WHILE: rw_expr(s->cond, st, tr); rw_body(s->while_body, s->n_while, st, tr); break;
         case GMB_STMT_DO: rw_expr(s->do_until, st, tr); rw_expr(s->do_while, st, tr); rw_body(s->do_body, s->n_do, st, tr); break;
-        case GMB_STMT_PRINT: for (int i = 0; i < s->nprint; i++) rw_expr(s->print_args[i], st, tr); break;
+        case GMB_STMT_PRINT: for (int i = 0; i < s->nprint; i++) rw_expr(s->print_args[i], st, tr); if (s->print_using) rw_expr(s->print_using, st, tr); break;
         case GMB_STMT_RETURN: rw_expr(s->value, st, tr); break;
         case GMB_STMT_EXPR: rw_expr(s->expr, st, tr); break;
         case GMB_STMT_DIM: rw_expr(s->array_size, st, tr); break;

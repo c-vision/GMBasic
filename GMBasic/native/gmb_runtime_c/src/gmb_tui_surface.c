@@ -33,6 +33,8 @@ static int utf8_encode(uint32_t u, char* out)
     return n;
 }
 
+/* Converte le celle del buffer in pixel sulla pagina gfx: i colori finali li
+ * trasforma il present (vedi gmb_gfx_present_sdl.c), non questo punto. */
 static void gs_put(void* user, int x, int y, uint32_t ch, gmb_cell_color_t fg, gmb_cell_color_t bg)
 {
     gfx_sink_t* s = (gfx_sink_t*)user;

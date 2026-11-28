@@ -1,4 +1,4 @@
-' EXPECT: tris= 24|objs= 2|draw= 4|cull= 20|px= 1|m1= 1|r2= 2|rmax= 2|case= 24|unk=-1|after= 0|tris0= 0|bytes= 1
+' EXPECT: tris= 24|objs= 2|draw= 4|cull= 20|px= 1|m1= 1|r2= 2|rmax= 2|pres= 0|pmax= 2|case= 24|unk=-1|after= 0|tris0= 0|bytes= 1
 ' scene_stats — statistiche della scena, `SCENE.STATS(nome$)` (P5, specifica M-STATS).
 '
 ' Le misure NON sono impressioni: sono gli stessi contatori che il banco e
@@ -12,8 +12,10 @@
 ' hanno area proiettata nulla e finiscono nei culled (2+10 per box).
 ' Gli stessi valori su C99Native, IL, PCode e VM/C.
 IMPORT SCENE
+IMPORT GRAPHICS
 
 SUB Main()
+  DIM cv AS LONG
   SCENE RESET
   SCENE VIEW 32, 16, 60
   SCENE CAMERA 0, 46, 0, 0, 0
@@ -41,11 +43,18 @@ SUB Main()
   PRINT "r2="; SCENE.STATS("renders")
   PRINT "rmax="; SCENE.STATS("renders_max")
 
-  ' ── 4. Le chiavi non distinguono maiuscole; una ignota e' -1 ─────────────
+  ' ── 4. PRESENT chiude il frame: renders riparte da zero, il massimo resta ─
+  CANVAS NEW 16, 16 INTO cv
+  CANVAS USE cv
+  SCENE PRESENT
+  PRINT "pres="; SCENE.STATS("renders")
+  PRINT "pmax="; SCENE.STATS("renders_max")
+
+  ' ── 5. Le chiavi non distinguono maiuscole; una ignota e' -1 ─────────────
   PRINT "case="; SCENE.STATS("TRIS")
   PRINT "unk="; SCENE.STATS("nonesiste")
 
-  ' ── 5. RESET azzera i contatori, NON la memoria riservata ────────────────
+  ' ── 6. RESET azzera i contatori, NON la memoria riservata ────────────────
   SCENE RESET
   PRINT "after="; SCENE.STATS("renders")
   PRINT "tris0="; SCENE.STATS("tris")

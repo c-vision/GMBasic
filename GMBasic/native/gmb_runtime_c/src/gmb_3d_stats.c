@@ -8,8 +8,10 @@
  *
  * Contratto (specifica `M-STATS`):
  *  - `renders`      = RENDER chiamati nel frame aperto; PRESENT chiude il frame
- *                     (lo azzera) e RESET azzera tutto. Un programma che non
- *                     presenta mai legge il totale dall'ultimo RESET.
+ *                     (lo azzera, vedi gmb_scene_present_done: un punto solo,
+ *                     anche per le gambe che copiano il frame da sole) e RESET
+ *                     azzera tutto. Chi non presenta mai legge il totale
+ *                     dall'ultimo RESET.
  *  - `renders_max`  = il massimo raggiunto da `renders` dopo RESET: è il numero
  *                     da guardare («> 1 = RENDER chiamato più volte in un giro»).
  *  - `allocs`       = allocazioni del modulo 3D dall'avvio del processo
@@ -27,6 +29,8 @@
  * presenti (il tempo di un frame si misura fuori, piano §0septies).
  */
 #include "gmb_3d_internal.h"
+
+#include <ctype.h>
 
 /* Frame aperto: RENDER dall'ultimo PRESENT/RESET, e il suo massimo. */
 static unsigned long g_renders_frame;
@@ -49,32 +53,12 @@ void gmb_3d_stats_note_present(void)
     g_renders_frame = 0;
 }
 
-/* Memoria riservata dalla geometria: 11 float per vertice (posizione, UV,
- * normale, normale mondo), 3 interi + 2 byte per triangolo, un oggetto e i tre
- * scratch dimensionati sugli oggetti (ordine, distanza, AABB mondo). */
-static double scene_bytes(void)
-{
-    const gmb_3d_scene_geom_t* g = gmb_3d_scene_geom();
-    size_t v = (size_t)g->cap_v * 11u * sizeof(float);
-    size_t t = (size_t)g->cap_t * (3u * sizeof(int) + 2u);
-    size_t o = (size_t)g->cap_o * (sizeof(gmb_scene_obj_t) + sizeof(int) + sizeof(float)
-                                   + sizeof(gmb_3d_aabb_t));
-    return (double)(v + t + o);
-}
-
-/* Confronto ASCII case-insensitive: le chiavi sono quelle documentate, ma
- * BASIC non distingue maiuscole, quindi `STATS("TRIS")` deve valere `"tris"`. */
+/* Confronto ASCII case-insensitive: BASIC non distingue maiuscole, quindi
+ * `STATS("TRIS")` deve valere `"tris"` (come per ogni nome del linguaggio). */
 static int stats_key_is(const char* name, const char* key)
 {
-    while (*name && *key)
-    {
-        char a = *name, b = *key;
-        if (a >= 'A' && a <= 'Z') a = (char)(a - 'A' + 'a');
-        if (b >= 'A' && b <= 'Z') b = (char)(b - 'A' + 'a');
-        if (a != b) return 0;
-        name++;
-        key++;
-    }
+    for (; *name && *key; name++, key++)
+        if (tolower((unsigned char)*name) != tolower((unsigned char)*key)) return 0;
     return *name == *key;
 }
 
@@ -82,15 +66,14 @@ double gmb_scene_stats(const char* name)
 {
     if (name == NULL) return -1.0;
 
-    const gmb_3d_scene_geom_t* g = gmb_3d_scene_geom();
-    const gmb_3d_draw_stats_t* d = gmb_3d_scene_draw_stats();
-
-    if (stats_key_is(name, "tris"))        return (double)g->nt;
-    if (stats_key_is(name, "draw"))        return (double)d->tris_drawn;
-    if (stats_key_is(name, "culled"))      return (double)d->tris_culled;
-    if (stats_key_is(name, "pixels"))      return (double)d->pixels;
-    if (stats_key_is(name, "objs"))        return (double)g->nobj;
-    if (stats_key_is(name, "bytes"))       return scene_bytes();
+    /* Ogni chiave è la lettura che già esiste (M-STATS): nessun secondo calcolo
+     * da tenere allineato a quello che SCENE.TRIS/DRAWN/CULLED/PIXELS mostrano. */
+    if (stats_key_is(name, "tris"))        return (double)gmb_scene_tris();
+    if (stats_key_is(name, "draw"))        return (double)gmb_scene_drawn();
+    if (stats_key_is(name, "culled"))      return (double)gmb_scene_culled();
+    if (stats_key_is(name, "pixels"))      return (double)gmb_scene_pixels();
+    if (stats_key_is(name, "objs"))        return (double)gmb_3d_scene_geom()->nobj;
+    if (stats_key_is(name, "bytes"))       return gmb_3d_scene_bytes();
     if (stats_key_is(name, "allocs"))      return (double)gmb_3d_alloc_count();
     if (stats_key_is(name, "renders"))     return (double)g_renders_frame;
     if (stats_key_is(name, "renders_max")) return (double)g_renders_max;

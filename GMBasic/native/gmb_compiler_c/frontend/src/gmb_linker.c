@@ -89,6 +89,7 @@ static void link_stmt(gmb_link_result_t* r, gmb_stmt_t* s)
     switch (s->kind) {
         case GMB_STMT_PRINT:
             for (int i = 0; i < s->nprint; i++) link_expr(r, s->print_args[i]);
+            if (s->print_using) link_expr(r, s->print_using);
             break;
         case GMB_STMT_ASSIGN:
         case GMB_STMT_LET:
@@ -368,7 +369,7 @@ static void dump_stmt(gmb_stmt_t* s, FILE* out, int indent)
     for (int i = 0; i < indent; i++) fputc(' ', out);
     if (!s) { fprintf(out, "(null)\n"); return; }
     switch (s->kind) {
-        case GMB_STMT_PRINT: fprintf(out, "PRINT (L%d)\n", s->line); for (int i = 0; i < s->nprint; i++) dump_expr(s->print_args[i], out, indent + 2); break;
+        case GMB_STMT_PRINT: fprintf(out, "PRINT%s (L%d)\n", s->print_using ? " USING" : "", s->line); if (s->print_using) dump_expr(s->print_using, out, indent + 2); for (int i = 0; i < s->nprint; i++) dump_expr(s->print_args[i], out, indent + 2); break;
         case GMB_STMT_LET: case GMB_STMT_ASSIGN: fprintf(out, "%s %s = (L%d)\n", s->kind == GMB_STMT_LET ? "LET" : "ASSIGN", s->target, s->line); dump_expr(s->value, out, indent + 2); break;
         case GMB_STMT_IF:
             fprintf(out, "IF (L%d)\n", s->line);

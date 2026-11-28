@@ -33,6 +33,9 @@ le altre sono ignorate.
 | `minw=` `minh=` | unità del controllo, `0` = nessun limite | dimensione minima |
 | `maxw=` `maxh=` | unità del controllo, `0` = nessun limite | dimensione massima |
 | `grow=` | percento `0…200`, default `100` | quota del delta della finestra che il controllo assorbe |
+| `flow=` | `wrap`, `grid`, `none` (contenitore) | disposizione automatica dei figli (§1.1) |
+| `cols=` `gap=` `pad=` | numero ≥ 0 (contenitore) | colonne della griglia, spazio fra celle, margine interno |
+| `group=` | nome di un contenitore (figlio) | entra nel gruppo disposto da quel contenitore |
 
 Le clausole di layout (fuori dallo `STYLE`, come `NAME`/`TAG`):
 
@@ -46,6 +49,52 @@ BUTTON x, y, w, h, "testo" [NAME "n"] [STYLE "…"]
 `EXPAND`/`ANCHOR`/`ALIGN`/`MIN*`/`MAX*`/`GROW` rispondono al **resize della pagina**
 (`WINDOW RESIZE w, h`); il rect dichiarato e la dimensione della finestra al momento
 della creazione sono la **base** del calcolo.
+
+### 1.1 Contenitori: WrapBox e Grid
+
+Due chiavi dello `STYLE` dispongono **automaticamente i figli** di un contenitore.
+Non sono comandi nuovi: sono dati letti dallo stesso runtime su tutte e 4 le gambe.
+
+| Chiave | Dove | Valore | Significato |
+|---|---|---|---|
+| `flow=` | **contenitore** | `wrap` / `grid` / `none` | modalità di disposizione dei figli |
+| `cols=` | contenitore | numero ≥ 1 | griglia: numero di colonne |
+| `gap=` | contenitore | numero ≥ 0 | spazio fra celle/righe |
+| `pad=` | contenitore | numero ≥ 0 | margine interno del contenitore |
+| `group=` | **figlio** | nome del contenitore | il figlio entra nel gruppo di quel contenitore |
+
+Alias comodi: `wrap=1` equivale a `flow=wrap`; `grid=3` equivale a
+`flow=grid cols=3`.
+
+```basic
+' contenitore: LISTBOX/PANEL/… con un rect REALE (un BUTTON in TUI è alto 2 righe)
+LISTBOX 4, 2, 56, 16, " " INTO dummy NAME "cards" STYLE "flow=grid cols=3 gap=1 pad=1"
+BUTTON 0, 0, 8, 2, "A" NAME "a" STYLE "group=cards"
+BUTTON 0, 0, 8, 2, "B" NAME "b" STYLE "group=cards"
+BUTTON 0, 0, 8, 2, "C" NAME "c" STYLE "group=cards"
+BUTTON 0, 0, 8, 2, "D" NAME "d" STYLE "group=cards"
+
+' wrap: i figli vanno a capo quando la riga è piena
+LISTBOX 4, 24, 56, 10, " " INTO dummy NAME "tags" STYLE "flow=wrap gap=1"
+BUTTON 0, 0, 20, 2, "uno" NAME "t1" STYLE "group=tags"
+BUTTON 0, 0, 20, 2, "due" NAME "t2" STYLE "group=tags"
+```
+
+- **GRID**: `cols` colonne di celle uguali; righe = `ceil(figli/cols)`; ogni figlio
+  riempie la sua cella. Con `pad=1`, `gap=1`, area `56×16`, 3 colonne e 4 figli:
+  celle `17×6` in `(5,3) (23,3) (41,3) (5,10)` (celle).
+- **WRAP**: ogni figlio conserva la sua larghezza; quando non entra più nella riga
+  va a capo. L'altezza della riga è quella del figlio più alto.
+- I limiti `minw/maxw/minh/maxh` del figlio **continuano a valere** dentro la cella;
+  un figlio più largo del contenitore viene ridotto alla riga.
+- Il contenitore deve avere un `NAME`: è la chiave con cui i figli lo trovano.
+- La disposizione avviene **subito** quando si dichiara `flow=`/`group=` e a ogni
+  `WINDOW RESIZE`: non serve aspettare il primo resize.
+- Il contenitore può essere qualsiasi controllo con un rect reale (`LISTBOX`, `PANEL`,
+  `TREE`, `GRID`…). Un `BUTTON` in TUI è alto sempre 2 righe, quindi non è adatto a
+  fare da contenitore alto.
+
+MiniTest di riferimento: `shared/minitests/controls/layout_flow.bas`.
 
 ## 2. Ruoli: cosa dichiara il programma
 
@@ -218,3 +267,116 @@ Test: `shared/minitests/controls/a11y_options.bas` (round-trip del registro),
 `shared/minitests/ai/ai_list_options.bas` (le quattro voci nell'elenco) e
 `tests/gmb_theme_roles_selfcheck.c` (`test_a11y`: parse, registro → snapshot, AAA su
 ogni preset, anello di focus, scala, movimento).
+
+## 8. Filtro daltonia — `ui.color_filter`
+
+Quinta voce globale, stessa natura dei flag di accessibilità: si attiva **senza
+toccare il programma** e vale su tutta l'interfaccia. Trasforma i colori con una
+matrice 3×3 (Machado, Oliveira & Fernandes 2009, grado 1.0) applicata all'RGB.
+
+| Valore | Effetto |
+|---|---|
+| `""` / `none` | default: nessuna trasformazione |
+| `deuteranopia` | deficit del verde (la forma più diffusa) |
+| `protanopia` | deficit del rosso |
+| `tritanopia` | deficit del blu |
+| `achromatopsia` | nessun colore: solo luminanza (grigio) |
+
+Il confronto è **case-insensitive** e accetta abbreviazioni e alias: i prefissi
+`deut`, `prot`, `trit`, `achrom`, e `gray` / `grey` / `mono` per l'acromatopsia.
+Si accettano anche i nomi italiani `rosso`, `verde`, `blu`. **Un valore sconosciuto
+spegne il filtro** (non è un errore: la voce resta tollerante come gli altri flag).
+
+```basic
+AI SET OPTION "ui.color_filter", "deuteranopia"
+v$ = AI.OPTION("ui.color_filter")      ' -> "deuteranopia"
+AI SET OPTION "ui.color_filter", ""    ' spento
+```
+
+oppure per tutta l'applicazione, dalla sezione `engine` dei settings:
+
+```json
+{ "engine": { "ui.color_filter": "deuteranopia" } }
+```
+
+**Dove si applica (e dove no).** Il filtro agisce sui **punti di uscita finali**,
+non sulle sorgenti: una sola trasformazione, quindi nessun colore viene filtrato
+due volte.
+
+| Coperto dal filtro | Non filtrato (di proposito) |
+|---|---|
+| present SDL/Vulkan (i pixel che finiscono a schermo) | il colore `default` del terminale (`is_default`): è la scelta del terminale, non un RGB noto |
+| `SAVE SCREEN` (sia la cattura GPU sia il fallback headless) | la **pagina** come dato: `GRAPHICS.POINT` / `IMAGEGET` leggono i colori originali |
+| codifica ANSI della TUI (`gmb_render_screen` / `_diff`) | |
+| rendering a celle di SDLConsole | |
+
+Conseguenza pratica: `SAVE SCREEN` mostra **ciò che si vede** (filtrato), mentre
+il programma che rilegge un pixel dalla pagina ottiene il colore **originale**.
+È la scelta che rende il filtro una lente di presentazione e non una modifica
+dei dati.
+
+Il byte alto dei colori `0xAARRGGBB` (alpha/flag delle superfici traslucide dei
+temi "glass") è **conservato**: si trasformano solo i 24 bit RGB. Il cambio di
+filtro invalida il frame da solo (hook `on_change`), quindi non serve ridisegnare
+a mano né ricreare i controlli.
+
+Test: `shared/minitests/controls/ui_color_filter.bas` (round-trip del registro,
+prefissi e alias, valore sconosciuto = spento) e
+`tests/gmb_color_filter_selfcheck.c` (matrici, coerenza cella/RGBA, alpha
+conservato).
+
+## 9. Golden image della UI — `tools/sh/ui_golden_check.sh`
+
+Il filtro e i ruoli del tema sono **visivi**: un selfcheck prova la matematica, ma
+non che i pixel arrivino a schermo. Il gate lo verifica con un'immagine di
+riferimento (golden) per RID.
+
+```bash
+tools/sh/ui_golden_check.sh              # gate: esce 1 se è rosso
+tools/sh/ui_golden_check.sh --quiet      # per la CI
+tools/sh/ui_golden_check.sh --tol 0.5    # tolleranza gmbimgdiff in percentuale
+tools/sh/ui_golden_check.sh --bless      # RISCRIVE i golden del RID
+```
+
+Cosa fa, eseguendo `shared/minitests/controls/ui_golden.bas` in un SDL headless
+(driver `dummy`):
+
+1. **Coppia normale/filtrata.** Per la UI completa e per una palette a colori noti
+   confronta la schermata normale con quella filtrata: devono **differire**. Se
+   sono identiche il filtro non sta arrivando ai pixel e il test non prova nulla.
+2. **Golden per RID.** Confronta le 4 schermate con
+   `shared/minitests/controls/golden/<nome>.<rid>.png` usando `gmbimgdiff`
+   (default `tol=0.0`: la resa è deterministica).
+
+| Golden | Contenuto |
+|---|---|
+| `ui_golden.<rid>.png` | UI completa (griglia `flow=grid`, ruoli del tema, controlli) |
+| `ui_golden_deut.<rid>.png` | la stessa con `ui.color_filter = deuteranopia` |
+| `ui_palette.<rid>.png` | dipinto a colori noti (palette VGA16) |
+| `ui_palette_deut.<rid>.png` | lo stesso con il filtro |
+
+**I golden sono per RID** (`osx-arm64`, `osx-x64`, `linux-x64`, `linux-arm64`):
+la resa di testo e superfici può cambiare tra piattaforme, quindi un golden non si
+copia da un RID all'altro.
+
+**Regola del bless.** `--bless` riscrive i golden del RID corrente. Si usa **solo
+dopo aver guardato le immagini** prodotte: un bless fatto "per far tornare verde"
+congela un difetto. Il flusso corretto è: eseguire, aprire le 4 PNG, verificare a
+occhio che la UI sia integra (chrome, bordi, testo) e che la versione filtrata sia
+plausibile, poi benedire.
+
+Build, esecuzione e screenshot avvengono in `${TMPDIR}/gmb-ui-golden-<rid>`:
+**fuori dal repo**, così il working tree condiviso non si sporca.
+
+**Note pratiche del campione** (valgono per chi scrive un golden nuovo):
+
+- i dipinti puri (`LINE … "BF"`, palette) vanno fatti **prima** di creare i
+  controlli: il form possiede la pagina e li ridisegnerebbe sopra;
+- la UI si crea **una sola volta**; il cambio di filtro non richiede ricreazione;
+- il titolo di un `PANEL` traslucido resta sotto i figli: per un contenitore di
+  griglia si usa un titolo vuoto con un `pad` adeguato;
+- nei campioni grafici serve `shot_completo = 1` prima di `SCREEN`;
+- `WINDOW THEME` ridispone i figli del flow: nel golden non si cambia tema.
+
+Test: `shared/minitests/controls/ui_golden.bas` (campione) e
+`tools/sh/ui_golden_check.sh` (gate).

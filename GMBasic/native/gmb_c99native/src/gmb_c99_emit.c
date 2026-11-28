@@ -33128,10 +33128,57 @@ static void st_mmap_writebytes(ctx_t* c, gmb_stmt_t* s) {
 }
 
 /* CPRINT (flag=1): come PRINT ma forzato su console (stdout), non TUI/gfx. */
+/* PRINT USING <fmt>; v1; v2 … (riferimento: GW-BASIC). Formato e valori diventano una
+ * chiamata al runtime condiviso (§0bis): `gmb_print_using_stmt` formatta in una stringa
+ * posseduta e l'errore è ESPLICITO (`gmb_raise_error`), mai una stampa muta. I valori
+ * viaggiano come gmb_val_t (`emit_val_operand`): stringa o numero lo decide il runtime dal
+ * valore, così l'emitter non duplica qui una tabella di tipi. */
+static void st_print_using(ctx_t* c, gmb_stmt_t* s) {
+    if (!s->print_using || etype(c, s->print_using) != TY_STR) {
+        c99_fail(c, s->line, "PRINT USING: il formato deve essere una stringa");
+        return;
+    }
+    ind(c); sb_put(&c->out, "{\n");
+    c->indent++;
+    if (s->nprint > 0) {
+        ind(c); sb_printf(&c->out, "gmb_val_t _pu_vals[%d];\n", s->nprint);
+        for (int i = 0; i < s->nprint; i++) {
+            ind(c); sb_printf(&c->out, "_pu_vals[%d] = ", i);
+            emit_val_operand(c, s->print_args[i]);
+            sb_put(&c->out, ";\n");
+        }
+    }
+    ind(c); sb_put(&c->out, "gmb_print_stage_begin();\n");
+    ind(c); sb_put(&c->out, "{\n");
+    c->indent++;
+    ind(c); sb_put(&c->out, "gmb_string_t _pu_out;\n");
+    ind(c); sb_put(&c->out, "if (gmb_print_using_stmt(");
+    emit_str_operand(c, s->print_using);
+    sb_printf(&c->out, ", %s, %d, &_pu_out) != 0)\n",
+               s->nprint > 0 ? "_pu_vals" : "NULL", s->nprint);
+    c->indent++;
+    ind(c); sb_printf(&c->out, "gmb_raise_error(5, gmb_print_using_error(), %dL);\n", s->line);
+    c->indent--;
+    ind(c); sb_put(&c->out, "else {\n");
+    c->indent++;
+    ind(c); sb_put(&c->out, "gmb_print_string_tmp(_pu_out);\n");
+    if (!s->print_hold) { ind(c); sb_put(&c->out, "gmb_print_newline();\n"); }
+    c->indent--;
+    ind(c); sb_put(&c->out, "}\n");
+    c->indent--;
+    ind(c); sb_put(&c->out, "}\n");
+    /* commit dello staging: senza, il testo resta nel buffer e PRINT USING non stampa
+     * nulla (misurato: uscita vuota, exit 0). */
+    ind(c); sb_put(&c->out, "gmb_print_stage_end(1);\n");
+    c->indent--;
+    ind(c); sb_put(&c->out, "}\n");
+}
+
 static void st_print(ctx_t* c, gmb_stmt_t* s) {
     int cp = (s->flag == 1);
     if (cp) { ind(c); sb_put(&c->out, "gmb_print_force_console(1);\n"); }
-    st_print_core(c, s);
+    if (s->print_using) st_print_using(c, s);
+    else st_print_core(c, s);
     if (cp) { ind(c); sb_put(&c->out, "gmb_print_force_console(0);\n"); }
 }
 
@@ -38562,7 +38609,7 @@ static int gmb_c99_emit_once(const gmb_program_t* prog, char** out_src, char** e
     /* Parita' bit-exact (K6): niente contrazione FMA (`a*b+c` = mul poi add), indipendentemente dai flag
      * con cui il C generato viene compilato (clang su arm64 contrae di default). */
     sb_put(&fin, "#pragma STDC FP_CONTRACT OFF\n");
-    sb_put(&fin, "#include \"gmb_runtime.h\"\n#include \"gmb_collections.h\"\n#include \"gmb_finance.h\"\n#include \"gmb_commonlib.h\"\n#include \"gmb_eval_scope.h\"\n#include \"gmb_c99gpm.h\"\n#include \"gmb_network.h\"\n#include \"gmb_msg.h\"\n#include \"gmb_signal.h\"\n#include \"gmb_connector.h\"\n#include \"gmb_graphics.h\"\n#include \"gmb_compress.h\"\n#include \"gmb_grep.h\"\n#include \"gmb_moestream.h\"\n#include \"gmb_cua_runtime.h\"\n#include \"tool_registry.h\"\n#include \"gmb_codegen.h\"\n#include \"gmb_graph.h\"\n#include \"gmb_db.h\"\n#include \"gmb_ml.h\"\n#include \"gmb_torch.h\"\n#include \"llmmodelio_model.h\"\n#include \"gmb_dscope.h\"\n"
+    sb_put(&fin, "#include \"gmb_runtime.h\"\n#include \"gmb_collections.h\"\n#include \"gmb_finance.h\"\n#include \"gmb_commonlib.h\"\n#include \"gmb_eval_scope.h\"\n#include \"gmb_c99gpm.h\"\n#include \"gmb_network.h\"\n#include \"gmb_msg.h\"\n#include \"gmb_signal.h\"\n#include \"gmb_connector.h\"\n#include \"gmb_graphics.h\"\n#include \"gmb_compress.h\"\n#include \"gmb_grep.h\"\n#include \"gmb_moestream.h\"\n#include \"gmb_cua_runtime.h\"\n#include \"tool_registry.h\"\n#include \"gmb_codegen.h\"\n#include \"gmb_graph.h\"\n#include \"gmb_db.h\"\n#include \"gmb_ml.h\"\n#include \"gmb_torch.h\"\n#include \"llmmodelio_model.h\"\n#include \"gmb_print_using.h\"\n#include \"gmb_dscope.h\"\n"
                     "#include \"gmb_uncertainty.h\"\n"
                     /* P1/P2/P3 runtime AI: OBSERVE/CONTEXT/WORKER. Senza questi header il C
                      * generato non compila ("call to undeclared function gmb_ctx_view"): le

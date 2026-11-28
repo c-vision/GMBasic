@@ -32,6 +32,7 @@ Il runner compila il `.bas` in `tools/basic/bin/` (gitignored) e lo esegue con C
 | `skills_attribution.bas` | rigenera l'attribuzione/licenza delle skill di terzi | `shared/skills/ATTRIBUTION.md` + `attribution.json` |
 | `ffi_bind.bas` | genera le `DECLARE NATIVE` da un header C (AST di `clang`), oppure `--check` verifica che un `.inc` scritto a mano combaci con l'header (drift = exit 1) | stdout / `--out <file.inc>` |
 | `bsp_engine_parity.bas` | parità di resa fra motore BSP managed e C sulla webapp (normalizza timestamp/uptime/pid) | stdout, exit 1 se differenze |
+| `scene_census.bas` | censimento della superficie `SCENE`: per ogni verbo (tavolo `gmb_p_scene_verb_tk`) e ogni lettura (registro `stdlib_tokens.csv`) verifica TokenKind, emitter C99, VM/C, ponte C#, facciata runtime, MiniTest, sample e guida; segnala anche il drift inverso (TokenKind/syscall che nessuna superficie raggiunge). Exit 1 se manca una gamba o un MiniTest | stdout, exit 0/1 (`--quiet` = solo lacune) |
 | `webapp_ui_cdp.bas` | click-through della dashboard con browser headless via CDP (palette, rail, Inbox, scorciatoie, tema, creazione agente, filtri, SSE, WebSocket canvas, errori JS) | stdout, exit 1 se FAIL |
 
 ### `ffi_bind.bas` — bindings FFI dall'header, non a mano

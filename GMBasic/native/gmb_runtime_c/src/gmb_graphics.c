@@ -501,6 +501,9 @@ void gmb_gfx_resize_screen(int w, int h)
     resize_pages((int)lround(w * g_gfx_scale), (int)lround(h * g_gfx_scale));
 }
 int gmb_gfx_screen_on(void) { return g_gfx.screen_on; }
+/* 1 se esiste una finestra REALE (present SDL vero, non il driver dummy): l'overlay
+ * dei comandi si accende solo lì (in headless non ha senso disegnarlo). */
+int gmb_gfx_video_is_real(void) { return GMB_GFX_VIDEO_REAL() ? 1 : 0; }
 int gmb_gfx_current_mode(void) { return g_gfx.screen_on ? g_gfx.mode : 0; }
 int gmb_gfx_screen_width(void) { return g_gfx.width; }
 int gmb_gfx_screen_height(void) { return g_gfx.height; }

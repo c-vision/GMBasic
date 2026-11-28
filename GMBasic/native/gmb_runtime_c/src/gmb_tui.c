@@ -5,6 +5,7 @@
  * ============================================================================ */
 #include "gmb_tui.h"
 #include "gmb_screen_internal.h"
+#include "gmb_color_filter.h"   /* ui.color_filter: codifica ANSI delle celle (uscita finale) */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -2439,6 +2440,7 @@ size_t gmb_render_screen(const gmb_screen_buffer_t* b, char* out, size_t out_cap
     gmb_cell_color_t prev_fg = GMB_CELLCOLOR_DEFAULT;
     gmb_cell_color_t prev_bg = GMB_CELLCOLOR_DEFAULT;
     char tmp[64];
+    int cvf = gmb_color_filter_active();   /* ui.color_filter: ANSI è un'uscita finale */
 
     for (int y = 0; y < b->height; y++)
     {
@@ -2452,6 +2454,7 @@ size_t gmb_render_screen(const gmb_screen_buffer_t* b, char* out, size_t out_cap
             const gmb_screen_cell_t* c = &b->cells[(size_t)y * b->width + x];
             gmb_cell_color_t fg = c->fg_rgb;
             gmb_cell_color_t bg = c->bg_rgb;
+            if (cvf) { fg = gmb_color_filter_cell_now(fg); bg = gmb_color_filter_cell_now(bg); }
 
             if (!gmb_cellcolor_eq(fg, prev_fg))
             {
@@ -2543,6 +2546,11 @@ size_t gmb_render_screen_diff(const gmb_screen_buffer_t* cur, const gmb_screen_b
     gmb_cell_color_t prev_fg = em_fg ? *em_fg : GMB_CELLCOLOR_DEFAULT;
     gmb_cell_color_t prev_bg = em_bg ? *em_bg : GMB_CELLCOLOR_DEFAULT;
     int same_size = prev && prev->width == cur->width && prev->height == cur->height;
+    /* ui.color_filter: un cambio di filtro cambia TUTTI i colori anche a celle
+     * identiche → il diff non deve saltarle; si riparte da un frame pieno. */
+    int cvf = gmb_color_filter_active();
+    { static int s_cvf_prev = -1;
+      if (cvf != s_cvf_prev) { same_size = 0; s_cvf_prev = cvf; } }
     char tmp[64];
     for (int y = 0; y < cur->height; y++)
     {
@@ -2561,6 +2569,7 @@ size_t gmb_render_screen_diff(const gmb_screen_buffer_t* cur, const gmb_screen_b
             memcpy(out + used, tmp, (size_t)n); used += (size_t)n;
             gmb_cell_color_t fg = c->fg_rgb;
             gmb_cell_color_t bg = c->bg_rgb;
+            if (cvf) { fg = gmb_color_filter_cell_now(fg); bg = gmb_color_filter_cell_now(bg); }
             if (!gmb_cellcolor_eq(fg, prev_fg))
             {
                 if (fg.is_default) n = snprintf(tmp, sizeof(tmp), "\x1b[39m");

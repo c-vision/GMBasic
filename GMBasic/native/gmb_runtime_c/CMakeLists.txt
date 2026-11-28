@@ -257,6 +257,12 @@ set(GMB_ALL_SRCS
     src/gmb_layout.c   # LAYOUT MANAGER (EXPAND/ANCHOR/ALIGN) condiviso FORM/TUI
     src/gmb_theme_roles.c  # ruoli semantici del tema (role=…/tone=…) + contrasto WCAG, FORM+TUI
     src/gmb_a11y.c     # flag globali di accessibilità (ui.high_contrast/text_scale/…), FORM+TUI
+    src/gmb_anim.c     # motore di animazione tick-driven (anim= di CONTROL SET), FORM+TUI
+    src/gmb_color_filter.c  # filtro daltonia (ui.color_filter): celle, sink pixel, tema
+    src/gmb_ui_inspector.c  # inspector della UI (ui.inspector): albero, rect, costo frame
+    src/gmb_ui_palette.c    # command palette: registro azioni, filtro, overlay (esecuzione via GPM)
+    src/gmb_textview.c  # vista testuale virtuale (LISTBOX mode=markdown|diff / virtual=1)
+    src/gmb_md.c        # Markdown AST: fonte unica del parsing per la vista e per MD()
     src/gmb_stringbuilder.c
     # Accumulatore growable per il pattern s$=s$+expr riconosciuto dal codegen C99 (§11)
     src/gmb_strbuf.c
@@ -1119,7 +1125,6 @@ endif()
 if(SDL2_FOUND OR (GMB_SDL2_LIB AND GMB_SDL2_INCLUDE_DIR))
     message(STATUS "gmb_runtime_c: SDL2 trovata -> presentazione finestra grafica abilitata (GMB_GFX_SDL_PRESENT)")
     target_sources(gmb_runtime_ui_obj PRIVATE src/gmb_gfx_present_sdl.c)
-target_sources(gmb_runtime_ui_obj PRIVATE src/gmb_md.c)
     target_compile_definitions(gmb_runtime_deps INTERFACE GMB_GFX_SDL_PRESENT=1)
     if(SDL2_FOUND)
         if(TARGET SDL2::SDL2)
@@ -1699,16 +1704,12 @@ target_link_libraries(gmb_gfx_sprite_groups_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_gfx_sprite_groups_selfcheck PRIVATE include)
 add_test(NAME gmb_gfx_sprite_groups_selfcheck COMMAND gmb_gfx_sprite_groups_selfcheck)
 
-add_executable(gmb_gfx_sprite_path_selfcheck tests/gmb_gfx_sprite_path_selfcheck.c)
-target_link_libraries(gmb_gfx_sprite_path_selfcheck PRIVATE gmb_runtime)
-target_include_directories(gmb_gfx_sprite_path_selfcheck PRIVATE include)
-add_test(NAME gmb_gfx_sprite_path_selfcheck COMMAND gmb_gfx_sprite_path_selfcheck)
-
 # P7 blocco 4: schermo di testo 80×25 a celle (modello + render deterministico).
 add_executable(gmb_gfx_textscreen_selfcheck tests/gmb_gfx_textscreen_selfcheck.c)
 target_link_libraries(gmb_gfx_textscreen_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_gfx_textscreen_selfcheck PRIVATE include)
 add_test(NAME gmb_gfx_textscreen_selfcheck COMMAND gmb_gfx_textscreen_selfcheck)
+
 # P7 blocco 5: formattatore PRINT USING, DESIGN da righe ASCII, PEEK/POKE di memoria.
 add_executable(gmb_print_using_selfcheck tests/gmb_print_using_selfcheck.c)
 target_link_libraries(gmb_print_using_selfcheck PRIVATE gmb_runtime)
@@ -1724,6 +1725,72 @@ add_executable(gmb_peek_selfcheck tests/gmb_peek_selfcheck.c)
 target_link_libraries(gmb_peek_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_peek_selfcheck PRIVATE include)
 add_test(NAME gmb_peek_selfcheck COMMAND gmb_peek_selfcheck)
+
+add_executable(gmb_gfx_sprite_path_selfcheck tests/gmb_gfx_sprite_path_selfcheck.c)
+target_link_libraries(gmb_gfx_sprite_path_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_gfx_sprite_path_selfcheck PRIVATE include)
+add_test(NAME gmb_gfx_sprite_path_selfcheck COMMAND gmb_gfx_sprite_path_selfcheck)
+
+# WrapBox / Grid: solver puro del layout (posizioni esatte, limiti, wrap).
+add_executable(gmb_layout_flow_selfcheck tests/gmb_layout_flow_selfcheck.c)
+target_link_libraries(gmb_layout_flow_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_layout_flow_selfcheck PRIVATE include)
+add_test(NAME gmb_layout_flow_selfcheck COMMAND gmb_layout_flow_selfcheck)
+
+# Motore di animazione tick-driven: parsing, easing, durata, snap, forget.
+add_executable(gmb_anim_selfcheck tests/gmb_anim_selfcheck.c)
+target_link_libraries(gmb_anim_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_anim_selfcheck PRIVATE include)
+add_test(NAME gmb_anim_selfcheck COMMAND gmb_anim_selfcheck)
+
+# Inspector della UI: interruttore dal registro, testo del pannello, costo frame.
+add_executable(gmb_inspector_selfcheck tests/gmb_inspector_selfcheck.c)
+target_link_libraries(gmb_inspector_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_inspector_selfcheck PRIVATE include)
+add_test(NAME gmb_inspector_selfcheck COMMAND gmb_inspector_selfcheck)
+
+# Command palette: registro azioni, filtro per pertinenza, navigazione, esecuzione
+# accodata (mai inline nel percorso del tasto).
+add_executable(gmb_palette_selfcheck tests/gmb_palette_selfcheck.c)
+target_link_libraries(gmb_palette_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_palette_selfcheck PRIVATE include)
+add_test(NAME gmb_palette_selfcheck COMMAND gmb_palette_selfcheck)
+
+# Filtro daltonia (ui.color_filter): parsing, registro, matrici pure.
+add_executable(gmb_color_filter_selfcheck tests/gmb_color_filter_selfcheck.c)
+target_link_libraries(gmb_color_filter_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_color_filter_selfcheck PRIVATE include)
+add_test(NAME gmb_color_filter_selfcheck COMMAND gmb_color_filter_selfcheck)
+
+# Vista testuale virtuale (LISTBOX STYLE "mode=markdown|diff" / "virtual=1"): righe,
+# stili simbolici, wrapping, tabelle, lista grande senza limite.
+add_executable(gmb_textview_selfcheck tests/gmb_textview_selfcheck.c)
+target_link_libraries(gmb_textview_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_textview_selfcheck PRIVATE include)
+add_test(NAME gmb_textview_selfcheck COMMAND gmb_textview_selfcheck)
+
+# STILE per HANDLE → control TUI omonimo: gli handle di g_wid/g_btns e di g_reg_ctrl si
+# sovrappongono, quindi minw=/maxw=/grow= potevano restare sul widget pixel e il reflow
+# TUI li ignorava. Il test crea apposta la collisione (stesso handle, stesso nome).
+add_executable(gmb_form_style_sync_selfcheck tests/gmb_form_style_sync_selfcheck.c)
+target_link_libraries(gmb_form_style_sync_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_form_style_sync_selfcheck PRIVATE include)
+add_test(NAME gmb_form_style_sync_selfcheck COMMAND gmb_form_style_sync_selfcheck)
+
+# §0ter — guardia delle attese BLOCCANTI (un worker GPM non si blocca mai): i casi che la
+# guardia deve FERMARE (exit 2) girano in un processo figlio, gli altri in-process. Senza
+# questo selfcheck la guardia tornerebbe a essere una promessa non verificata.
+add_executable(gmb_tick_guard_selfcheck tests/gmb_tick_guard_selfcheck.c)
+target_link_libraries(gmb_tick_guard_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_tick_guard_selfcheck PRIVATE include)
+add_test(NAME gmb_tick_guard_selfcheck COMMAND gmb_tick_guard_selfcheck)
+
+# §0ter — SOUND/MML asincroni (nessuna attesa sul worker) e guardia "parcheggia al syscall":
+# il caso VM/C, dove una syscall non può attendere dentro il proprio frame C.
+add_executable(gmb_audio_park_selfcheck tests/gmb_audio_park_selfcheck.c)
+target_link_libraries(gmb_audio_park_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_audio_park_selfcheck PRIVATE include)
+add_test(NAME gmb_audio_park_selfcheck COMMAND gmb_audio_park_selfcheck)
 
 add_executable(gmb_sb_selfcheck tests/gmb_sb_selfcheck.c)
 target_link_libraries(gmb_sb_selfcheck PRIVATE gmb_runtime)

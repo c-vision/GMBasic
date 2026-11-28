@@ -59,6 +59,7 @@ void gmb_gfx_screenset(int visible_page, int active_page);
 /* PCOPY src, dst: copia una pagina sull'altra. */
 void gmb_gfx_pcopy(int src, int dst);
 int  gmb_gfx_screen_on(void);
+int  gmb_gfx_video_is_real(void);  /* 1 = finestra reale (present SDL vero) */
 /* Modalità SCREEN corrente (0 se schermo off) — per il router PCodeVM. */
 int  gmb_gfx_current_mode(void);
 /* Dimensioni della pagina visibile (0 se schermo off). */

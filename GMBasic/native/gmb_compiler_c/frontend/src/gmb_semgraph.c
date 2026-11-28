@@ -167,7 +167,7 @@ static void walk_stmt(gmb_semgraph_t* g, const gmb_stmt_t* s, const char* file, 
             break;
         case GMB_STMT_WHILE: walk_expr(g, s->cond, file, enclosing, 0); walk_body(g, s->while_body, s->n_while, file, enclosing); break;
         case GMB_STMT_DO: walk_expr(g, s->do_until, file, enclosing, 0); walk_expr(g, s->do_while, file, enclosing, 0); walk_body(g, s->do_body, s->n_do, file, enclosing); break;
-        case GMB_STMT_PRINT: for (int i = 0; i < s->nprint; i++) walk_expr(g, s->print_args[i], file, enclosing, 0); break;
+        case GMB_STMT_PRINT: if (s->print_using) walk_expr(g, s->print_using, file, enclosing, 0); for (int i = 0; i < s->nprint; i++) walk_expr(g, s->print_args[i], file, enclosing, 0); break;
         case GMB_STMT_RETURN: walk_expr(g, s->value, file, enclosing, 0); break;
         case GMB_STMT_EXPR: walk_expr(g, s->expr, file, enclosing, 0); break;
         default: break;

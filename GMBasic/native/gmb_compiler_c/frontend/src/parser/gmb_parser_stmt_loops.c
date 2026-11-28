@@ -170,7 +170,9 @@ gmb_stmt_t* gmb_p_parse_while(gmb_parser_t* p, int line, bool* multiline)
 
 /* TICK [rate] ... END TICK [rate] — game loop. Parità emitter C# (TickStmt/TickEndStmt
  * no-op): reso come DO WHILE 1 (loop infinito) con uscita via `EXIT TICK` → break.
- * Il rate (frame pacing) è ignorato (headless). */
+ * Il rate (frame pacing) viaggia in `s->value` e il codegen C99Native lo emette come
+ * `gmb_tick_pace(rate)` + un present per frame; rate assente = 0 = nessun limiter
+ * (present una volta per frame, ritmo del ciclo). */
 gmb_stmt_t* gmb_p_parse_tick(gmb_parser_t* p, int line, bool* multiline)
 {
     gmb_stmt_t* s = gmb_stmt_new(GMB_STMT_DO, line);
@@ -178,7 +180,19 @@ gmb_stmt_t* gmb_p_parse_tick(gmb_parser_t* p, int line, bool* multiline)
     /* TICK <rate>: frame limiter (prima l'argomento era letto e SCARTATO → il loop
      * girava a migliaia di fps: present instabile/finestra nera). */
     if (!gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_check(p, GMB_TOK_End) && !gmb_p_at_end(p))
-        s->value = gmb_p_parse_expr(p);
+    {
+        gmb_expr_t* rate = gmb_p_parse_expr(p);
+        /* Parità con le gambe IL/PCode/VM-C: il rate viaggia come int nell'AST (TickStmt),
+         * quindi deve essere una COSTANTE numerica. Un'espressione veniva valutata solo qui e
+         * scartata in silenzio dalle altre gambe: divergenza. */
+        if (rate && rate->kind == GMB_EXPR_NUM) s->value = rate;
+        else { if (rate) gmb_expr_free(rate); gmb_p_set_err(p, "TICK: il rate deve essere un numero letterale", line); }
+    }
+    /* Rate di default 0 = NESSUN limiter, con il present comunque una volta per frame.
+     * Senza questo un `TICK` senza argomento lasciava `value` NULL e il codegen non
+     * emetteva né pace né present (indistinguibile da un `DO WHILE 1` scritto a mano:
+     * il TICK è l'unico ciclo DO/WHILE che valorizza `value`). */
+    if (!s->value) s->value = gmb_expr_num(0, line);
     s->do_while = gmb_expr_num(1, line);   /* DO WHILE 1 */
     /* flag DEVE restare 0 (WHILE): il codegen usa flag!=0 come UNTIL/exit-if-true e il
      * vecchio marker 2 faceva uscire subito dal loop senza eseguire il corpo. */
@@ -190,7 +204,8 @@ gmb_stmt_t* gmb_p_parse_tick(gmb_parser_t* p, int line, bool* multiline)
         gmb_p_adv(p); gmb_p_adv(p);
         if (!gmb_p_check(p, GMB_TOK_Newline) && !gmb_p_at_end(p)) {
             gmb_expr_t* r2 = gmb_p_parse_expr(p);
-            if (r2) { if (s->value) gmb_expr_free(s->value); s->value = r2; }
+            if (r2 && r2->kind == GMB_EXPR_NUM) { if (s->value) gmb_expr_free(s->value); s->value = r2; }
+            else { if (r2) gmb_expr_free(r2); gmb_p_set_err(p, "END TICK: il rate deve essere un numero letterale", line); }
         }
     }
     s->do_body = body.items; s->n_do = body.n;

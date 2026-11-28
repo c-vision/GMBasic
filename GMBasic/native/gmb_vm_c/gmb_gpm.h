@@ -332,6 +332,12 @@ struct gmb_task {
     int wake_pending;
     int force_yield;         /* Gosched esplicito (TaskYield/OP_YIELD): il worker deve riaccodare */
     pthread_mutex_t lock;    /* EnqueueLock per-task */
+    /* Attesa su EVENTO del task, senza polling, per i THREAD del runtime che devono consegnare
+     * una risposta al client (handler HTTP/WS, tool MCP): broadcastata sotto `lock` quando il
+     * task chiude il frame sync o passa a FINISHED. NON è il park di un task verde (lì il
+     * chiamante è un worker e non deve mai fermarsi): qui il chiamante è un thread dedicato e
+     * quello che si elimina è il ciclo nanosleep — sveglia sull'evento, con deadline. */
+    pthread_cond_t fin_cond;
     int ip;
     /* stack operandi — dinamico (V1): realloc geometrico, mai drop silenzioso.
      * overflow=1 (cap raggiunto o OOM) → il dispatcher abortisce il task con
@@ -357,6 +363,10 @@ struct gmb_task {
     int        owns_globals;   /* 1 = questo task possiede i globals e li libera in gmb_task_free */
     /* sleep */
     int64_t sleep_until_ms;
+    /* TICK: confine del frame corrente di QUESTO task (0 = nessuno). Per task e non per
+     * thread: sotto GOMAXPROCS il task migra tra i worker e una cadenza per thread la
+     * perderebbe. Lo aggiorna gmb_tick_advance (stessa formula del C99Native). */
+    int64_t tick_deadline_ms;
     /* V7a-net (§12): deadline assoluta del syscall di rete parcheggiato (TCP ACCEPT/
      * TCP RECV/UDP RECV). 0 = attesa indefinita. Azzerata al completamento. */
     int64_t net_deadline_ms;
@@ -742,6 +752,20 @@ void gmb_sched_async_job_end(gmb_scheduler_t* s);
 /* Attende active_count==0. timeout_ms<0 = attesa illimitata. Ritorna 1 se tutti
  * i task sono completati, 0 se il timeout scade prima. */
 int gmb_sched_wait_all_done_ms(gmb_scheduler_t* s, int64_t timeout_ms);
+
+/* Attesa su evento del task con deadline, SENZA polling (§0ter: i thread del runtime HTTP/WS/MCP
+ * non devono dormire a nanna in un ciclo di nanosleep). what = GMB_TASK_WAIT_*. Ritorna 1 se
+ * l'evento è avvenuto, 0 su timeout. gmb_task_signal_event sveglia i waiter: va chiamata quando
+ * il predicato diventa vero (sync chiuso, task FINISHED). */
+enum { GMB_TASK_WAIT_FINISHED = 1, GMB_TASK_WAIT_SYNC_CLOSED = 2 };
+void gmb_task_signal_event(gmb_task_t* t);
+int  gmb_sched_wait_task_event(gmb_task_t* t, int what, int64_t timeout_ms);
+
+/* PARK del task per ms: deadline gmb_now_ms()+ms, GMB_TS_BLOCKED sotto t->lock e nodo nel timer.
+ * ms<=0 = no-op. `sched` NULL = quello del task. Punto unico del park a tempo: lo usano i park
+ * interni della VM (vm_park_task_ms: OP_SLEEP, timeout di SELECT/CHANNEL) e il builtin SLEEP(ms)
+ * della VM/C (1271), che prima dormiva il worker con un usleep. */
+void gmb_task_park_ms(gmb_task_t* t, gmb_scheduler_t* sched, int64_t ms);
 int gmb_sched_active_count(gmb_scheduler_t* s);
 /* Inserisce {t->sleep_until_ms, t} nel min-heap e sveglia il watcher. Chiamare
  * DOPO aver impostato sleep_until_ms/state del task (OP_SLEEP, timeout SELECT). */
