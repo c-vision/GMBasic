@@ -8090,7 +8090,11 @@ public static partial class IlRuntime
     public static bool ControlApplyProps(IReadOnlyList<object?> a)
     {
         try {
-            int handle = (int)UiLastHandle();
+            /* HANDLE del controllo appena creato: gmb_form_last_handle() copre ENTRAMBI i
+             * registry (widget/button "pixel" e celle TUI) — `UiLastHandle()` è il last handle
+             * TUI e su un BUTTON pixel restava il controllo precedente/-1, quindi le clausole
+             * STYLE (grow/minw/maxw) si perdevano su PCode. */
+            int handle = (int)FormLastHandle();
             object? G(int i) => i < a.Count ? a[i] : null;
             string? S(int i) => G(i) as string;
             double? N(int i) { object? v = G(i); return v == null ? null : System.Convert.ToDouble(v); }

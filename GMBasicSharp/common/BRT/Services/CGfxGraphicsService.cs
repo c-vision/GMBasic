@@ -119,6 +119,11 @@ public sealed class CGfxGraphicsService : IGraphicsService
     [DllImport(Lib)] private static extern int gmb_tui_last_handle();
     [DllImport(Lib)] private static extern void gmb_control_apply_props_handle(int handle, uint flags, string name, string tag, string tooltip, int tabindex, int visible, int enabled, int tabstop);
     [DllImport(Lib)] private static extern void gmb_control_apply_style_handle(int handle, string spec);
+    /* Union-aware: applica lo stile al registry GIUSTO (form widget/button o TUI) guardando
+     * l'HANDLE. `gmb_control_apply_style_handle` cerca solo nel registry TUI: su un BUTTON
+     * pixel (form) le clausole STYLE "grow=… minw=… maxw=…" si perdevano su IL/PCode (VM/C
+     * usa già la versione che copre entrambi). */
+    [DllImport(Lib)] private static extern void gmb_form_apply_style_handle(int handle, string spec);
     [DllImport(Lib)] private static extern void gmb_tui_controls_reset();
     [DllImport(Lib)] private static extern void gmb_tui_add_tbrowse(int row, int col, int w, int h, string colsCsv, string dataCsv);
     [DllImport(Lib)] private static extern void gmb_tui_add_filedialog(string title, string mask);
@@ -424,7 +429,7 @@ public sealed class CGfxGraphicsService : IGraphicsService
     public void UiAddCheckbox(int x, int y, int w, string label) { try { gmb_tui_add_checkbox(x, y, w, label ?? ""); } catch { } }
     public double UiLastHandle() { try { return gmb_tui_last_handle(); } catch { return -1; } }
     public void UiControlApplyFocus(int handle) { try { gmb_control_apply_props_handle(handle, 128u, "", "", "", 0, 0, 0, 0); } catch { } }
-    public void UiControlApplyStyle(int handle, string? spec) { try { if (spec != null) gmb_control_apply_style_handle(handle, spec); } catch { } }
+    public void UiControlApplyStyle(int handle, string? spec) { try { if (spec != null) gmb_form_apply_style_handle(handle, spec); } catch { } }
     public void UiControlApplyProps(int handle, string? name, string? tag, string? tooltip, double? tabindex, double? visible, double? enabled, double? tabstop)
     {
         uint flags = 0; if (name != null) flags |= 1; if (tag != null) flags |= 2; if (tooltip != null) flags |= 4;
@@ -507,7 +512,7 @@ public sealed class CGfxGraphicsService : IGraphicsService
     public int  FormClosedC() { try { return gmb_form_closed(); } catch { return 1; } }
     public void FormRequestCloseC() => gmb_form_request_close();
     public void FormSetLastStyleC(string spec) => gmb_form_set_last_style(spec);
-    public void FormSetLastStyleForHandleC(int handle, string spec) => gmb_control_apply_style_handle(handle, spec);
+    public void FormSetLastStyleForHandleC(int handle, string spec) => gmb_form_apply_style_handle(handle, spec);
     public double FormControlGetC(string name, string prop) { try { return gmb_form_control_get(name, prop); } catch { return 0; } }
     public void FormControlSetC(string name, string prop, double num, string str) => gmb_form_control_set(name, prop, num, str ?? "");
     public string FormControlGetStrC(string name, string prop) { try { return System.Runtime.InteropServices.Marshal.PtrToStringAnsi(gmb_form_control_get_str(name, prop)) ?? ""; } catch { return ""; } }
