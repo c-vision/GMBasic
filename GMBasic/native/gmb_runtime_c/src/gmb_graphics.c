@@ -170,6 +170,10 @@ static void free_sprites(void)
 {
     memset(g_gfx.sprites, 0, sizeof(g_gfx.sprites));
     g_gfx.next_sprite_id = 1;
+    /* gruppi e movimento/path vivono fuori da g_gfx.sprites: vanno azzerati qui, altrimenti
+     * resterebbero teste, membri e programmi di un albero di sprite gia' liberato */
+    gmb_gfx_group_reset();
+    gmb_gfx_motion_reset();
 }
 
 static void alloc_page(int idx, int w, int h)
@@ -988,10 +992,14 @@ static void gfx_detect_collisions(void)
     for (int i = 1; i < g_gfx.next_sprite_id && i < GMB_GFX_MAX_SPRITES; i++)
     {
         gmb_gfx_sprite_t* a = &g_gfx.sprites[i];
+        /* i membri di un gruppo non sono oggetti a se': le coppie si riportano alla testa
+         * (un blocco collide come un oggetto unico, come nel riferimento) */
+        if (gmb_gfx_group_is_member(i)) continue;
         if (!a->in_use || !a->visible || a->tex_id <= 0 || a->tex_id >= GMB_GFX_MAX_TEXTURES || !g_gfx.textures[a->tex_id].in_use) continue;
         for (int j = i + 1; j < g_gfx.next_sprite_id && j < GMB_GFX_MAX_SPRITES; j++)
         {
             gmb_gfx_sprite_t* b = &g_gfx.sprites[j];
+            if (gmb_gfx_group_is_member(j)) continue;
             if (!b->in_use || !b->visible || b->tex_id <= 0 || b->tex_id >= GMB_GFX_MAX_TEXTURES || !g_gfx.textures[b->tex_id].in_use) continue;
             if (!gmb_gfx_collide(i, j)) continue;
             if (g_col_n >= GFX_COL_MAX) return;
@@ -1049,6 +1057,11 @@ int gmb_gfx_take_collisions(int* id1, int* id2, float* x, float* y, int max)
 
 void gmb_gfx_sync(void)
 {
+    /* Un frame = un passo di MOVETO/path PRIMA di disegnare e di rilevare le collisioni:
+     * il riferimento avanza lo stato dello sprite a ogni frame, e chi disegna vede lo stato
+     * appena avanzato. Senza path/MOVETO attivi e' un giro su 1024 flag, quindi i programmi
+     * esistenti non cambiano comportamento. */
+    gmb_gfx_sprites_tick(1);
     gfx_dispatch_collisions();   /* consegna le collisioni rilevate dal SYNC precedente */
     gmb_gfx_page_t* p = active_page();
     if (!p) { gfx_detect_collisions(); return; }
@@ -1059,6 +1072,8 @@ void gmb_gfx_sync(void)
         {
             gmb_gfx_sprite_t* s = &g_gfx.sprites[i];
             if (!s->in_use || !s->visible || s->priority != prio) continue;
+            if (gmb_gfx_group_is_member(i)) continue;      /* li disegna la testa */
+            if (gmb_gfx_group_draw_block(i)) continue;     /* testa di gruppo: blocco intero */
             if (s->tex_id <= 0 || s->tex_id >= GMB_GFX_MAX_TEXTURES || !g_gfx.textures[s->tex_id].in_use) continue;
             gmb_gfx_draw_texture(s->tex_id, (int)s->x, (int)s->y, s->rotation, s->scale_x, s->scale_y);
         }

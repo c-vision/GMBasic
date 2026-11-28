@@ -1,6 +1,6 @@
 # Piano — Motore 3D di GMBasic (parità Engine1999 e oltre)
 
-> **Stato**: piano di lavoro. **P0–P4 sono chiusi e le quattro gambe li eseguono**: target 3D e cattura headless nel runtime (`include/gmb_3d.h`, `src/gmb_3d_frame.c`), renderer a settori (`shared/libs/graphics/src/gm_gfx_sector.c`), tempo (`src/gmb_3d_time.c`), collisione, **rasterizzatore mesh** (`gmb_3d_mesh_draw`: clip, z-buffer, UV prospettici), oracolo `tools/gmb_3d_oracle.c` con **18 golden** per RID, la mappa demo di P2 e il dominio `SCENE` agganciato al linguaggio su tutte e quattro le gambe. **P4 è chiuso (2026-11-25)**: luce **per pixel** con **lampade point/spot**, **fog**, **FAR**, **SKY**, **COLORMAP** a 32 livelli e **THING**, con l'ordine sky → opachi → thing → traslucidi; 6 MiniTest e 6 golden nuove, stessi valori su tutte e quattro le gambe. Documento di riferimento per le fasi **P0–P9**, che si eseguono in quest'ordine, più `PH` (hardware) fuori numerazione. Il **ponte C#** dei comandi 3D è chiuso: i 20 MiniTest del dominio `WORLD` girano su C99Native, IL, PCode e VM/C. **P5 ha consegnato** culling per oggetto, superficie interattiva, buffer a capacità dinamica (200k triangoli) e, il 2026-11-27, i **raggi** (`SHOOT`/`USE`/`SEES`) e le **statistiche** (`SCENE.STATS`). **P6 è chiuso (2026-11-28)**: audio posizionale (`SCENE SOUND`) e il controllore in prima persona — pad, mouse-look, salto, accovacciato — con `Samples3D/Walk.bas` e `shared/minitests/3d/scene_walk.bas` identici su quattro gambe. **P7 è in corso**: il blocco 1 (layer 2D con palette propria, priorità, backdrop e composizione) è consegnato il 2026-11-28 con il selfcheck `P7-LAYERS ok=65 fail=0`; l'**audit di §5** dello stesso giorno (14 righe, ognuna con prova `file:riga`) ha ridato l'ordine ai blocchi: prima la **collisione per pixel opaco**, la superficie BASIC dei layer per ultima. Il **blocco 2** (collisione per pixel opaco, `P7-COLLIDE-PIXELS ok=27 fail=0`) è consegnato il 2026-11-28; nello stesso giorno la **composizione è stata assegnata alle pagine** (i layer scrivono in pagina con `gmb_layers_blit_page`) e il modulo è passato in `src/gmb_graphics_layers.c`; segue P8 (tooling) e P9 (guide e release).
+> **Stato**: piano di lavoro. **P0–P4 sono chiusi e le quattro gambe li eseguono**: target 3D e cattura headless nel runtime (`include/gmb_3d.h`, `src/gmb_3d_frame.c`), renderer a settori (`shared/libs/graphics/src/gm_gfx_sector.c`), tempo (`src/gmb_3d_time.c`), collisione, **rasterizzatore mesh** (`gmb_3d_mesh_draw`: clip, z-buffer, UV prospettici), oracolo `tools/gmb_3d_oracle.c` con **18 golden** per RID, la mappa demo di P2 e il dominio `SCENE` agganciato al linguaggio su tutte e quattro le gambe. **P4 è chiuso (2026-11-25)**: luce **per pixel** con **lampade point/spot**, **fog**, **FAR**, **SKY**, **COLORMAP** a 32 livelli e **THING**, con l'ordine sky → opachi → thing → traslucidi; 6 MiniTest e 6 golden nuove, stessi valori su tutte e quattro le gambe. Documento di riferimento per le fasi **P0–P9**, che si eseguono in quest'ordine, più `PH` (hardware) fuori numerazione. Il **ponte C#** dei comandi 3D è chiuso: i 20 MiniTest del dominio `WORLD` girano su C99Native, IL, PCode e VM/C. **P5 ha consegnato** culling per oggetto, superficie interattiva, buffer a capacità dinamica (200k triangoli) e, il 2026-11-27, i **raggi** (`SHOOT`/`USE`/`SEES`) e le **statistiche** (`SCENE.STATS`). **P6 è chiuso (2026-11-28)**: audio posizionale (`SCENE SOUND`) e il controllore in prima persona — pad, mouse-look, salto, accovacciato — con `Samples3D/Walk.bas` e `shared/minitests/3d/scene_walk.bas` identici su quattro gambe. **P7 è in corso**: il blocco 1 (layer 2D con palette propria, priorità, backdrop e composizione) è consegnato il 2026-11-28 con il selfcheck `P7-LAYERS ok=65 fail=0`; l'**audit di §5** dello stesso giorno (14 righe, ognuna con prova `file:riga`) ha ridato l'ordine ai blocchi: prima la **collisione per pixel opaco**, la superficie BASIC dei layer per ultima. Il **blocco 2** (collisione per pixel opaco, `P7-COLLIDE-PIXELS ok=27 fail=0`) è consegnato il 2026-11-28; il **blocco 3** (gruppi di sprite, path e `MOVETO` a tick, `P7-SPRITE-GROUPS ok=97 fail=0` + `P7-SPRITE-PATH ok=90 fail=0`) è consegnato lo stesso giorno; il **blocco 4** (schermo di testo 80×25 a celle 8×12, `P7-TEXTSCREEN ok=82 fail=0`) è consegnato il 2026-11-28; nello stesso giorno la **composizione è stata assegnata alle pagine** (i layer scrivono in pagina con `gmb_layers_blit_page`) e il modulo è passato in `src/gmb_graphics_layers.c`; segue P8 (tooling) e P9 (guide e release).
 > **Base**: SDL2 (present di GMBasic) + `shared/libs/graphics` (vendored da `gmbsuite`) + `native/gmb_runtime_c`.
 > **Riferimento esterno**: [`ekkehard-morgenstern/Engine1999`](https://github.com/ekkehard-morgenstern/Engine1999) — engine SDL2 in C, **GPL-3.0**, con due renderer 3D.
 > **Regola di licenza**: di Engine1999 si replica il *comportamento*, mai il codice.
@@ -219,9 +219,12 @@ Funzioni: `SCENE.X/Y/Z/EYE/YAW/PITCH/LIFT/HIT/FLOORZ/FLOORAT/CEILAT/TON/TX/TY/TZ
 
 Audit del 2026-11-28, fatto **prima** di scrivere altro codice: ogni riga è stata confrontata col
 runtime e vale solo se ha una prova `file:riga`. Esito sulle 14 righe di P7: **3 già soddisfatte per
-intero** (tile sotto-scroll, `JSON`, screenshot composto), **6 parziali** (layer, text cells, `GFX
-DRAW`, `INPUT` a campi, UI dichiarativa, collisione per pixel), **5 mancanti** (gruppi, path,
-`MOVETO`, `DESIGN`, `PRINT USING`; `PEEK/POKE` di memoria sta dentro la riga parziale di `INPUT`). La
+intero** (tile sotto-scroll, `JSON`, screenshot composto), **6 parziali al momento dell'audit** (layer,
+text cells, `GFX DRAW`, `INPUT` a campi, UI dichiarativa, collisione per pixel) e **5 mancanti**
+(gruppi, path, `MOVETO`, `DESIGN`, `PRINT USING`; `PEEK/POKE` di memoria sta dentro la riga parziale
+di `INPUT`). Dopo i blocchi 2, 3 e 4 del 2026-11-28 le parziali sono **9**: collisione per pixel, gruppi,
+path, `MOVETO` e text screen hanno il motore C e resta la superficie BASIC; le mancanti sono
+**2** (`DESIGN`, `PRINT USING`). La
 priorità degli sprite, che il blocco 1 presupponeva mancante, **c'è già per sprite**: il «layer» non
 aggiunge nulla di osservabile agli sprite.
 
@@ -229,11 +232,11 @@ aggiunge nulla di osservabile agli sprite.
 |---|---|---|---|
 | Layer multipli con palette propria + priorità | **parziale** (motore fatto) | motore: `src/gmb_graphics_layers.c:184` (`set_priority`), `:229` (ordine stabile), ponte `gmb_layers_blit_page:299`; selfcheck `P7-LAYERS ok=77 fail=0`. **Composizione: le pagine sono proprietarie** (deciso il 2026-11-28). Priorità sprite già indipendente: `src/gmb_graphics_sprite.c:45` + render a fasce `src/gmb_graphics.c:1061` | superficie BASIC (TokenKind `Layer` + 4 gambe + MiniTest + sample + guida); motore e ponte ci sono già |
 | Tile/sprite a griglia con sotto-scroll 0..15 px | **tile: già c'è** | `src/gmb_graphics_tilemap.c:83-125`: l'offset è in **pixel** e il disegno è **per pixel** con nearest + skip `alpha < 8` → qualunque offset intero scorre esatto, non solo multipli di cella | il clamp 0..15 (regola del riferimento, non un comportamento assente) e l'eventuale variante «sprite a griglia» |
-| Gruppi di sprite (w×h come un oggetto) | **manca** | nessun gruppo in `include/gmb_graphics.h`: solo `gmb_gfx_sprite_def:318` e priorità per singolo sprite | `SPRITE GROUP n,w,h` come oggetto unico (render, spostamento, collisione) |
-| Path di sprite (`X+n/M/W/A/E/[ ]n/R`) | **manca** | l'unico `moveto` del runtime è ANSI: `src/gmb_screen_buffer.c:68`, non un interprete path | interprete path sul motore per-frame |
-| `MOVETO ticks` | **manca** | idem: nessun motore di movimento a tick | motore per-frame + MiniTest senza schermo |
-| Collisioni per pixel opaco | **parziale** (motore C fatto, 2026-11-28) | `gmb_gfx_collide_pixels` in `src/gmb_graphics_sprite.c:324` (geometria in `sprite_box:241`, soglia `GMB_GFX_OPAQUE_ALPHA:229` = quella del renderer); `gmb_gfx_collide` resta AABB (`src/gmb_graphics_sprite.c:181-211`, contratto delle 4 gambe invariato); selfcheck `P7-COLLIDE-PIXELS ok=27 fail=0` | superficie BASIC del `COLLIDE` per-pixel con parità 4 gambe + MiniTest + sample: il runtime C c'è, il linguaggio no |
-| Text screen 80×25 a celle con colori | **parziale** (primitiva fatta) | `include/gmb_graphics.h:329-331` (`render_cells`, `_ex`, `_at`), `src/gmb_gfx_cellfont.c:173` (`draw_cell`) | solo la **modalità** schermo a celle 80×25: nel runtime non esiste nessun `text_mode` |
+| Gruppi di sprite (w×h come un oggetto) | **parziale** (motore C fatto, 2026-11-28) | `gmb_gfx_sprite_set_size:188` in `src/gmb_graphics_sprite_group.c` (layout `gmb_gfx_group_relayout:88`, tabella inversa testa→membro O(1) per SYNC); render/collisione group-aware in `src/gmb_graphics_sprite.c:284`/`:438` e `src/gmb_graphics.c:1064`; selfcheck `P7-SPRITE-GROUPS ok=97 fail=0`. Differenza dichiarata: cella = `cell_w/cell_h` della testa, non 16×24 fisso | superficie BASIC (`SPRITE n, SIZE w, h`) + MiniTest + sample a 4 gambe |
+| Path di sprite (`X+n/M/W/A/E/[ ]n/R`) | **parziale** (motore C fatto, 2026-11-28) | compilatore `path_compile:142` ed esecutore `gmb_gfx_sprite_path:299` in `src/gmb_graphics_sprite_motion.c`; `X+3*20` = 3 px **per frame** per 20 frame, `X=`/`Y=` istantanei, `W`/`T`/`E`/`[ ]n` (≤4 livelli) / `R`, 4096 comandi, 256 istantanei per frame; `A`/`D`/`H`/`S`/`P` = **errore esplicito** (niente sequenze immagini nel runtime C); selfcheck `P7-SPRITE-PATH ok=90 fail=0` | superficie BASIC (`SPRITE n, PATH a$`, `SPRITE("PATH",n)`) + MiniTest a 4 gambe |
+| `MOVETO ticks` | **parziale** (motore C fatto, 2026-11-28) | `gmb_gfx_sprite_moveto:389` e `gmb_gfx_sprites_tick:440` in `src/gmb_graphics_sprite_motion.c`: un passo per frame, arrivo esatto, sostituzione da nuova posizione/MOVETO; `gmb_gfx_sync` avanza un frame prima di disegnare (`src/gmb_graphics.c:1064`); selfcheck `P7-SPRITE-PATH ok=90 fail=0` | superficie BASIC (`MOVETO x,y,ticks`, `MOVING`) + MiniTest a 4 gambe |
+| Collisioni per pixel opaco | **parziale** (motore C fatto, 2026-11-28) | `gmb_gfx_collide_pixels` in `src/gmb_graphics_sprite.c:438` (geometria in `sprite_box:345`, soglia `GMB_GFX_OPAQUE_ALPHA:333` = quella del renderer); `gmb_gfx_collide` resta AABB (`src/gmb_graphics_sprite.c:284-317`, contratto delle 4 gambe invariato); selfcheck `P7-COLLIDE-PIXELS ok=27 fail=0` | superficie BASIC del `COLLIDE` per-pixel con parità 4 gambe + MiniTest + sample: il runtime C c'è, il linguaggio no |
+| Text screen 80×25 a celle con colori | **parziale** (motore fatto, 2026-11-28) | modello: `gmb_gfx_textscreen_set:107`, `gmb_gfx_textscreen_write:156`, `gmb_gfx_textscreen_render:230` in `src/gmb_graphics_textscreen.c` (API `include/gmb_graphics.h:419`): 80×25 celle 8×12, penna/carta per cella, a capo, TAB a zone di 8, scroll, `cell()` in lettura; glifi dal bitmap ASCII 8×16 del runtime campionato a 12 righe (nessun font TTF); primitive TUI invariate (`include/gmb_graphics.h:397`, `src/gmb_gfx_cellfont.c:173`); selfcheck `P7-TEXTSCREEN ok=82 fail=0` | superficie BASIC (`TXT`/`TEXTMODE`, `SYMBOL`, `TXT FILL/COPY/INVERT/SAVE/LOAD`) + MiniTest + sample |
 | `DESIGN`/`@` | **manca** | nessun `GMB_TOK_Design` in `include/gmb_tokenkind.h`; la base d'appoggio c'è: `gmb_gfx_sprite_def` (`include/gmb_graphics.h:318`) | parser + definizione sprite da stringa |
 | `GFX DRAW` (GW-BASIC) | **parziale** (nucleo fatto) | `src/gmb_graphics_primitive.c:220`: `M/U/D/L/R/E/F/G/H/C/P/B/N` | `S` (scala), `A` (angolo), `X` (esegui il contenuto di una variabile) |
 | `PRINT USING` / `FORMAT$` | **manca** | `GMB_TOK_Using` (`include/gmb_tokenkind.h:533`) è il blocco `USING … END USING` (risorsa), non la formattazione; `FORMAT$` esiste solo in C# (`FormatUtils.cs`) | formattatore condiviso + superficie linguaggio |
@@ -656,16 +659,16 @@ decisa).
 
 | Blocco | Righe §5 | Perché in questa posizione | Verifica |
 |---|---|---|---|
-| **2** | Collisione per pixel opaco | unico gap con un difetto **osservabile**: oggi due sprite trasparenti collidono (`gmb_graphics_sprite.c:181-211` è AABB). ~60-80 righe, riusa `gmb_gfx_canvas_get` | MiniTest `COLLIDE` con sprite bucato, 4 gambe |
-| **3** | Gruppi di sprite, path, `MOVETO` a tick | le tre feature di gioco del riferimento, non surrogate da altro codice esistente | MiniTest + sample 2D, 4 gambe |
-| **4** | Text screen 80×25 a celle | primitiva già presente: resta la sola modalità, è il delta più piccolo con effetto visibile | MiniTest + sample |
+| **2** | Collisione per pixel opaco | unico gap con un difetto **osservabile**: oggi due sprite trasparenti collidono (`gmb_graphics_sprite.c:284-317` è AABB). ~60-80 righe, riusa `gmb_gfx_canvas_get` | MiniTest `COLLIDE` con sprite bucato, 4 gambe |
+| **3** | Gruppi di sprite, path, `MOVETO` a tick | le tre feature di gioco del riferimento, non surrogate da altro codice esistente | **motore C consegnato** (2026-11-28); superficie BASIC + MiniTest + sample 2D a 4 gambe |
+| **4** | Text screen 80×25 a celle | primitiva già presente: resta la sola modalità, è il delta più piccolo con effetto visibile | **motore C consegnato** (2026-11-28, `P7-TEXTSCREEN ok=82`); restano superficie BASIC, MiniTest + sample |
 | **5** | `PRINT USING`/`FORMAT$`, `DESIGN`/`@`, `PEEK/POKE` | linguaggio: sblocca i programmi del riferimento; `POKE` solo se un sample lo usa | MiniTest per funzione, 4 gambe |
 | **6** | `GFX DRAW` con `S`/`A`/`X` | chiude una riga già per due terzi fatta | MiniTest su stringa `DRAW` |
 | **7** | UI dichiarativa | sopra il modello form già esistente (`gmb_form.h:95-137`) | MiniTest + sample |
 | **8 (ultimo)** | Superficie BASIC dei layer | non cambia pixel: serve solo a chi scrive esplicitamente contro i 5 layer. La decisione che lo bloccava **è presa** (2026-11-28): le pagine possiedono la composizione, il layer scrive in pagina con `gmb_layers_blit_page` | MiniTest + sample + guida |
 
 **Consegnato il 2026-11-28 (blocco 2: collisione per pixel opaco).** `gmb_gfx_collide_pixels(id1,id2)`
-in `src/gmb_graphics_sprite.c:324` (dichiarazione `include/gmb_graphics.h:273`): `-1` se i due sprite
+in `src/gmb_graphics_sprite.c:438` (dichiarazione `include/gmb_graphics.h:325`): `-1` se i due sprite
 hanno almeno un pixel **visibile** in comune, `0` altrimenti. Usa la geometria del renderer — centro
 intero, `dw = (int)(w*|scale|)`, rotazione attorno al centro, decomposizione della matrice come
 `gmb_gfx_sprite_draw` — e la **stessa soglia di opacità** del renderer (`alpha < 8` = trasparente),
@@ -677,6 +680,78 @@ per-pixel non ha MiniTest e parità sul linguaggio. Selfcheck headless
 il blocco dentro il buco no, la cornice sì, scala/rotazione/matrice sì, `SPRITE OFF` e id invalidi no.
 Gate A/B `cc` + `tools/sh/zcc` su `gmb_graphics_sprite.c` (exit 0 entrambi);
 `check_file_size.sh --quiet` exit 0. Il modulo dei layer non è stato toccato.
+
+**Consegnato il 2026-11-28 (blocco 3: gruppi di sprite, path, `MOVETO` a tick).** Due moduli nuovi,
+perché il motore per-frame non esisteva: `src/gmb_graphics_sprite_group.c` (234 righe) e
+`src/gmb_graphics_sprite_motion.c` (469), API in `include/gmb_graphics.h`, innesti minimi in
+`gmb_graphics_sprite.c` e in `gmb_gfx_sync`.
+
+* **Gruppi** (`gmb_gfx_sprite_set_size:188`): `SIZE w,h` (1..8, `w*h ≤ 64`) rende la testa il blocco
+  `n .. n+w*h-1`, riga per riga, e il blocco è **un oggetto solo**: posizione, ON/OFF, priorità,
+  rotazione e scala si impostano sulla testa, le impostazioni dei membri sono ignorate e vengono
+  **ripristinate** allo scioglimento (`SIZE 1,1`). La tabella inversa testa→membro è O(1) perché
+  `SYNC` la interroga per ogni sprite (un `for` sul gruppo costerebbe 1024×1024 per frame). Rotazione
+  e scala dispongono il blocco come corpo rigido, e così la **matrice affine** della testa: si
+  decompone in rotazione+scala con `gmb_gfx_sprite_rot_scale` (unica sede della decomposizione,
+  usata anche dal disegno e dalla collisione per pixel), quindi una matrice impostata sulla testa
+  ridispone subito il blocco con la stessa trasformazione con cui la testa viene disegnata.
+  Differenza **dichiarata** dal riferimento, che ha
+  sprite 16×24 su sprite map: qui la cella è `cell_w/cell_h` della texture della testa.
+* **Collisioni**: un blocco collide come il suo insieme di membri (`gmb_gfx_collide:284` AABB e
+  `gmb_gfx_collide_pixels:438` per pixel), i membri di uno stesso gruppo **non** collidono tra loro e
+  le coppie riportate da `SYNC` nominano la **testa** (`gfx_detect_collisions` salta i membri).
+* **Path** (`path_compile:142`, `gmb_gfx_sprite_path:299`): compilazione **tutta prima** — un errore
+  ritorna `-1` e lascia intatto il path in corso — poi un passo per frame. `X+3*20` = 3 px **per
+  frame** per 20 frame; `X=`/`Y=` istantanei; `M dx,dy[*k]`; `W n`; `T n`; `E n` con anello da 256
+  eventi; `[ … ]n` fino a 4 livelli, con conteggio esatto (n ripetizioni, non n+1); `R`. Massimo 4096
+  comandi e **256 istantanei per frame**, così nessun frame si blocca. `A`, `D`, `H`, `S`, `P` danno
+  un **errore esplicito**: il runtime C non ha sequenze di immagini né override per sprite, e uno
+  stub silenzioso mentirebbe (§0bis).
+* **`MOVETO`** (`gmb_gfx_sprite_moveto:389`): interpolazione lineare, un passo per frame, arrivo
+  **esatto** all'ultimo; una nuova posizione o un altro `MOVETO` sostituiscono quello in corso;
+  `ticks ≤ 0` imposta subito; su un membro è ignorato. `gmb_gfx_sprites_tick:440` avanza i frame e
+  `gmb_gfx_sync` ne avanza uno prima di disegnare e di rilevare le collisioni
+  (`src/gmb_graphics.c:1064`), quindi chi disegna vede lo stato già avanzato; senza path/MOVETO
+  attivi è un giro di 1024 flag e i programmi esistenti non cambiano comportamento.
+* **Selfcheck headless**: `tests/gmb_gfx_sprite_groups_selfcheck.c` (227 righe, 97 check) e
+  `tests/gmb_gfx_sprite_path_selfcheck.c` (238 righe, 90 check), registrati in CTest. Coprono layout
+  e priorità/visibilità della testa, membri ignorati e ripristinati, ridimensionamento, conflitti fra
+  gruppi, collisione intra-gruppo = 0 e fra gruppi per pixel, render del blocco su canvas, più
+  `X+n*k`/`X=`/`W`/`T`/`M`/`[ ]n`/`R`/limite 256/errori che non toccano il path/eventi/MOVETO
+  sostituito da una posizione.
+* Gate A/B `cc` + `tools/sh/zcc` sui sei file toccati (exit 0 entrambi) e `check_file_size.sh
+  --quiet` exit 0. La superficie BASIC dei layer **non** è stata toccata, come da ordine dei blocchi.
+
+**Consegnato il 2026-11-28 (blocco 4: schermo di testo 80×25 a celle).** Il runtime aveva le
+primitive a celle (`render_cells*`, `draw_cell` del TUI) ma nessun **modello** di text screen:
+niente griglia persistente, niente cursore, niente a capo/scroll. Nuovo modulo
+`src/gmb_graphics_textscreen.c` (257 righe), API in `include/gmb_graphics.h`, zero modifiche alle
+primitive del TUI e al modulo dei layer.
+
+* **Modello**: 80 colonne × 25 righe di celle 8×12 (640×300), ogni cella con carattere, **penna**
+  e **carta** propri; `set(1)` accende e azzera con i colori correnti, `set(0)` spegne lasciando il
+  contenuto. `pen(fg,bg)` accetta i colori del linguaggio (indice di palette o RGB con flag, `-1`
+  = invariato), default bianco su nero.
+* **Scrittura** (`gmb_gfx_textscreen_write:156`): al cursore, `\n` a capo in colonna 0, `\r`
+  ignorato, TAB alla colonna successiva multipla di 8 riempita di spazi, a capo automatico a fine
+  riga e **scroll** in fondo (le righe liberate prendono carta e penna correnti). Ritorna i
+  caratteri scritti e **0 a modalità spenta**: nessun no-op silenzioso.
+* **Disegno** (`gmb_gfx_textscreen_render:230`): 2000 celle sulla pagina attiva (canvas se c'è)
+  dall'angolo in alto a sinistra, glifi dal **bitmap ASCII 8×16 già nel runtime** (Terminus, OFL)
+  campionato a 12 righe: nessun font TTF, quindi resa identica in headless e sulla gamba C. Il
+  disegno è **esplicito** per scelta, così chi compone decide l'ordine con sprite e layer.
+* **Attivazione con schermo**: la pagina diventa 80*8 × 25*12 pixel **nativi** dividendo per il
+  render-scale (stessa regola di `render_cells`), quindi il target resta 640×300 anche a
+  render-scale 2.
+* **Selfcheck headless** `tests/gmb_gfx_textscreen_selfcheck.c` (227 righe, 82 check, CTest
+  `gmb_gfx_textscreen_selfcheck`): geometria, penna/carta per cella (le celle già scritte non
+  cambiano colore), `\r`/`\n`/TAB, a capo automatico a colonna 79, scroll automatico ed esplicito,
+  clear, `cell()` fuori griglia, render su canvas 640×300 con pixel di penna solo dove c'è il
+  glifo, idempotenza del render, modo spento che non scrive/non disegna ma conserva la griglia,
+  ridimensionamento a 640×300 nativi.
+* Gate A/B `cc` + `tools/sh/zcc` su `src/gmb_graphics_textscreen.c` (exit 0 entrambi);
+  `check_file_size.sh --quiet` exit 0; CTest P7 5/5 verdi. La superficie dei layer **non** è stata
+  toccata.
 
 **Fuori da P7 dopo l'audit**: `JSON` (già completo, 9 procedure), screenshot composto (chiuso dal
 blocco 1), sotto-scroll del tilemap (già pixel-exact; il clamp 0..15 resta una scelta del chiamante,

@@ -189,6 +189,58 @@ void gmb_gfx_sprite_set_rotation(int id, double degrees);
 void gmb_gfx_sprite_set_scale(int id, double sx, double sy);
 void gmb_gfx_sprite_draw(int id);
 int  gmb_gfx_sprite_count(void);
+/* Stato in lettura (per i test e per la superficie BASIC): 0 se l'id non esiste. */
+double gmb_gfx_sprite_x(int id);
+double gmb_gfx_sprite_y(int id);
+int    gmb_gfx_sprite_visible(int id);
+int    gmb_gfx_sprite_priority(int id);
+
+/* ---- Gruppi di sprite (riferimento: SPRITE n, SIZE w, h) ----
+ * `gmb_gfx_sprite_set_size(head, w, h)` rende `head` la TESTA di un blocco w×h di sprite
+ * consecutivi, riga per riga (w, h 1..8, w*h <= 64): membri head..head+w*h-1, una cella
+ * distante (cell_w/cell_h della texture della testa, altrimenti la sua dimensione). Il blocco
+ * si muove, si mostra, si ruota e collide come UN oggetto: posizione, ON/OFF, priorita',
+ * rotazione, scala, matrice affine, MOVETO e PATH si impostano sulla testa; le impostazioni
+ * dei membri sono ignorate e ripristinate quando il gruppo si scioglie (`SIZE 1,1`). Le
+ * collisioni riferiscono la testa e i membri di uno stesso gruppo non collidono tra loro.
+ * 0 = fatto; -1 = dimensioni non valide, testa inesistente, membro gia' in un altro gruppo,
+ * oppure blocco oltre GMB_GFX_MAX_SPRITES. */
+int  gmb_gfx_sprite_set_size(int head, int w, int h);
+int  gmb_gfx_sprite_cols(int head);          /* 1 se non e' testa di un gruppo */
+int  gmb_gfx_sprite_rows(int head);
+int  gmb_gfx_sprite_group_head(int id);      /* 0 se non appartiene a un gruppo */
+
+/* ---- Movimento a tick (riferimento: SPRITE n, MOVETO x, y, ticks) ----
+ * Un passo per frame, interpolazione lineare verso il bersaglio, arrivo esatto all'ultimo
+ * frame; una nuova posizione o un altro MOVETO sostituiscono il movimento in corso; su un
+ * membro di gruppo e' ignorato (comanda la testa). `ticks <= 0` = posizione subito.
+ * `gmb_gfx_sync` avanza di un frame; in headless si chiama `gmb_gfx_sprites_tick` per
+ * avanzare in modo deterministico. Ritorna i frame avanzati. */
+int  gmb_gfx_sprite_moveto(int id, float x, float y, int ticks);
+int  gmb_gfx_sprite_moving(int id);
+int  gmb_gfx_sprites_tick(int frames);
+
+/* ---- PATH a$ (riferimento: SPRITE n, PATH a$) ----
+ * La stringa si compila TUTTA prima: se c'e' un errore ritorna -1 e il path precedente
+ * resta intatto (`gmb_gfx_sprite_path_error()` dice perche'). "" ferma il path lasciando lo
+ * sprite dov'è; un nuovo path sostituisce il precedente. Un passo per frame:
+ *   X+n | X-n | Y+n | Y-n   n px PER FRAME per k frame (`X+3*20` = 3 px × 20 frame)
+ *   X=n | Y=n               coordinata impostata subito
+ *   M dx,dy[*k]             spostamento per frame (k frame)
+ *   W n                     n frame fermo
+ *   T n                     durata di default dei movimenti successivi
+ *   E n                     evento (anello da 256, si leggono con path_event)
+ *   [ ... ]n                ripete il blocco n volte, fino a 4 livelli
+ *   R                       riparte da capo
+ * Massimo 4096 comandi e 256 comandi istantanei per frame. Su un membro di gruppo il path
+ * e' ignorato. NON implementati (errore esplicito, mai no-op silenziosi, il runtime C non
+ * ha sequenze di immagini ne' override per sprite): A, D, H, S, P.
+ * `gmb_gfx_sprite_path_active` segue il contratto del riferimento: -1 mentre corre, 0 fermo. */
+int  gmb_gfx_sprite_path(int id, const char* program);
+int  gmb_gfx_sprite_path_active(int id);
+const char* gmb_gfx_sprite_path_error(void);
+int  gmb_gfx_sprite_path_events(void);                    /* eventi in attesa */
+int  gmb_gfx_sprite_path_event(int* sprite_out);          /* -1 se non ce ne sono */
 
 /* ---- Sync / input ---- */
 /* SYNC: presenta il frame. In headless e' un no-op immediato. */
@@ -265,6 +317,12 @@ void gmb_gfx_image_puts_n(const int* sprites, int sprites_len, const float* posi
 void gmb_gfx_sprite_get_pixels(int src_id, int dst_id);
 int  gmb_gfx_sprite_pixels_to_array(int src_id, int* out, int max);
 int  gmb_gfx_collide(int id1, int id2);
+/* COLLIDE per pixel OPACO: -1 se i due sprite hanno almeno un pixel VISIBILE in comune, 0
+ * altrimenti. `gmb_gfx_collide` resta il test AABB (contratto delle 4 gambe); questa variante
+ * usa la geometria di gmb_gfx_draw_texture (centro, scala, rotazione o matrice) e la soglia di
+ * opacita' del renderer (alpha >= 8), quindi due sprite con buchi trasparenti NON collidono
+ * dove non c'e' nulla. Con sprite completamente opachi coincide con l'AABB. */
+int  gmb_gfx_collide_pixels(int id1, int id2);
 
 /* ---- BSAVE / BLOAD (area catturata internamente) ---- */
 void gmb_gfx_bsave(int x1, int y1, int x2, int y2);
@@ -316,6 +374,14 @@ void gmb_gfx_fill_rounded_gradient(int x, int y, int w, int h, int radius, unsig
 void gmb_gfx_drop_shadow(int x, int y, int w, int h, int offset, unsigned int shadow_rgba, int radius);
 void gmb_gfx_fill_circle(int cx, int cy, int d, unsigned int rgba);
 int  gmb_gfx_sprite_def(int id, int w, int h, const int* pixels);
+/* Matrice affine 2x3 (a,b,c,d,e,f) dello sprite. draw_texture conosce solo rotazione e
+ * scala, quindi la matrice si DECOMPONE (gmb_gfx_sprite_rot_scale, la stessa usata da
+ * disegno, collisione per pixel e gruppi): rot = atan2(b,a), scala = |(a,b)| / |(c,d)|;
+ * la traslazione (e,f) non si applica — la posizione resta quella di SPRITE SET POSITION —
+ * e uno shear non rappresentabile resta approssimato da quella rotazione+scala. Su una TESTA
+ * di gruppo ridispone subito il blocco (come rotazione/scala); su un membro e' ignorata
+ * (comanda la testa). Non c'e' API di rimozione: la matrice vale finche' lo sprite non
+ * viene ridefinito con gmb_gfx_sprite_def. */
 void gmb_gfx_sprite_set_matrix(int id, const double* m6);
 int  gmb_gfx_tilemap_from_texture(int texture_id, int cell_w, int cell_h, int cols, int rows);
 /* API canonica senza handle (tilemap CORRENTE). */
@@ -329,6 +395,42 @@ void gmb_gfx_tilemap_draw_cur(void);
 void gmb_gfx_render_cells(const int* chars, const unsigned int* fg, const unsigned int* bg, int w, int h);
 void gmb_gfx_render_cells_ex(const int* chars, const unsigned int* fg, const unsigned int* bg, int w, int h, int cw, int ch);
 void gmb_gfx_render_cells_at(const int* chars, const unsigned int* fg, const unsigned int* bg, int w, int h, int cw, int ch, int ox, int oy);
+
+/* ---- Schermo di TESTO 80×25 a celle (riferimento: text screen, celle 8×12 = 640×300) ----
+ * Le primitive `render_cells*`/`draw_cell` disegnano una griglia che il chiamante possiede;
+ * questo modulo ne possiede una: 80 colonne × 25 righe di celle 8×12, ogni cella con
+ * carattere, penna (testo) e carta (sfondo), più un cursore con a capo automatico e scroll.
+ *  - `set(1)` accende la modalità, azzera la griglia con penna/carta correnti, riporta il
+ *    cursore in alto a sinistra e, se c'è uno schermo, porta la pagina a 80*8 × 25*12 pixel
+ *    NATIVI (divide per il render-scale, come `render_cells`); `set(0)` la spegne lasciando
+ *    il contenuto (si può riaccendere senza perdere il testo).
+ *  - `pen(fg, bg)` cambia i colori delle scritture successive (colori del linguaggio: indice
+ *    di palette o RGB con il flag; -1 = lascia quello attuale). Default bianco su nero.
+ *  - `write` scrive al cursore: `\n` va a capo, `\r` è ignorato, TAB salta alla colonna
+ *    successiva multipla di 8 riempiendo di spazi, a fine riga va a capo e in fondo scorre.
+ *    Ritorna i caratteri scritti (controlli esclusi), 0 a modalità spenta.
+ *  - `render` disegna le 2000 celle sulla pagina ATTIVA (canvas se c'è) dall'angolo in alto
+ *    a sinistra, glifi dal bitmap ASCII 8×16 del runtime campionato a 12 righe: nessun font
+ *    TTF, quindi resa deterministica anche in headless. Ritorna le celle disegnate, 0 se la
+ *    modalità è spenta. Il disegno è ESPLICITO per scelta: chi compone decide l'ordine con
+ *    sprite e layer.
+ *  - `cell(col,row,…)` legge una cella (1 = ok, 0 = fuori griglia); gli out sono opzionali.
+ * Le celle sono 8×12 e i codepoint fuori da 32..126 non hanno glifo (solo carta). */
+int  gmb_gfx_textscreen_set(int on);
+int  gmb_gfx_textscreen_on(void);
+int  gmb_gfx_textscreen_cols(void);
+int  gmb_gfx_textscreen_rows(void);
+int  gmb_gfx_textscreen_cell_w(void);
+int  gmb_gfx_textscreen_cell_h(void);
+void gmb_gfx_textscreen_pen(int fg, int bg);
+void gmb_gfx_textscreen_locate(int col, int row);
+int  gmb_gfx_textscreen_cursor_x(void);
+int  gmb_gfx_textscreen_cursor_y(void);
+int  gmb_gfx_textscreen_write(const char* text);
+int  gmb_gfx_textscreen_scroll(int lines);
+int  gmb_gfx_textscreen_clear(void);
+int  gmb_gfx_textscreen_cell(int col, int row, int* ch, unsigned int* fg, unsigned int* bg);
+int  gmb_gfx_textscreen_render(void);
 /* Font a celle 8x16: disegna un codepoint in una cella (tiling esatto). */
 void gmb_gfx_draw_cell(int x, int y, int cw, int ch, uint32_t cp, uint32_t fg, uint32_t bg);
 void gmb_gfx_cell_bg(int x, int y, int cw, int ch, uint32_t bg);

@@ -378,8 +378,11 @@ set(GMB_ALL_SRCS
     src/gmb_graphics_text.c
     src/stb_truetype_impl.c
     src/gmb_gfx_cellfont.c
+    src/gmb_graphics_textscreen.c
     src/gmb_graphics_texture.c
     src/gmb_graphics_sprite.c
+    src/gmb_graphics_sprite_group.c
+    src/gmb_graphics_sprite_motion.c
     src/gmb_graphics_tilemap.c
     src/gmb_graphics_chart.c
     src/gmb_graphics_primitive.c
@@ -1178,8 +1181,11 @@ add_library(gmb_gfx SHARED
     src/gmb_graphics_primitive.c
     src/gmb_graphics_text.c
     src/gmb_gfx_cellfont.c
+    src/gmb_graphics_textscreen.c
     src/gmb_graphics_image.c
     src/gmb_graphics_sprite.c
+    src/gmb_graphics_sprite_group.c
+    src/gmb_graphics_sprite_motion.c
     src/gmb_graphics_texture.c
     src/gmb_graphics_tilemap.c
     src/gmb_graphics_chart.c
@@ -1675,6 +1681,30 @@ add_executable(gmb_graphics_layers_selfcheck tests/gmb_graphics_layers_selfcheck
 target_link_libraries(gmb_graphics_layers_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_graphics_layers_selfcheck PRIVATE include)
 add_test(NAME gmb_graphics_layers_selfcheck COMMAND gmb_graphics_layers_selfcheck)
+
+# Collisione per pixel OPACO: due sprite con buchi trasparenti non collidono dove non si vede
+# nulla (gmb_gfx_collide resta l'AABB delle 4 gambe).
+add_executable(gmb_gfx_collide_pixels_selfcheck tests/gmb_gfx_collide_pixels_selfcheck.c)
+target_link_libraries(gmb_gfx_collide_pixels_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_gfx_collide_pixels_selfcheck PRIVATE include)
+add_test(NAME gmb_gfx_collide_pixels_selfcheck COMMAND gmb_gfx_collide_pixels_selfcheck)
+
+# P7 blocco 3: gruppi di sprite, MOVETO a tick e path degli sprite.
+add_executable(gmb_gfx_sprite_groups_selfcheck tests/gmb_gfx_sprite_groups_selfcheck.c)
+target_link_libraries(gmb_gfx_sprite_groups_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_gfx_sprite_groups_selfcheck PRIVATE include)
+add_test(NAME gmb_gfx_sprite_groups_selfcheck COMMAND gmb_gfx_sprite_groups_selfcheck)
+
+add_executable(gmb_gfx_sprite_path_selfcheck tests/gmb_gfx_sprite_path_selfcheck.c)
+target_link_libraries(gmb_gfx_sprite_path_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_gfx_sprite_path_selfcheck PRIVATE include)
+add_test(NAME gmb_gfx_sprite_path_selfcheck COMMAND gmb_gfx_sprite_path_selfcheck)
+
+# P7 blocco 4: schermo di testo 80×25 a celle (modello + render deterministico).
+add_executable(gmb_gfx_textscreen_selfcheck tests/gmb_gfx_textscreen_selfcheck.c)
+target_link_libraries(gmb_gfx_textscreen_selfcheck PRIVATE gmb_runtime)
+target_include_directories(gmb_gfx_textscreen_selfcheck PRIVATE include)
+add_test(NAME gmb_gfx_textscreen_selfcheck COMMAND gmb_gfx_textscreen_selfcheck)
 
 add_executable(gmb_sb_selfcheck tests/gmb_sb_selfcheck.c)
 target_link_libraries(gmb_sb_selfcheck PRIVATE gmb_runtime)

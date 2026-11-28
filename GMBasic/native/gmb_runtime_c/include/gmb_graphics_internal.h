@@ -102,4 +102,24 @@ int png_decode(const unsigned char* data, size_t len, uint32_t** out_px, int* ou
 int gmb_gfx_register_rgba(uint32_t* px, int w, int h);
 int save_png_rgb24(const char* path, const uint32_t* px, int w, int h);
 
+/* Rotazione/scala EFFETTIVE di uno sprite: matrice affine 2x3 decomposta (rot = atan2(b,a),
+ * scale = |(a,b)|/|(c,d)|), altrimenti rotazione/scala esplicite. Unica sede della
+ * decomposizione: disegno singolo, collisione per pixel e disposizione dei gruppi. */
+void gmb_gfx_sprite_rot_scale(const gmb_gfx_sprite_t* s, double* rot, double* sx, double* sy);
+
+/* ---- Gruppi di sprite (gmb_graphics_sprite_group.c) ----
+ * La testa comanda il blocco; i membri sono disposti in griglia rigida (posizione,
+ * rotazione, scala e matrice della testa) e le loro impostazioni si salvano alla creazione
+ * per essere ripristinate allo scioglimento. */
+int gmb_gfx_group_head_of(int id);      /* 0 = non in gruppo; == id se e' la testa */
+int gmb_gfx_group_is_member(int id);
+int gmb_gfx_group_size(int head, int* cols, int* rows);   /* 0 = non e' testa di gruppo */
+int gmb_gfx_group_relayout(int head);
+int gmb_gfx_group_draw_block(int head); /* 1 = ha disegnato il blocco, 0 = non e' testa */
+int gmb_gfx_group_reset(void);
+
+/* ---- Movimento a tick (gmb_graphics_sprite_motion.c) ---- */
+void gmb_gfx_motion_cancel(int id);
+void gmb_gfx_motion_reset(void);
+
 #endif
