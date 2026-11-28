@@ -192,6 +192,11 @@ public class NullGraphicsService : IGraphicsService
     // dei controlli TUI sono reali anche sotto NullGraphicsService (parity/test). ---
     private static readonly CGfxGraphicsService Tui = new();
     public void UiFrame(int frameMs) => Tui.UiFrame(frameMs);
+    /* WINDOWCLOSED/FORM CLOSED in headless: nessuna finestra → NON chiusa (0), canone del
+     * runtime C (`gmb_form_closed()` = flag interno, falso senza form). Il default
+     * dell'interfaccia è `true` e la gamba IL rispondeva 1 dove IL/PCode/VM-C/C99 danno 0
+     * (windows/windows_all: wclosed= 1 vs 0). */
+    public bool FormClosed() => false;
     public void UiAddCheckbox(int x, int y, int w, string label) => Tui.UiAddCheckbox(x, y, w, label);
     public void FormReset() => Tui.FormReset();
     public double UiLastHandle() => Tui.UiLastHandle();

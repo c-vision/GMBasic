@@ -934,6 +934,11 @@ public sealed partial class IlProgramCompiler
                 // (parità PCode/VM-C/C99). Senza questa normalizzazione `b = TRUE : PRINT b`
                 // stampava " 1 " solo su IL e `b = TRUE` risultava falso. Una variabile BIT
                 // (locale/globale) è già int32 e non va toccata: EmitsClrBoolValue la esclude.
+                // CONV.I4: una builtin dichiarata BIT può avere una firma CLR a 64 bit (es.
+                // IlRuntime.JoyPresent → long): senza conversione `mul` mescolava int64 e
+                // int32 e ILOptim rifiutava il corpo ("Invalid operand types in BinaryInst").
+                // Su int32/bool è un no-op; su int64 tronca al valore -1/0 corretto.
+                _il.Emit(OpCodes.Conv_I4);
                 _il.Emit(OpCodes.Ldc_I4_M1);
                 _il.Emit(OpCodes.Mul);
             }

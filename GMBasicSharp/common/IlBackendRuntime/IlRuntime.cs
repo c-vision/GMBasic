@@ -13820,7 +13820,10 @@ public static double TextWidth(string s)
         try { return CommonGraphics.Consoles.JoyManager.Instance.JoystickCount; }
         catch { return 0; }
     }
-    public static long JoyPresent(int port)
+    /* BIT (AVAILABLE): int32 -1/0 — la firma CLR deve corrispondere al tipo dichiarato BIT,
+     * altrimenti il codegen lo tratta come bool (int32) e la normalizzazione * -1 mescola
+     * int64 e int32 (ILOptim: "Invalid operand types in BinaryInst" su joy_all). */
+    public static int JoyPresent(int port)
     {
         try { return CommonGraphics.Consoles.JoyManager.Instance.IsPresent(port) ? -1 : 0; }
         catch { return 0; }
