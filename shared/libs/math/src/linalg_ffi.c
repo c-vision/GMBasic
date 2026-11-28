@@ -26,6 +26,8 @@
 #include "gm_linalg.h"
 #include "gm_decomp2.h"
 #include "gm_matfun.h"
+#include "gm_eig.h"
+#include "gm_sparse_linalg.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -429,4 +431,370 @@ i64 ofx_linalg_nullspace(const double *a, i64 a_n, i64 rows, i64 cols, double *o
     }
     free(U); free(S); free(VT);
     return r;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * TERZA ONDATA — autovalori/autovettori, funzioni matriciali eigenwise,
+ * angoli fra sottospazi. Convenzioni:
+ *   EVD  simmetrica (Jacobi): A = V·diag(d)·Vᵀ, d ascendenti, V colonne.
+ *   EIG  generale: wr/wi (n) e vr/vi (n×n, colonna j = autovettore j);
+ *        il vettore di una coppia complessa è null(vettore destro reale).
+ *   COSM/SINM/TANM/SIGNM/FRACTIONALPOWER: f(A) = V·diag(f(d))·Vᵀ via EVD
+ *        SIMMETRICA (stessa semantica del builtin LINALG, che usa Jacobi).
+ *   SUBSPACEANGLES: angoli principali fra gli spazi delle colonne (SVD delle
+ *        basi ortonormali), resi in out_ (min(rA,rB) valori), rende il numero.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Ordina per autovalore crescente le coppie (valore, colonna di V). */
+static void eig_pairs_sort_asc(i64 n, double *val, double *vec)
+{
+    for (i64 i = 1; i < n; i++)
+        for (i64 j = i; j > 0 && val[j - 1] > val[j]; j--)
+        {
+            double t = val[j - 1]; val[j - 1] = val[j]; val[j] = t;
+            for (i64 k = 0; k < n; k++)
+            {
+                double v = vec[k * n + (j - 1)];
+                vec[k * n + (j - 1)] = vec[k * n + j];
+                vec[k * n + j] = v;
+            }
+        }
+}
+
+/* EVD(a, n, vals, vecs) — A = V·diag(d)·Vᵀ (A simmetrica). d ascendenti. */
+i64 ofx_linalg_evd(const double *a, i64 a_n, i64 n,
+                   double *vals, i64 vals_n, double *vecs, i64 vecs_n)
+{
+    (void)a_n;
+    if (!a || !vals || !vecs || n <= 0 || n > 100000
+        || vals_n < n || vecs_n < n * n) return -1;
+    dmat_eig_jacobi((int)n, a, vals, vecs);
+    eig_pairs_sort_asc(n, vals, vecs);
+    return 0;
+}
+
+/* Ultimo vettore singolare destro (colonna di V) di una matrice n×n. */
+static int right_null_vector(i64 n, const double *m, double *out)
+{
+    double *U = (double *)malloc((size_t)(n * n) * sizeof(double));
+    double *S = (double *)malloc((size_t)n * sizeof(double));
+    double *VT = (double *)malloc((size_t)(n * n) * sizeof(double));
+    if (!U || !S || !VT) { free(U); free(S); free(VT); return -1; }
+    int rc = -1;
+    if (gm_linalg_svd((int)n, (int)n, m, U, S, VT) == GM_OK)
+    {
+        for (i64 i = 0; i < n; i++) out[i] = VT[(n - 1) * n + i];
+        rc = 0;
+    }
+    free(U); free(S); free(VT);
+    return rc;
+}
+
+/* EIG(a, n, wr, wi, vr, vi) — autovalori generali + autovettori destri.
+ * Per ogni autovalore il vettore è il null vector destro di (A - λI): reale
+ * per λ reale, x+i·y dal sistema reale [[A-aI,-bI],[bI,A-aI]] per λ=a+bi. */
+i64 ofx_linalg_eig(const double *a, i64 a_n, i64 n,
+                   double *wr, i64 wr_n, double *wi, i64 wi_n,
+                   double *vr, i64 vr_n, double *vi, i64 vi_n)
+{
+    (void)a_n;
+    if (!a || !wr || !wi || !vr || !vi || n <= 0 || n > 100000) return -1;
+    if (wr_n < n || wi_n < n || vr_n < n * n || vi_n < n * n) return -1;
+    if (gm_eig_qr((int)n, a, wr, wi) != GM_OK) return -1;
+    double scale = 0.0;
+    for (i64 i = 0; i < n; i++) { double v = fabs(wr[i]); if (v > scale) scale = v; }
+    if (scale <= 0.0) scale = 1.0;
+    double wmax = 0.0;
+    for (i64 i = 0; i < n; i++) { double v = fabs(wi[i]); if (v > wmax) wmax = v; }
+    double imag_tol = 1e-12 * (scale > wmax ? scale : wmax);
+    for (i64 j = 0; j < n; j++)
+    {
+        if (fabs(wi[j]) <= imag_tol)
+        {
+            double *M = (double *)malloc((size_t)(n * n) * sizeof(double));
+            double *z = (double *)malloc((size_t)n * sizeof(double));
+            if (!M || !z) { free(M); free(z); return -1; }
+            for (i64 i = 0; i < n; i++)
+                for (i64 k = 0; k < n; k++)
+                    M[i * n + k] = a[i * n + k] - (i == k ? wr[j] : 0.0);
+            int rc = right_null_vector(n, M, z);
+            free(M);
+            if (rc != 0) { free(z); return -1; }
+            /* Normalizza: componente a modulo massimo = 1 (base deterministica). */
+            i64 best = 0;
+            for (i64 i = 1; i < n; i++)
+                if (fabs(z[i]) > fabs(z[best])) best = i;
+            double norm = z[best];
+            for (i64 i = 0; i < n; i++)
+            {
+                vr[i * n + j] = norm != 0.0 ? z[i] / norm : z[i];
+                vi[i * n + j] = 0.0;
+            }
+            free(z);
+        }
+        else
+        {
+            i64 n2 = 2 * n;
+            double *M = (double *)malloc((size_t)(n2 * n2) * sizeof(double));
+            double *z = (double *)malloc((size_t)n2 * sizeof(double));
+            if (!M || !z) { free(M); free(z); return -1; }
+            double ar = wr[j], bi = wi[j];
+            for (i64 i = 0; i < n2; i++)
+                for (i64 k = 0; k < n2; k++) M[i * n2 + k] = 0.0;
+            for (i64 i = 0; i < n; i++)
+                for (i64 k = 0; k < n; k++)
+                {
+                    double v = a[i * n + k] - (i == k ? ar : 0.0);
+                    M[i * n2 + k]           = v;          /* A - aI      */
+                    M[(n + i) * n2 + (n + k)] = v;        /* A - aI      */
+                }
+            for (i64 i = 0; i < n; i++)
+            {
+                M[i * n2 + (n + i)]           = -bi;      /* -bI */
+                M[(n + i) * n2 + i]           =  bi;      /* +bI */
+            }
+            int rc = right_null_vector(n2, M, z);
+            free(M);
+            if (rc != 0) { free(z); return -1; }
+            /* Normalizza: componente a modulo massimo = 1 (base deterministica). */
+            i64 best = 0;
+            for (i64 i = 1; i < n2; i++)
+                if (fabs(z[i]) > fabs(z[best])) best = i;
+            double norm = z[best];
+            if (norm != 0.0)
+                for (i64 i = 0; i < n2; i++) z[i] /= norm;
+            for (i64 i = 0; i < n; i++)
+            {
+                vr[i * n + j] = z[i];
+                vi[i * n + j] = z[n + i];
+            }
+            free(z);
+        }
+    }
+    return 0;
+}
+
+/* Funzione matriciale simmetrica: out = V·diag(f(d))·Vᵀ. */
+static i64 matfun_sym(const double *a, i64 n, double (*f)(double), double *out)
+{
+    if (!a || !out || n <= 0 || n > 100000) return -1;
+    i64 nn = n * n;
+    double *d = (double *)malloc((size_t)n * sizeof(double));
+    double *V = (double *)malloc((size_t)nn * sizeof(double));
+    if (!d || !V) { free(d); free(V); return -1; }
+    dmat_eig_jacobi((int)n, a, d, V);
+    for (i64 i = 0; i < n; i++)
+        for (i64 j = 0; j < n; j++)
+        {
+            double s = 0;
+            for (i64 k = 0; k < n; k++) s += V[i * n + k] * f(d[k]) * V[j * n + k];
+            out[i * n + j] = s;
+        }
+    free(d); free(V);
+    return 0;
+}
+
+i64 ofx_linalg_sinm(const double *a, i64 a_n, i64 n, double *out, i64 out_n)
+{
+    (void)a_n;
+    if (out_n < n * n) return -1;
+    return matfun_sym(a, n, sin, out);
+}
+i64 ofx_linalg_cosm(const double *a, i64 a_n, i64 n, double *out, i64 out_n)
+{
+    (void)a_n;
+    if (out_n < n * n) return -1;
+    return matfun_sym(a, n, cos, out);
+}
+i64 ofx_linalg_tanm(const double *a, i64 a_n, i64 n, double *out, i64 out_n)
+{
+    (void)a_n;
+    if (out_n < n * n) return -1;
+    return matfun_sym(a, n, tan, out);
+}
+static double sign_of(double x) { return x == 0.0 ? 0.0 : (x > 0.0 ? 1.0 : -1.0); }
+i64 ofx_linalg_signm(const double *a, i64 a_n, i64 n, double *out, i64 out_n)
+{
+    (void)a_n;
+    if (out_n < n * n) return -1;
+    return matfun_sym(a, n, sign_of, out);
+}
+i64 ofx_linalg_fractionalpower(const double *a, i64 a_n, i64 n, double p,
+                               double *out, i64 out_n)
+{
+    (void)a_n;
+    if (!a || !out || n <= 0 || n > 100000 || out_n < n * n) return -1;
+    i64 nn = n * n;
+    double *d = (double *)malloc((size_t)n * sizeof(double));
+    double *V = (double *)malloc((size_t)nn * sizeof(double));
+    if (!d || !V) { free(d); free(V); return -1; }
+    dmat_eig_jacobi((int)n, a, d, V);
+    for (i64 i = 0; i < nn; i++) out[i] = 0.0;
+    for (i64 i = 0; i < n; i++)
+        for (i64 j = 0; j < n; j++)
+        {
+            double s = 0;
+            for (i64 k = 0; k < n; k++) s += V[i * n + k] * pow(d[k], p) * V[j * n + k];
+            out[i * n + j] = s;
+        }
+    free(d); free(V);
+    return 0;
+}
+
+/* Base ortonormale dello spazio delle colonne di A rows×cols (SVD).
+ * out rows×r, rende r; `rows<cols` passa dalla trasposta. */
+static i64 orth_basis(const double *a, i64 rows, i64 cols, double *out, i64 out_n,
+                      i64 *out_r)
+{
+    if (!a || !out || rows <= 0 || cols <= 0) return -1;
+    if (rows >= cols)
+    {
+        i64 nn = rows * cols, nc = cols * cols;
+        double *U = (double *)malloc((size_t)nn * sizeof(double));
+        double *S = (double *)malloc((size_t)cols * sizeof(double));
+        double *VT = (double *)malloc((size_t)nc * sizeof(double));
+        if (!U || !S || !VT) { free(U); free(S); free(VT); return -1; }
+        i64 r = -1;
+        if (gm_linalg_svd((int)rows, (int)cols, a, U, S, VT) == GM_OK)
+        {
+            double smax = S[0];
+            for (i64 i = 1; i < cols; i++) if (S[i] > smax) smax = S[i];
+            double tol = (double)(rows > cols ? rows : cols) * 1e-12 * (smax > 0 ? smax : 1.0);
+            i64 k = 0;
+            while (k < cols && S[k] > tol) k++;
+            if (out_n >= rows * k)
+            {
+                for (i64 i = 0; i < rows; i++)
+                    for (i64 j = 0; j < k; j++) out[i * k + j] = U[i * cols + j];
+                r = k;
+            }
+        }
+        free(U); free(S); free(VT);
+        if (r < 0) return -1;
+        *out_r = r;
+        return 0;
+    }
+    /* rows < cols: SVD di Aᵀ (cols×rows); lo spazio delle colonne di A è V
+     * (rows×rows) = VTᵀ della SVD di Aᵀ. */
+    i64 m = cols, n = rows;
+    double *At = (double *)malloc((size_t)(m * n) * sizeof(double));
+    double *U = (double *)malloc((size_t)(m * n) * sizeof(double));
+    double *S = (double *)malloc((size_t)n * sizeof(double));
+    double *VT = (double *)malloc((size_t)(n * n) * sizeof(double));
+    if (!At || !U || !S || !VT) { free(At); free(U); free(S); free(VT); return -1; }
+    for (i64 i = 0; i < rows; i++)
+        for (i64 j = 0; j < cols; j++) At[j * rows + i] = a[i * cols + j];
+    i64 r = -1;
+    if (gm_linalg_svd((int)m, (int)n, At, U, S, VT) == GM_OK)
+    {
+        double smax = S[0];
+        for (i64 i = 1; i < n; i++) if (S[i] > smax) smax = S[i];
+        double tol = (double)(m > n ? m : n) * 1e-12 * (smax > 0 ? smax : 1.0);
+        i64 k = 0;
+        while (k < n && S[k] > tol) k++;
+        if (out_n >= rows * k)
+        {
+            for (i64 i = 0; i < rows; i++)
+                for (i64 j = 0; j < k; j++) out[i * k + j] = VT[j * rows + i];
+            r = k;
+        }
+    }
+    free(At); free(U); free(S); free(VT);
+    if (r < 0) return -1;
+    *out_r = r;
+    return 0;
+}
+
+/* SUBSPACEANGLES(a, rows, cols, b, rows, cols, out) — angoli principali fra
+ * gli spazi delle colonne; out ha min(rA,rB) valori (almeno min(cols_a,cols_b)). */
+i64 ofx_linalg_subspace_angles(const double *a, i64 a_n, i64 rows_a, i64 cols_a,
+                               const double *b, i64 b_n, i64 rows_b, i64 cols_b,
+                               double *out, i64 out_n)
+{
+    (void)a_n; (void)b_n;
+    if (!a || !b || !out || rows_a <= 0 || cols_a <= 0 || rows_b != rows_a || cols_b <= 0)
+        return -1;
+    i64 cap = rows_a * (cols_a < cols_b ? cols_a : cols_b);
+    double *Ba = (double *)malloc((size_t)cap * sizeof(double));
+    double *Bb = (double *)malloc((size_t)cap * sizeof(double));
+    if (!Ba || !Bb) { free(Ba); free(Bb); return -1; }
+    i64 ra = 0, rb = 0;
+    if (orth_basis(a, rows_a, cols_a, Ba, cap, &ra) != 0
+        || orth_basis(b, rows_b, cols_b, Bb, cap, &rb) != 0)
+    { free(Ba); free(Bb); return -1; }
+    i64 len = ra < rb ? ra : rb;
+    if (len <= 0 || out_n < len) { free(Ba); free(Bb); return -1; }
+    /* C = Baᵀ·Bb (ra×rb), poi valori singolari di C (trasponendo se serve). */
+    i64 cn = ra * rb;
+    double *C = (double *)malloc((size_t)cn * sizeof(double));
+    double *S = (double *)malloc((size_t)(len) * sizeof(double));
+    if (!C || !S) { free(Ba); free(Bb); free(C); free(S); return -1; }
+    for (i64 i = 0; i < ra; i++)
+        for (i64 j = 0; j < rb; j++)
+        {
+            double s = 0;
+            for (i64 k = 0; k < rows_a; k++) s += Ba[k * ra + i] * Bb[k * rb + j];
+            C[i * rb + j] = s;
+        }
+    int rc = -1;
+    i64 m = ra, n = rb;
+    double *Ct = NULL;
+    const double *src = C;
+    if (m < n)
+    {
+        Ct = (double *)malloc((size_t)cn * sizeof(double));
+        if (!Ct) { free(Ba); free(Bb); free(C); free(S); return -1; }
+        for (i64 i = 0; i < ra; i++)
+            for (i64 j = 0; j < rb; j++) Ct[j * ra + i] = C[i * rb + j];
+        i64 t = m; m = n; n = t;
+        src = Ct;
+    }
+    double *U = (double *)malloc((size_t)(m * n) * sizeof(double));
+    double *VT = (double *)malloc((size_t)(n * n) * sizeof(double));
+    if (U && VT && gm_linalg_svd((int)m, (int)n, src, U, S, VT) == GM_OK)
+    {
+        for (i64 i = 0; i < len; i++)
+        {
+            double sv = S[i];
+            if (sv > 1.0) sv = 1.0;
+            if (sv < -1.0) sv = -1.0;
+            out[i] = acos(sv);
+        }
+        rc = len;
+    }
+    free(U); free(VT); free(Ct); free(C); free(S); free(Ba); free(Bb);
+    return rc;
+}
+
+/* SOLVETRIANGULAR(a, n, b, n, lower, x) — risolve A x = b con A triangolare
+ * n×n (lower != 0: triangolare inferiore, altrimenti superiore). Rende 0/-1. */
+i64 ofx_linalg_solve_triangular(const double *a, i64 a_n, i64 n,
+                                const double *b, i64 b_n, i64 lower,
+                                double *x, i64 x_n)
+{
+    (void)a_n;
+    if (!a || !b || !x || n <= 0 || n > 100000 || b_n < n || x_n < n) return -1;
+    if (lower)
+    {
+        for (i64 i = 0; i < n; i++)
+        {
+            double s = 0;
+            for (i64 j = 0; j < i; j++) s += a[i * n + j] * x[j];
+            double dii = a[i * n + i];
+            if (dii == 0.0) return -1;
+            x[i] = (b[i] - s) / dii;
+        }
+    }
+    else
+    {
+        for (i64 i = n - 1; i >= 0; i--)
+        {
+            double s = 0;
+            for (i64 j = i + 1; j < n; j++) s += a[i * n + j] * x[j];
+            double dii = a[i * n + i];
+            if (dii == 0.0) return -1;
+            x[i] = (b[i] - s) / dii;
+        }
+    }
+    return 0;
 }

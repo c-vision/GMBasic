@@ -13,11 +13,11 @@
 '   - le funzioni scalari rendono il valore (-1 su input non valido, come il builtin);
 '   - le procedure rendono 0 = ok, -1 = errore (singolare, dimensioni, buffer corto).
 '
-' Questa è la prima ondata (scalari + solve/inversa) e la seconda (decomposizioni e
-' funzioni matriciali con uscite piatte): LU/QR/SVD/Cholesky/Hessenberg/Schur,
-' PINVERSE, EXPM/LOGM/SQRTM, POLAR, ORTH, NULLSPACE. Restano in `LINALG` builtin le
-' funzioni con ritorno composto non ancora coperte (EIG/EVD, SINM/COSM/TANM/SIGNM,
-' FRACTIONALPOWER, SUBSPACEANGLES): quando LINALGX copre l'intera superficie, il
+' Questa è la prima ondata (scalari + solve/inversa), la seconda (decomposizioni e
+' funzioni matriciali con uscite piatte: LU/QR/SVD/Cholesky/Hessenberg/Schur,
+' PINVERSE, EXPM/LOGM/SQRTM, POLAR, ORTH, NULLSPACE) e la terza (autovalori e
+' autovettori EVD/EIG, funzioni matriciali eigenwise SINM/COSM/TANM/SIGNM/
+' FRACTIONALPOWER, SUBSPACEANGLES). Quando LINALGX copre l'intera superficie, il
 ' namespace prende il nome `LINALG` e il builtin viene ritirato (stessa trafila di
 ' TIMESERIESX→TIMESERIES).
 
@@ -76,3 +76,27 @@ DECLARE FUNCTION POLAR LIB "gmbmath" ALIAS "ofx_linalg_polar" (a() AS DOUBLE, n 
 DECLARE FUNCTION ORTH LIB "gmbmath" ALIAS "ofx_linalg_orth" (a() AS DOUBLE, rows AS LONG, cols AS LONG, out_() AS DOUBLE) AS LONG
 ' Base ortonormale del nucleo destro (SVD, rows>=cols): out cols×(cols-r); rende r.
 DECLARE FUNCTION NULLSPACE LIB "gmbmath" ALIAS "ofx_linalg_nullspace" (a() AS DOUBLE, rows AS LONG, cols AS LONG, out_() AS DOUBLE) AS LONG
+
+' ═══════════════════════════════════════════════════════════════════════════
+' TERZA ONDATA — autovalori/autovettori, funzioni matriciali, sottospazi.
+' ═══════════════════════════════════════════════════════════════════════════
+
+' A = V·diag(d)·Vᵀ (A SIMMETRICA): d ha n autovalori ASCENDENTI, vectors n×n
+' (colonna k = autovettore k). Rende 0 = ok / -1.
+DECLARE FUNCTION EVD LIB "gmbmath" ALIAS "ofx_linalg_evd" (a() AS DOUBLE, n AS LONG, vals_() AS DOUBLE, vecs_() AS DOUBLE) AS LONG
+' Autovalori generali + autovettori destri: wr/wi n valori, vr/vi n×n (colonna j =
+' autovettore j). Autovettore reale per wi=0; per la coppia complessa il vettore è
+' x+i·y. Rende 0 = ok / -1.
+DECLARE FUNCTION EIG LIB "gmbmath" ALIAS "ofx_linalg_eig" (a() AS DOUBLE, n AS LONG, wr_() AS DOUBLE, wi_() AS DOUBLE, vr_() AS DOUBLE, vi_() AS DOUBLE) AS LONG
+' f(A) = V·diag(f(d))·Vᵀ via EVD SIMMETRICA (stessa semantica del builtin LINALG).
+DECLARE FUNCTION SINM LIB "gmbmath" ALIAS "ofx_linalg_sinm" (a() AS DOUBLE, n AS LONG, out_() AS DOUBLE) AS LONG
+DECLARE FUNCTION COSM LIB "gmbmath" ALIAS "ofx_linalg_cosm" (a() AS DOUBLE, n AS LONG, out_() AS DOUBLE) AS LONG
+DECLARE FUNCTION TANM LIB "gmbmath" ALIAS "ofx_linalg_tanm" (a() AS DOUBLE, n AS LONG, out_() AS DOUBLE) AS LONG
+DECLARE FUNCTION SIGNM LIB "gmbmath" ALIAS "ofx_linalg_signm" (a() AS DOUBLE, n AS LONG, out_() AS DOUBLE) AS LONG
+' A^p (potenza principale) via EVD simmetrica; out n×n.
+DECLARE FUNCTION FRACTIONALPOWER LIB "gmbmath" ALIAS "ofx_linalg_fractionalpower" (a() AS DOUBLE, n AS LONG, p AS DOUBLE, out_() AS DOUBLE) AS LONG
+' Angoli principali fra gli spazi delle COLONNE di a e b (stesse righe): out ha
+' min(rA,rB) valori (dimensionare almeno min(cols_a, cols_b)); rende il numero o -1.
+DECLARE FUNCTION SUBSPACEANGLES LIB "gmbmath" ALIAS "ofx_linalg_subspace_angles" (a() AS DOUBLE, rows_a AS LONG, cols_a AS LONG, b() AS DOUBLE, rows_b AS LONG, cols_b AS LONG, out_() AS DOUBLE) AS LONG
+' Risolve A x = b con A triangolare n×n (lower<>0 = inferiore): x ha n valori.
+DECLARE FUNCTION SOLVETRIANGULAR LIB "gmbmath" ALIAS "ofx_linalg_solve_triangular" (a() AS DOUBLE, n AS LONG, b() AS DOUBLE, lower AS LONG, x() AS DOUBLE) AS LONG
