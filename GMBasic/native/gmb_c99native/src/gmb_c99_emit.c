@@ -1693,6 +1693,16 @@ static int fn_ret_is_mat(const fn_info_t* fn);
 static int fn_ret_out_abi(const fn_info_t* fn);
 static int user_fn_exists(ctx_t* c, const char* name, int nargs);
 
+/* Una CALL il cui nome ha un TokenKind "matrice/decomposizione" NON è quel builtin se
+ * esiste una FUNCTION/DECLARE (utente o .inc) omonima con la STESSA arità: es.
+ * `LINALGX.SVD(a, rows, cols, u, s, vt) AS LONG` ha il TokenKind di `LINALG.SVD` ma
+ * rende un LONG, non un valore matrice. Le euristiche di classificazione (is_array,
+ * matrix_value, decomp_kind) devono consultare PRIMA la funzione risolta. */
+static int call_is_user_fn(ctx_t* c, const gmb_expr_t* e)
+{
+    return e && e->kind == GMB_EXPR_CALL && user_fn_exists(c, e->var, e->nargs);
+}
+
 static int dim_arr_init_kind(ctx_t* c, const gmb_expr_t* e) {
     /* comprehension letterale LISTA `[sel FOR var IN src ...]` (ctype 0, senza annotazione
      * di tipo esplicita — dict/set hanno gia' AS DICT/HASHSET OF... che li instrada al
@@ -3912,7 +3922,7 @@ static void reg_let_assign(ctx_t* c, gmb_stmt_t* s, vars_t* scope) {
             if (let_shadow && tv) { tv->late_local = 1; tv->decl_indent = 0; }
             /* F2: `x = MATRIX.TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX(...)` su variabile
              * implicita → matrice rank-2 nativa (double* + __bK). */
-            if (s->value && s->value->kind == GMB_EXPR_CALL
+            if (s->value && s->value->kind == GMB_EXPR_CALL && !call_is_user_fn(c, s->value)
                 && (s->value->tk == GMB_TOK_Transpose || s->value->tk == GMB_TOK_MatrixSlice
                     || s->value->tk == GMB_TOK_MatrixReshape || s->value->tk == GMB_TOK_MatrixClone
                     || s->value->tk == GMB_TOK_MatrixRow || s->value->tk == GMB_TOK_MatrixCol
@@ -4121,7 +4131,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
             v->dim_stmt = (const void*)s;
             /* `DIM lu = LINALG.LU(a)` (o MATRIX.LU): la variabile è una DECOMPOSIZIONE — i
              * campi `.L/.U/...` sono i fattori (LINALG.FACTOR). */
-            if (s->dim_init) {
+            if (s->dim_init && !call_is_user_fn(c, s->dim_init)) {
                 int dk = 0;
                 switch (s->dim_init->tk) {
                 case GMB_TOK_Lu: case GMB_TOK_LinAlgLuFunc: dk = 1; break;
@@ -4347,7 +4357,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     v->matrix_value = 1;
                 }
                 /* F2: TRANSPOSE/SLICE/RESHAPE/CLONEMATRIX → valore matrice rank-2. */
-                else if (s->dim_init->tk == GMB_TOK_Transpose
+                else if (!call_is_user_fn(c, s->dim_init) && (s->dim_init->tk == GMB_TOK_Transpose
                     || s->dim_init->tk == GMB_TOK_MatrixSlice
                     || s->dim_init->tk == GMB_TOK_MatrixReshape
                     || s->dim_init->tk == GMB_TOK_MatrixClone
@@ -4378,7 +4388,7 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     || s->dim_init->tk == GMB_TOK_MatrixSignm
                     || s->dim_init->tk == GMB_TOK_MatrixOrth
                     || s->dim_init->tk == GMB_TOK_MatrixFractionalPower
-                    || is_matrix_factor_call(s->dim_init)) {
+                    || is_matrix_factor_call(s->dim_init))) {
                     v->is_array = 1; v->ndims = 2; v->matrix = 0; v->jagged = 0; v->dyn_len = 0;
                     /* Stage C backend C: anche i risultati delle funzioni a valore sono
                      * descrittori gmb_matrix_t (unica rappresentazione dei valori matrice). */
