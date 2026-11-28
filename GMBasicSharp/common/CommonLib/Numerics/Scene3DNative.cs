@@ -233,6 +233,23 @@ public static class Scene3DNative
     public static long Weight(long o, long v, long bone, double w)
     { var rc = WeightRaw(o, v, bone, w); Check(rc); return rc; }
 
+    // SCENE SOUND n, freq, dur, x, y, z, dist, vol — audio posizionale (P6/M-SND):
+    // il listener è la camera, gain e pan si applicano al PCM sintetizzato.
+    [DllImport(Lib, EntryPoint = "gmb_scene_sound", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long SoundRaw(long n, double freq, double dur, double x, double y,
+                                        double z, double dist, double vol);
+    public static long Sound(long n, double freq, double dur, double x, double y,
+                             double z, double dist, double vol)
+    { var rc = SoundRaw(n, freq, dur, x, y, z, dist, vol); Check(rc); return rc; }
+
+    // SOUNDGAIN(n) / SOUNDPAN(n): gain 0..1 e pan −1..1 della sorgente, aggiornati
+    // dall'ultimo RENDER. Sono letture con sentinelle (−1 / −2 per slot vuoto):
+    // niente `Check`, che le trasformerebbe in errori di superficie.
+    [DllImport(Lib, EntryPoint = "gmb_scene_sound_gain", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double SoundGain(long n);
+    [DllImport(Lib, EntryPoint = "gmb_scene_sound_pan", CallingConvention = CallingConvention.Cdecl)]
+    public static extern double SoundPan(long n);
+
     // SCENE ANIM — chiave dell'osso al tempo di scena (P5/M-SKIN-KEY): le piste si
     // ordinano da sole e RENDER le campiona su SCENE TIME.
     [DllImport(Lib, EntryPoint = "gmb_scene_anim", CallingConvention = CallingConvention.Cdecl)]

@@ -2586,4 +2586,9 @@ public enum TokenKind
     // P5/M-SKIN-KEY — `SCENE ANIM b, t, x, y, z, yaw [, pitch, roll]`: chiave
     // dell'osso b al tempo t, campionata da RENDER. In coda.
     SceneAnim,
+    // P6/M-SND — audio posizionale: `SCENE SOUND n, freq, dur, x, y, z, dist, vol`
+    // e le letture SOUNDGAIN/SOUNDPAN dei valori calcolati dalla camera (listener).
+    SceneSound,
+    SceneSoundGain,
+    SceneSoundPan,
   }

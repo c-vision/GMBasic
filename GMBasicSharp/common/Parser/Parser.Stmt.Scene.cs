@@ -115,6 +115,9 @@ public sealed partial class Parser
             // P5/M-SKIN-KEY: chiave dell'osso al tempo di scena (6 o 8 argomenti).
             TokenKind.SceneAnim => SceneCmd(command, SceneArgsOneOf(parser,
                 "SCENE ANIM b, t, x, y, z, yaw [, pitch, roll]", 6, 8)),
+            // P6/M-SND: sorgente audio posizionale (slot, tono, posizione, distanza, volume).
+            TokenKind.SceneSound => SceneCmd(command, SceneArgs(parser, 8, 8,
+                "SCENE SOUND n, freq, dur, x, y, z, dist, vol")),
             TokenKind.ScenePresent => SceneCmd(command, SceneNoArgs(parser, "SCENE PRESENT non accetta argomenti")),
             TokenKind.SceneRender => SceneCmd(command, SceneNoArgs(parser, "SCENE RENDER non accetta argomenti")),
             TokenKind.SceneSave => SceneCmd(command, SceneArgs(parser, 1, 1, "SCENE SAVE: manca il percorso del PNG")),
@@ -163,6 +166,7 @@ public sealed partial class Parser
         "POSEBONE" => TokenKind.ScenePoseBone,
         "WEIGHT" => TokenKind.SceneWeight,
         "ANIM" => TokenKind.SceneAnim,
+        "SOUND" => TokenKind.SceneSound,
         "RENDER" => TokenKind.SceneRender,
         "SAVE" => TokenKind.SceneSave,
         _ => TokenKind.Unknown

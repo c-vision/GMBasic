@@ -214,6 +214,11 @@ double gmb_3d_scene_bytes(void);
 void gmb_3d_scene_set_texture(unsigned char* buf, int w, int h);
 void gmb_3d_scene_camera_get(float eye[3], float* yaw, float* pitch);
 void gmb_3d_scene_camera_set(float x, float y, float z, float yaw, float pitch);
+/* P6/M-SND (gmb_3d_audio.c): sorgenti posizionali. RESET le azzera con il resto
+ * della scena; RENDER ricalcola gain e pan dalla camera (listener) una volta per
+ * frame. La superficie pubblica e' in gmb_3d.h. */
+void gmb_3d_sound_reset(void);
+void gmb_3d_sound_update(void);
 void gmb_3d_actor_reset(void);
 void gmb_3d_actor_sync_feet(double eye_y);
 

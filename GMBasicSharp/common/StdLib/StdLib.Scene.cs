@@ -173,7 +173,20 @@ public sealed partial class StdLib
                 [
                     new Parameter(-1, T(TokenKind.Identifier, "name"), new StringType(), noFlags, null, false)
                 ],
-                new DoubleType(), TokenKind.SceneStats)
+                new DoubleType(), TokenKind.SceneStats),
+
+            // SOUNDGAIN(n) / SOUNDPAN(n): gain 0..1 e pan −1..1 della sorgente
+            // posizionale (P6/M-SND); −1 / −2 quando lo slot è vuoto.
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SceneSoundGain, "SOUNDGAIN"),
+                [
+                    new Parameter(-1, T(TokenKind.Identifier, "n"), new LongType(), noFlags, null, false)
+                ],
+                new DoubleType(), TokenKind.SceneSoundGain),
+            new NativeProcedureDefinition(-1, publicFlag, T(TokenKind.SceneSoundPan, "SOUNDPAN"),
+                [
+                    new Parameter(-1, T(TokenKind.Identifier, "n"), new LongType(), noFlags, null, false)
+                ],
+                new DoubleType(), TokenKind.SceneSoundPan)
         };
 
         var types = new Dictionary<string, DataType>(StringComparer.OrdinalIgnoreCase);

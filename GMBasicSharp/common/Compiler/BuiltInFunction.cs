@@ -1628,4 +1628,8 @@ MCPSERVERMARKETPLACELIST = 730, MCPSERVERMARKETPLACEGET = 731, MCPLISTTOOLSSERVE
     // P5/M-STATS — misure della scena per nome: "tris", "draw", "culled",
     // "pixels", "objs", "bytes", "allocs", "renders", "renders_max"; −1 = ignota.
     SCENE_STATS = 3940,     // (name$)     → gmb_scene_stats
+    // P6/M-SND — audio posizionale: gain e pan della sorgente, calcolati dalla
+    // camera (listener). Sentinelle −1/−2 per slot vuoto: sono letture.
+    SCENE_SOUNDGAIN = 3941, // (n)         → gmb_scene_sound_gain (0..1, −1 = vuoto)
+    SCENE_SOUNDPAN = 3942,  // (n)         → gmb_scene_sound_pan (−1..1, −2 = vuoto)
 }

@@ -417,6 +417,9 @@ set(GMB_ALL_SRCS
     # P5/M-SKIN: skinning a 64 ossa (ossa, pose, pesi e fusione lineare), stesso
     # motivo: matrici e pesi in un solo posto, fuori dalla facciata dei comandi.
     src/gmb_3d_skin.c
+    # P6/M-SND: audio posizionale (sorgenti, gain/pan dal listener = camera),
+    # stesso motivo: la facciata dei comandi non cresce.
+    src/gmb_3d_audio.c
     # SCENE PICK (buffer di id additivo, spento di default): stato del flag e
     # superficie, separati per non superare le 1200 righe del dominio.
     src/gmb_3d_pick.c
@@ -873,6 +876,7 @@ add_library(gmb_3d SHARED
     src/gmb_3d_lod.c
     src/gmb_3d_inst.c
     src/gmb_3d_skin.c
+    src/gmb_3d_audio.c
     # gmb_3d_io.o (dentro gmb_runtime) usa gm_tex_* e il raster della suite: le stesse
     # sorgenti che compila l'oracolo, così la dylib non resta con simboli irrisolti e
     # un dlopen dal C# non muore al primo WORLD LOAD.
@@ -1647,6 +1651,7 @@ add_executable(gmb_clock_selfcheck tests/gmb_clock_selfcheck.c)
 target_link_libraries(gmb_clock_selfcheck PRIVATE gmb_runtime)
 target_include_directories(gmb_clock_selfcheck PRIVATE include)
 add_test(NAME gmb_clock_selfcheck COMMAND gmb_clock_selfcheck)
+
 
 add_executable(gmb_sb_selfcheck tests/gmb_sb_selfcheck.c)
 target_link_libraries(gmb_sb_selfcheck PRIVATE gmb_runtime)

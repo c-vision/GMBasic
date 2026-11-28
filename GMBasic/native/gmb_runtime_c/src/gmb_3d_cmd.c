@@ -365,7 +365,7 @@ int64_t gmb_scene_reset(void)
     memset(g_scene_thing, 0, sizeof(g_scene_thing));
     gmb_3d_ray_reset();
     gmb_3d_stats_reset();   /* renders/renders_max del frame (M-STATS) */
-    gmb_3d_key_reset(); gmb_3d_skin_reset();   /* M-KEY: piste e tempo; M-SKIN: ossa e pesi */
+    gmb_3d_key_reset(); gmb_3d_skin_reset(); gmb_3d_sound_reset();   /* M-KEY/M-SKIN/M-SND */
     free(g_scene_sky);
     g_scene_sky = NULL;
     g_scene_sky_w = g_scene_sky_h = 0;
@@ -943,7 +943,7 @@ int64_t gmb_scene_render(void)
     /* M-KEY: le piste si campionano qui, al tempo di scena (SCENE TIME), e
      * scrivono la trasformazione negli oggetti: il resto del frame legge quella,
      * come se fosse stata data con OBJPOS. Nessuna allocazione. */
-    gmb_3d_key_sample(); gmb_3d_skin_pose_all();   /* M-SKIN: matrici degli ossi, 1/frame */
+    gmb_3d_key_sample(); gmb_3d_skin_pose_all(); gmb_3d_sound_update();   /* M-SKIN/M-SND: 1/frame */
     /* Una scena può essere fatta di solo cielo o di soli thing: il render non
      * deve pretendere una mesh (M-ORDER/M-SKY/M-THINGS). */
     if (g_scene.nobj <= 0 && g_scene.nt <= 0 && g_scene_sky == NULL)

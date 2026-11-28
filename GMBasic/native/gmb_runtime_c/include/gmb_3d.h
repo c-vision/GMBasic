@@ -611,6 +611,26 @@ int64_t gmb_scene_pick(int64_t x, int64_t y);
  * Il tempo di un frame NON è qui: si misura fuori dal motore (piano §0septies). */
 double gmb_scene_stats(const char* name);
 
+/* --- P6: audio posizionale (specifica M-SND, piano §4.3/§6) ---------------
+ * SCENE SOUND n, freq, dur, x, y, z, dist, vol: lo slot n (1..16) suona un tono
+ * `freq` Hz per `dur` secondi alla posizione (x, y, z). Il LISTENER è la camera.
+ * gain = (1 − d/dist) × vol/100 (0 oltre `dist`; dist 0 = nessuna attenuazione) e
+ * pan = proiezione della direzione camera→sorgente sull'asse destro, in −1..1
+ * (destra positiva). Il pan si applica al PCM sintetizzato, quindi il tono suona
+ * con i valori del momento del comando e il comando NON attende (effetto one-shot:
+ * nessun blocco di un worker GPM); RENDER ricalcola i valori della sorgente
+ * (M-SND-SNAP). Errori espliciti: slot fuori 1..16, freq fuori 1..20000 Hz,
+ * durata fuori 0..30 s, posizione non finita, distanza negativa, volume fuori 0..100.
+ * Senza device non si sente nulla e la superficie resta verificabile. */
+int64_t gmb_scene_sound(int64_t n, double freq, double dur, double x, double y, double z,
+                        double dist, double vol);
+/* SCENE.SOUNDGAIN(n) / SCENE.SOUNDPAN(n): gain 0..1 e pan −1..1 della sorgente
+ * n, aggiornati dall'ultimo RENDER. Sentinelle (C-SENTINEL): −1 il gain e −2 il
+ * pan quando lo slot è vuoto o fuori 1..16 (il pan valido include −1). Sono
+ * letture: non alzano errori di superficie. */
+double gmb_scene_sound_gain(int64_t n);
+double gmb_scene_sound_pan(int64_t n);
+
 /* --- P5: superficie interattiva (specifica §3.3, M-PLAYER/M-COLLIDE/M-FLOOR/M-ZONE) ---
  *
  * Assi SCENE: y = altezza, piano (x, z), fronte a yaw 0 = +z. Il corpo ha i

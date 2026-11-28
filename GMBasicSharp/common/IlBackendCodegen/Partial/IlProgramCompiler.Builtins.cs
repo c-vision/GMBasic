@@ -539,6 +539,9 @@ public sealed partial class IlProgramCompiler
             case TokenKind.SceneShoot: EmitSceneReadOneDouble(expr, nameof(IlRuntime.SceneShoot)); break;
             case TokenKind.SceneUse: EmitSceneReadOneDouble(expr, nameof(IlRuntime.SceneUse)); break;
             case TokenKind.SceneSees: EmitSceneReadOneLong(expr, nameof(IlRuntime.SceneSees)); break;
+            // P6/M-SND: gain e pan della sorgente posizionale (letture, 1 intero).
+            case TokenKind.SceneSoundGain: EmitSceneReadOneLong(expr, nameof(IlRuntime.SceneSoundGain)); break;
+            case TokenKind.SceneSoundPan: EmitSceneReadOneLong(expr, nameof(IlRuntime.SceneSoundPan)); break;
             case TokenKind.SceneShotKind: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneShotKind)); break;
             case TokenKind.SceneShotObj: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneShotObj)); break;
             case TokenKind.SceneShotDist: EmitSceneReadNoArg(expr, nameof(IlRuntime.SceneShotDist)); break;

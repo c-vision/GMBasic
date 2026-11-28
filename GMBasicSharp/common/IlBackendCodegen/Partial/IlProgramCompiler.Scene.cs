@@ -253,6 +253,14 @@ public sealed partial class IlProgramCompiler
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneAnim)));
                 return;
 
+            // P6/M-SND: slot intero e sette decimali, stessa forma di SCENE KEY.
+            case TokenKind.SceneSound:
+                RequireSceneArgs(stmt, 8, "SCENE SOUND n, freq, dur, x, y, z, dist, vol");
+                EmitInt64Argument(a[0]);
+                for (int i = 1; i < 8; i++) EmitDoubleArgument(a[i]);
+                _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.SceneSound)));
+                return;
+
             case TokenKind.ScenePresent:
                 RequireSceneArgs(stmt, 0, "SCENE PRESENT non accetta argomenti");
                 _il.Emit(OpCodes.Call, RuntimeMethod(nameof(IlRuntime.ScenePresent)));

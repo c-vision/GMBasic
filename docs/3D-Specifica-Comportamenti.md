@@ -305,6 +305,24 @@ quote sulla geometria dichiarata, `BONES` e `RESET` che azzerano pesi e piste, z
 frame; chiavi a metà tempo (posa +10), clamp prima/dopo, pista che batte il `POSEBONE`, tetto di 32
 chiavi per osso.
 
+#### Audio posizionale: `SCENE SOUND` (P6, 2026-11-28)
+
+| ID | Superficie BASIC | Comportamento implementato |
+|---|---|---|
+| `M-SND` | `SCENE SOUND n, freq, dur, x, y, z, dist, vol` | sorgente posizionale nello slot **n 1..16**: suona un tono `freq` Hz per `dur` secondi **alla posizione** `(x, y, z)` e la conserva nella scena. Il **listener è la camera** (`SCENE CAMERA`): non esiste un secondo listener |
+| `M-SND-GAIN` | attenuazione | `gain = clamp(1 − d/dist, 0, 1) × vol/100`, con `d` = distanza occhio→sorgente. Oltre `dist` il gain è **0** (clamp, mai negativo); `dist = 0` = **nessuna attenuazione** (gain = vol/100). `vol` 0..100 |
+| `M-SND-PAN` | pan | proiezione della direzione camera→sorgente sull'**asse destro** della camera, `−1` sinistra … `+1` destra, clampata. L'asse destro con up `+y` è `(−cos yaw, 0, sin yaw)`: a yaw 0 il **+x è a sinistra** (la convenzione dello schermo, `SCENE.PIXEL`). Il **pitch non entra** nel pan; sorgente sull'occhio = pan 0 |
+| `M-SND-PCM` | dove si applica il pan | nei **campioni che sintetizziamo** (`gmb_audio_sound_panned`, pan lineare: centro a piena ampiezza, gli estremi lasciano un solo canale). La tabella `dlopen` del mixer **non cambia**: nessun `Mix_SetPanning`, nessun simbolo in più |
+| `M-SND-SNAP` | pan di un tono | è uno **scatto** al momento del comando: il tono già avviato non si risuona. `RENDER` **ricalcola** gain e pan della sorgente una volta per frame (dalla camera corrente) ed è quello che leggono le due letture |
+| `M-SND-READ` | `SCENE.SOUNDGAIN(n)`, `SCENE.SOUNDPAN(n)` | gain 0..1 e pan −1..1 della sorgente; sentinelle `−1` (gain) e `−2` (pan) per slot **vuoto o fuori 1..16** (il pan valido include −1). Sono **letture**: non alzano errori di superficie |
+| `M-SND-NOWAIT` | costo | il comando **non attende**: è un effetto one-shot e non blocca un worker GPM (§0ter — in VM/C non esiste una coroutine per il frame C del syscall). I chunk si liberano al `SCENE SOUND` successivo in cui il canale ha finito (8 toni sovrapposti). Senza device (headless) non si sente nulla, ma gain e pan si calcolano lo stesso: è ciò che rende la superficie verificabile |
+| `M-SND-ERR` | argomenti non validi | errore **esplicito**, mai un no-op silenzioso: slot fuori 1..16, `freq` fuori 1..20000 Hz, `dur` fuori 0..30 s, posizione non finita, `dist` negativa, `vol` fuori 0..100. Un rifiuto non tocca lo slot |
+| `M-SND-RESET` | `RESET` | svuota gli slot con il resto della scena |
+
+Verifica: `gmb_3d_oracle --audiocheck` (**P6-SND ok=32 fail=0**, dentro `check_3d_oracle.sh`, gate
+A/B `cc`+`zcc` su `gmb_3d_audio.c`) e `shared/minitests/3d/scene_sound.bas`, identico su C99Native,
+IL, PCode e VM-C.
+
 ### 3.3 Collisione, raggi, zone
 
 | ID | Comportamento |
@@ -317,6 +335,7 @@ chiavi per osso.
 | `M-INST` | `INSTANCE o, src` fa disegnare a `o` geometria e materiale (flag, luce base) di `src`, con trasformazione e tinta di `o`; un livello solo, `INSTANCE`/`LOD` last-wins, identità di `o` in `PICK`, culling sulla geometria disegnata e raggi/quote/AABB su quella dichiarata, zero allocazioni; `RESET` azzera. |
 | `M-SKIN` | `BONES n`, `POSEBONE b, x,y,z,yaw[,pitch,roll]`, `WEIGHT o,v,bone,w`: posa dell'osso nello spazio dell'oggetto (default identità), peso 0..1 clampato, massimo due influenze normalizzate alla somma; AABB/quote/raggi/collisione sulla geometria dichiarata, culling sull'AABB dichiarato; 4 byte per vertice solo per chi usa `WEIGHT`, zero allocazioni per frame; `BONES` e `RESET` azzerano ossa e pesi. |
 | `M-STATS` | `STATS(nome$)` = una misura per nome: `tris`/`objs`/`bytes` (geometria dichiarata e memoria riservata), `draw`/`culled`/`pixels` (ultimo `RENDER`), `renders`/`renders_max` (`RENDER` per frame), `allocs` (allocazioni dall'avvio). Chiave ignota `−1`; il tempo di un frame si misura fuori dal motore. |
+| `M-SND` | `SOUND n, freq, dur, x,y,z, dist, vol` = sorgente audio posizionale nello slot `n` (1..16), listener = camera: gain lineare `(1 − d/dist) × vol/100` con clamp a 0 oltre `dist` (`dist` 0 = nessuna attenuazione) e pan `−1…+1` sull'asse destro della camera (+x a **sinistra** a yaw 0). Il pan si applica al **PCM sintetizzato** (la tabella `dlopen` del mixer non cambia), comando **non bloccante**; `SOUNDGAIN(n)`/`SOUNDPAN(n)` leggono i valori ricalcolati da `RENDER` (sentinelle `−1`/`−2` per slot vuoto); `RESET` svuota. |
 | `M-FLOOR` | `FLOORAT(x,y,z)` = **superficie più alta a o sotto `y`**, sul punto (x, z); `CEILAT` l'analogo sopra. `−1000000` = nessuna superficie. È ciò che permette di stare su un mobile senza una fisica generale. |
 | `M-ZONE` | `ZONE id,x1,y1,x2,y2,z1,z2[,tag]` (`y` = altezza): `ZONE(x,y,z)` = id della **prima** zona che contiene il punto (`y` entro `y1−2 … y2`, `x` in `x1…x2` e `z` in `z1…z2`, estremi inclusi), `−1` se nessuna; `ZONETAG(id)` = il tag (`""` se l'id non esiste). **L'ordine di creazione conta**: le zone dei piani superiori e dei mobili calpestabili vanno create **prima** di quelle sotto. Il renderer non usa le zone. |
 | `M-PASSABLE` | Flag 4: nessuna collisione, nessun soffitto e nessun gradino (auto, oggetti decorativi). Sul pavimento ci si passa attraverso **visivamente**, ma `FLOORAT` continua a vederlo. |
@@ -412,6 +431,7 @@ chiavi per osso.
 | `gmb_3d_pick.c` | **esiste dal 2026-11-26 (P5)**: flag `SCENE PICK`, aggancio del buffer di id a VIEW/RENDER, lettura `SCENE.PICK(x, y)` con le sentinelle `−1` (assente/fuori) e `−2` (buffer spento); nessuna formula duplicata (l'id lo scrive il raster in `gmb_3d_frame.c`) | `M-PICK*` |
 | `gmb_3d_move.c` | corpo, movimento con scivolamento/gradini/portali, `HIT` | `W-MOVE`, `M-COLLIDE` |
 | `gmb_3d_ray.c` | `SHOOT`/`USE`/`SEES` sui due modelli, con flag 2/4/8 | `W-SHOOT`, `M-RAYS` |
+| `gmb_3d_audio.c` | **esiste dal 2026-11-28 (P6)**: 16 sorgenti posizionali (slot, posizione, distanza, volume), gain/pan dal listener = camera, ricalcolo una volta per `RENDER`; la sintesi con pan è `gmb_audio_sound_panned` in `gmb_audio.c` (nessun simbolo nuovo nella tabella `dlopen`); nessuna allocazione per frame | `M-SND*` |
 | `gmb_3d_time.c` | passo fisso, `TICK`, mover, animazioni, scroll, lightfx | `T-*` |
 | `gmb_3d_io.c` | **esiste dal 2026-11-19 (P2)**: schema `gmb-3d` v1 `kind:"sectors"`, errori per elemento (`W-INV-FLOOR`/`W-INV-HEIGHT`/`W-INV-CCW`), load atomico; **usabile anche fuori dal GPM** (park se `gmb_cur()!=NULL`, sincrono altrimenti), così l'oracolo non avvia lo scheduler (`R11`) | `F-*`, `C-GPM` |
 | `gmb_3d_sector.c` | **esiste dal 2026-11-19 (P2)**: binding `gmb_3d_world_render` su `gm_sector_render`, null mode rispettato, nessuna allocazione per frame | `W-*`, `T-NULL` |

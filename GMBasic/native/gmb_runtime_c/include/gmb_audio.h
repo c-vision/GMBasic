@@ -17,6 +17,14 @@ void gmb_audio_sound(int frequency, double duration, int volume);
 /* PLAY "MML": sequenza musicale (bloccante). */
 void gmb_audio_play_mml(const char* mml);
 
+/* SOUND posizionale (P6/M-SND): un tono con guadagno e pan applicati ai CAMPIONI che
+ * sintetizziamo — la tabella dlopen del mixer non cambia (nessun Mix_SetPanning).
+ * `gain` 0..1 porta gia' attenuazione e volume; `pan` −1 sinistra .. +1 destra, lineare:
+ * centro a piena ampiezza, gli estremi lasciano un solo canale. NON attende (effetto
+ * one-shot): un effetto posizionale non blocca un worker GPM (§0ter); il chunk si libera
+ * al SOUND posizionale successivo. Headless: nessun device, ritorna subito. */
+void gmb_audio_sound_panned(int frequency, double duration, double gain, double pan);
+
 /* SOUND LOAD "file" AS #h: carica un WAV. Ritorna l'handle (>=1) o 0. */
 int  gmb_audio_load_sound(const char* path);
 /* SOUND PLAY #h [, canale] [, loop]: channel < 0 = canale libero. */

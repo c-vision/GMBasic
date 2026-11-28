@@ -1975,6 +1975,8 @@ static const gmb_fn_lookup_row_t gmb_fn_lookup[] = {
     { "ZTest", GMB_TOK_ZTest },
     { "ZTPoissonCdf", GMB_TOK_StatsZTPoissonCdf },
     { "ZTPoissonPmf", GMB_TOK_StatsZTPoissonPmf },
+    { "SOUNDGAIN", GMB_TOK_SceneSoundGain },
+    { "SOUNDPAN", GMB_TOK_SceneSoundPan },
 };
 
 /* Nome (grafie StdLib non ambigue o nome enum canonico) → TokenKind; Unknown altrove. */

@@ -207,7 +207,7 @@ Funzioni: `SCENE.X/Y/Z/EYE/YAW/PITCH/LIFT/HIT/FLOORZ/FLOORAT/CEILAT/TON/TX/TY/TZ
 | Buchi tra piani | `WORLD PORTALHOLE` | là non fatto |
 | Terrain con LOD | `SCENE TERRAIN` (su `gm_mesh_surface`) | riuso `gmbgfx-surface` |
 | Particelle | `SCENE PARTICLE` | — |
-| Audio 3D | `SCENE SOUND n, x,y,z, …` | — |
+| Audio 3D | `SCENE SOUND n, freq, dur, x,y,z, dist, vol` | attenuazione lineare e pan sul PCM sintetizzato, listener = camera — **consegnato** 2026-11-28 (M-SND*, `P6-SND ok=32`, `scene_sound.bas` su quattro gambe) |
 | Post-FX | `SCENE FX` (vignette, FXAA-lite) | — |
 | IO modelli | `SCENE LOAD obj|glb` | là solo a mano/JSON |
 | Debug | `SCENE DEBUG 0..3` (wireframe, frustum, normali) | — |
@@ -572,7 +572,14 @@ i blocchi **P6+** (audio 3D posizionale e input).
 
 ### P6 — Audio 3D e input (5–7 gg)
 
-* Audio posizionale (distanza + pan) sopra il mixer; listener = camera; `WORLD/SCENE SOUND`.
+* **Consegnato il 2026-11-28 — audio posizionale `SCENE SOUND`**: 16 sorgenti (slot 1..16),
+  attenuazione lineare `(1 − d/dist) × vol/100` con clamp, pan sull'asse destro della camera
+  (listener = camera) applicato ai **campioni che sintetizziamo** — la tabella `dlopen` del mixer
+  non cambia (nessun `Mix_SetPanning`), quindi nessun simbolo in più e nessun fallback da
+  documentare. Comando **non bloccante** (§0ter), letture deterministiche
+  `SCENE.SOUNDGAIN(n)`/`SCENE.SOUNDPAN(n)` per i test headless, `--audiocheck` nel gate,
+  `scene_sound.bas` su quattro gambe. Restano per il blocco: input (mouse-look, pad,
+  jump/crouch) e il synth 8 canali + MML di §5 (in gran parte già in `gmb_audio.c`).
 * Mouse-look, pad, jump/crouch; handler solo su task GPM.
 * **Accettazione**: MiniTest deterministici su attenuazione/pan; sample "walk".
 

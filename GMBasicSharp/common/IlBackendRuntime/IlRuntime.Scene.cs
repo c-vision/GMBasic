@@ -94,6 +94,11 @@ public static partial class IlRuntime
                                     double yaw, double pitch, double roll)
         => CommonLib.Scene3DNative.AnimTrs(b, t, x, y, z, yaw, pitch, roll);
 
+    // P6/M-SND: sorgente audio posizionale (il listener è la camera).
+    public static void SceneSound(long n, double freq, double dur, double x, double y,
+                                  double z, double dist, double vol)
+        => CommonLib.Scene3DNative.Sound(n, freq, dur, x, y, z, dist, vol);
+
     // SCENE PRESENT: target 3D → pagina 2D corrente (il present vero resta al main thread).
     public static void ScenePresent() => CommonLib.Scene3DNative.Present();
 
@@ -151,4 +156,8 @@ public static partial class IlRuntime
 
     // P5/M-STATS: una misura della scena per nome (−1 = chiave sconosciuta).
     public static double SceneStats(string name) => CommonLib.Scene3DNative.Stats(name);
+
+    // P6/M-SND: gain 0..1 e pan −1..1 della sorgente (sentinelle −1 / −2 se vuota).
+    public static double SceneSoundGain(long n) => CommonLib.Scene3DNative.SoundGain(n);
+    public static double SceneSoundPan(long n) => CommonLib.Scene3DNative.SoundPan(n);
 }

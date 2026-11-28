@@ -242,6 +242,8 @@ static int gmb_p_scene_verb_tk(const char* v)
         { "WEIGHT", GMB_TOK_SceneWeight },
         /* P5/M-SKIN-KEY: chiavi degli ossi (l'ANIM dei settori è di WORLD). */
         { "ANIM", GMB_TOK_SceneAnim },
+        /* P6/M-SND: sorgente audio posizionale (slot, tono, posizione, distanza, volume). */
+        { "SOUND", GMB_TOK_SceneSound },
     };
     for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
         if (strcasecmp(v, map[i].word) == 0) return (int)map[i].tk;

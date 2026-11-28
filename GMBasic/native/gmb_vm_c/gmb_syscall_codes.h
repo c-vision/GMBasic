@@ -513,6 +513,7 @@
 #define GMB_SC_SCENE_ANIM 524
 #define GMB_SC_SCENE_ANIM_TRS 525
 #define GMB_SC_WINDOW_RESIZE 519
+#define GMB_SC_SCENE_SOUND 527
 #define GMB_SC_Default 0
 #define GMB_SC_Json 1
 

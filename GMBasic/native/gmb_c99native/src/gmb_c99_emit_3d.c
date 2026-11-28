@@ -300,6 +300,18 @@ void emit_scene_domain(ctx_t* c, gmb_stmt_t* s)
         wscene(c, n == 8 ? "gmb_scene_anim_trs" : "gmb_scene_anim", a, n, s->line);
         return;
     }
+    if (tk == GMB_TOK_SceneSound)
+    {
+        /* M-SND: slot, tono (frequenza e durata), posizione, distanza udibile e
+         * volume. Il listener è la camera e gain/pan li calcola gmb_3d_audio.c. */
+        if (n != 8)
+        {
+            c99_fail(c, s->line, "SCENE SOUND n, freq, dur, x, y, z, dist, vol");
+            return;
+        }
+        wscene(c, "gmb_scene_sound", a, 8, s->line);
+        return;
+    }
     if (tk == GMB_TOK_SceneCamera)
     {
         if (n != 5) { c99_fail(c, s->line, "SCENE CAMERA x, y, z, yaw, pitch"); return; }
@@ -560,6 +572,19 @@ int emit_bf_scene(ctx_t* c, const char* name, const char* ns, gmb_tokenkind_t tk
         case GMB_TOK_SceneSees:
             if (nargs < 1) return 0;
             sb_put(&c->out, "gmb_scene_sees(");
+            emit_expr(c, args[0]);
+            sb_put(&c->out, ")");
+            return 1;
+        /* P6/M-SND: gain e pan della sorgente posizionale (1 argomento: slot). */
+        case GMB_TOK_SceneSoundGain:
+            if (nargs < 1) return 0;
+            sb_put(&c->out, "gmb_scene_sound_gain(");
+            emit_expr(c, args[0]);
+            sb_put(&c->out, ")");
+            return 1;
+        case GMB_TOK_SceneSoundPan:
+            if (nargs < 1) return 0;
+            sb_put(&c->out, "gmb_scene_sound_pan(");
             emit_expr(c, args[0]);
             sb_put(&c->out, ")");
             return 1;

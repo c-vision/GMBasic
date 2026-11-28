@@ -2410,6 +2410,112 @@ static int run_p5_skin(void)
     return fail == 0 ? 0 : 1;
 }
 
+/* ── P6: audio posizionale (M-SND) ────────────────────────────────────────────────────
+ * Senza device non c'è nulla da sentire: l'oracolo verifica i NUMERI, cioè gli stessi
+ * gain/pan che leggono SCENE.SOUNDGAIN/SOUNDPAN. Camera all'origine a yaw 0 = sguardo su
+ * +z: +x è a SINISTRA (pan −1), −x a destra (+1). Il gain è (1 − d/dist) × vol/100.
+ * Il pan si applica al PCM sintetizzato (nessun Mix_SetPanning): qui si controlla il
+ * calcolo, che è anche quello che finisce nei due canali. */
+static int run_p6_audio(void)
+{
+    int ok = 0, fail = 0;
+#define P6_CHECK(cond, ...) do { if (cond) ok++; else { fail++; printf("P6-SND fail: "); printf(__VA_ARGS__); printf("\n"); } } while (0)
+
+    P6_CHECK(gmb_scene_reset() == GMB_3D_OK, "RESET");
+    P6_CHECK(gmb_scene_view(64, 64, 60.0) == GMB_3D_OK, "VIEW");
+    P6_CHECK(gmb_scene_camera(0.0, 0.0, 0.0, 0.0, 0.0) == GMB_3D_OK, "CAMERA");
+    /* Una geometria minima: RENDER deve riuscire (è lui che aggiorna le sorgenti). */
+    P6_CHECK(gmb_scene_object(255, 255, 255) == GMB_3D_OK
+             && gmb_scene_vertex(-10.0, -10.0, 0.0, 0.0, 1.0) == GMB_3D_OK
+             && gmb_scene_vertex(10.0, -10.0, 0.0, 1.0, 1.0) == GMB_3D_OK
+             && gmb_scene_vertex(10.0, 10.0, 0.0, 1.0, 0.0) == GMB_3D_OK
+             && gmb_scene_vertex(-10.0, 10.0, 0.0, 0.0, 0.0) == GMB_3D_OK
+             && gmb_scene_quad(0, 3, 2, 1) == GMB_3D_OK
+             && gmb_scene_objpos(0.0, 0.0, 60.0, 0.0) == GMB_3D_OK, "quad");
+
+    /* Slot liberi e fuori range: sentinelle, nessun errore di superficie. */
+    P6_CHECK(gmb_scene_sound_gain(1) == -1.0 && gmb_scene_sound_pan(1) == -2.0,
+             "slot libero: gain=%g pan=%g (attesi −1/−2)",
+             gmb_scene_sound_gain(1), gmb_scene_sound_pan(1));
+    P6_CHECK(gmb_scene_sound_gain(0) == -1.0 && gmb_scene_sound_pan(17) == -2.0,
+             "slot fuori 1..16: sentinelle mancanti");
+
+    /* Davanti alla camera, a metà della distanza udibile: gain 0.5, pan 0. */
+    P6_CHECK(gmb_scene_sound(1, 440.0, 0.005, 0.0, 0.0, 10.0, 20.0, 100.0) == GMB_3D_OK,
+             "SOUND 1");
+    P6_CHECK(fabs(gmb_scene_sound_gain(1) - 0.5) < 1e-12
+             && fabs(gmb_scene_sound_pan(1)) < 1e-12,
+             "davanti: gain=%g pan=%g (attesi 0.5/0)",
+             gmb_scene_sound_gain(1), gmb_scene_sound_pan(1));
+
+    /* +x è a SINISTRA, −x a destra: i due estremi del pan. */
+    P6_CHECK(gmb_scene_sound(2, 440.0, 0.005, 10.0, 0.0, 0.0, 20.0, 100.0) == GMB_3D_OK,
+             "SOUND 2");
+    P6_CHECK(fabs(gmb_scene_sound_pan(2) + 1.0) < 1e-12,
+             "pan di +x = %g (atteso −1)", gmb_scene_sound_pan(2));
+    P6_CHECK(gmb_scene_sound(3, 440.0, 0.005, -10.0, 0.0, 0.0, 20.0, 100.0) == GMB_3D_OK,
+             "SOUND 3");
+    P6_CHECK(fabs(gmb_scene_sound_pan(3) - 1.0) < 1e-12,
+             "pan di −x = %g (atteso +1)", gmb_scene_sound_pan(3));
+
+    /* Volume e attenuazione: gain = (1 − d/dist) × vol/100, clamp a 0 oltre dist. */
+    P6_CHECK(gmb_scene_sound(4, 440.0, 0.005, 0.0, 0.0, 10.0, 20.0, 50.0) == GMB_3D_OK
+             && fabs(gmb_scene_sound_gain(4) - 0.25) < 1e-12,
+             "vol 50 a d=10/dist=20: gain=%g (atteso 0.25)", gmb_scene_sound_gain(4));
+    P6_CHECK(gmb_scene_sound(5, 440.0, 0.005, 0.0, 0.0, 40.0, 20.0, 100.0) == GMB_3D_OK
+             && gmb_scene_sound_gain(5) == 0.0,
+             "oltre dist: gain=%g (atteso 0)", gmb_scene_sound_gain(5));
+    /* dist 0 = nessuna attenuazione: il gain è il solo volume. */
+    P6_CHECK(gmb_scene_sound(6, 440.0, 0.005, 0.0, 0.0, 500.0, 0.0, 50.0) == GMB_3D_OK
+             && fabs(gmb_scene_sound_gain(6) - 0.5) < 1e-12,
+             "dist 0 a d=500: gain=%g (atteso 0.5)", gmb_scene_sound_gain(6));
+    /* Sorgente sull'occhio: pan 0 (nessuna direzione), gain del solo volume. */
+    P6_CHECK(gmb_scene_sound(7, 440.0, 0.005, 0.0, 0.0, 0.0, 20.0, 100.0) == GMB_3D_OK
+             && gmb_scene_sound_pan(7) == 0.0 && gmb_scene_sound_gain(7) == 1.0,
+             "sull'occhio: gain=%g pan=%g (attesi 1/0)",
+             gmb_scene_sound_gain(7), gmb_scene_sound_pan(7));
+
+    /* RENDER = ricalcolo dalla camera (listener): a yaw 90 il +z finisce a DESTRA. */
+    P6_CHECK(gmb_scene_camera(0.0, 0.0, 0.0, 90.0, 0.0) == GMB_3D_OK, "CAMERA yaw 90");
+    P6_CHECK(gmb_scene_render() == GMB_3D_OK, "RENDER");
+    P6_CHECK(fabs(gmb_scene_sound_gain(1) - 0.5) < 1e-12
+             && fabs(gmb_scene_sound_pan(1) - 1.0) < 1e-12,
+             "yaw 90 su slot 1: gain=%g pan=%g (attesi 0.5/+1)",
+             gmb_scene_sound_gain(1), gmb_scene_sound_pan(1));
+    /* La camera si sposta: cambia la distanza, quindi l'attenuazione. */
+    P6_CHECK(gmb_scene_camera(0.0, 0.0, 8.0, 0.0, 0.0) == GMB_3D_OK, "CAMERA z=8");
+    P6_CHECK(gmb_scene_render() == GMB_3D_OK, "RENDER 2");
+    P6_CHECK(fabs(gmb_scene_sound_gain(1) - 0.9) < 1e-12,
+             "camera a z=8 (d=2, dist=20): gain=%g (atteso 0.9)", gmb_scene_sound_gain(1));
+
+    /* Argomenti non validi: errore ESPLICITO, e lo slot precedente resta intatto. */
+    P6_CHECK(gmb_scene_sound(0, 440.0, 0.005, 0.0, 0.0, 0.0, 20.0, 100.0) == GMB_3D_E_ARG,
+             "slot 0 non rifiutato");
+    P6_CHECK(gmb_scene_sound(17, 440.0, 0.005, 0.0, 0.0, 0.0, 20.0, 100.0) == GMB_3D_E_ARG,
+             "slot 17 non rifiutato");
+    P6_CHECK(gmb_scene_sound(1, 0.0, 0.005, 0.0, 0.0, 0.0, 20.0, 100.0) == GMB_3D_E_ARG,
+             "frequenza 0 non rifiutata");
+    P6_CHECK(gmb_scene_sound(1, 440.0, 0.0, 0.0, 0.0, 0.0, 20.0, 100.0) == GMB_3D_E_ARG,
+             "durata 0 non rifiutata");
+    P6_CHECK(gmb_scene_sound(1, 440.0, 0.005, 0.0, 0.0, 0.0, -1.0, 100.0) == GMB_3D_E_ARG,
+             "distanza negativa non rifiutata");
+    P6_CHECK(gmb_scene_sound(1, 440.0, 0.005, 0.0, 0.0, 0.0, 20.0, 101.0) == GMB_3D_E_ARG,
+             "volume 101 non rifiutato");
+    P6_CHECK(gmb_scene_sound(1, 440.0, 0.005, 0.0, 0.0, 0.0, 20.0, NAN) == GMB_3D_E_ARG,
+             "volume NaN non rifiutato");
+    P6_CHECK(fabs(gmb_scene_sound_gain(1) - 0.9) < 1e-12,
+             "un errore ha sporcato lo slot 1: gain=%g (atteso 0.9)", gmb_scene_sound_gain(1));
+
+    /* RESET svuota gli slot con il resto della scena. */
+    P6_CHECK(gmb_scene_reset() == GMB_3D_OK, "RESET 2");
+    P6_CHECK(gmb_scene_sound_gain(1) == -1.0 && gmb_scene_sound_pan(1) == -2.0,
+             "RESET: slot 1 ancora pieno (gain=%g pan=%g)",
+             gmb_scene_sound_gain(1), gmb_scene_sound_pan(1));
+#undef P6_CHECK
+    printf("P6-SND ok=%d fail=%d\n", ok, fail);
+    return fail == 0 ? 0 : 1;
+}
+
 static int cmp_double(const void* a, const void* b)
 {
     double x = *(const double*)a, y = *(const double*)b;
@@ -2595,6 +2701,7 @@ static void usage(void)
            "  --lodcheck = SCENE LOD: soglie, mesh sostitutiva, identità, raggi (P5, M-LOD)\n"
            "  --instcheck = SCENE INSTANCE: geometria e materiale condivisi, identità (P5, M-INST)\n"
            "  --skincheck = SCENE BONES/POSEBONE/WEIGHT/ANIM: ossa, pesi, fusione, chiavi (P5, M-SKIN)\n"
+           "  --audiocheck = SCENE SOUND/SOUNDGAIN/SOUNDPAN: gain, pan, listener (P6, M-SND)\n"
            "  --bench-scene = N oggetti (default 500) a --size (default 640x360)\n"
            "  --tris N = N triangoli dichiarati (12 per box) in griglia frontale\n"
            "  --bench-key = tempo di dichiarazione di N oggetti x K chiavi (--keys, default 32)\n");
@@ -2610,6 +2717,7 @@ int main(int argc, char** argv)
     int bench = 0, frames = 120;
     int cullcheck = 0, interactcheck = 0, raycheck = 0, statscheck = 0, keycheck = 0, lodcheck = 0, instcheck = 0, skincheck = 0, bench_scene = 0, objects = 500, bw = 640, bh = 360;
     int bench_key = 0, keys = 32, rounds = 5;
+    int audiocheck = 0;
     int tris_target = 0;   /* --tris N: 0 = griglia storica a oggetti */
 
     for (int i = 1; i < argc; i++)
@@ -2637,6 +2745,7 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "--lodcheck")) lodcheck = 1;
         else if (!strcmp(argv[i], "--instcheck")) instcheck = 1;
         else if (!strcmp(argv[i], "--skincheck")) skincheck = 1;
+        else if (!strcmp(argv[i], "--audiocheck")) audiocheck = 1;
         else if (!strcmp(argv[i], "--bench-scene")) bench_scene = 1;
         else if (!strcmp(argv[i], "--bench-key")) bench_key = 1;
         else if (!strcmp(argv[i], "--keys") && i + 1 < argc) keys = atoi(argv[++i]);
@@ -2660,6 +2769,7 @@ int main(int argc, char** argv)
     if (lodcheck) return run_p5_lod();
     if (instcheck) return run_p5_inst();
     if (skincheck) return run_p5_skin();
+    if (audiocheck) return run_p6_audio();
     if (bench_key) return p5_key_bench(objects, keys, rounds);
     if (bench_scene)
     {

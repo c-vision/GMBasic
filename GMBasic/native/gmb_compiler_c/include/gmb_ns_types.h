@@ -849,6 +849,8 @@ static const gmb_ns_type_row_t gmb_ns_types[] = {
     { GMB_TOK_SceneUse, 0 },
     { GMB_TOK_SceneSees, 0 },
     { GMB_TOK_SceneStats, 0 },
+    { GMB_TOK_SceneSoundGain, 0 },
+    { GMB_TOK_SceneSoundPan, 0 },
     { GMB_TOK_SpeedSetDurability, 1 },
     { GMB_TOK_SpeedFlushDurability, 0 },
     { GMB_TOK_SpeedBeginGroupCommit, 0 },

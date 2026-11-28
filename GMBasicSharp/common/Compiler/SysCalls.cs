@@ -607,6 +607,9 @@ public enum SysCall : ushort
     // percorso a celle) e riapplica il LAYOUT dei controlli (EXPAND/ANCHOR/ALIGN).
     // Unica implementazione nel runtime C (gmb_window_resize), condivisa da VM/C.
     WINDOW_RESIZE = 519,    // (w, h)                                  → gmb_window_resize
+    // P6/M-SND — audio posizionale: sorgente con tono e posizione; il listener è la
+    // camera e il pan si applica al PCM sintetizzato. In coda (codici canonici).
+    SCENE_SOUND = 527,      // (n, freq, dur, x, y, z, dist, vol)       → gmb_scene_sound
 }
 
 /// <summary>

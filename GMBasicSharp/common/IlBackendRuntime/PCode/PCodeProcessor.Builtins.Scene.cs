@@ -47,6 +47,9 @@ internal sealed partial class PCodeProcessor
         BuiltInFunction.SCENE_SHOTZ,
         // P5/M-STATS: misure della scena per nome.
         BuiltInFunction.SCENE_STATS,
+        // P6/M-SND: gain e pan della sorgente posizionale.
+        BuiltInFunction.SCENE_SOUNDGAIN,
+        BuiltInFunction.SCENE_SOUNDPAN,
     ];
 
     private object? ExecuteBuiltInScene(PCodeTask task, BuiltInFunction fn, object?[] args)
@@ -97,7 +100,12 @@ internal sealed partial class PCodeProcessor
             case BuiltInFunction.SCENE_SHOTY: return CommonLib.Scene3DNative.ShotY();
             case BuiltInFunction.SCENE_SHOTZ: return CommonLib.Scene3DNative.ShotZ();
             // STATS(nome$): una misura della scena (−1 = chiave sconosciuta).
-            case BuiltInFunction.SCENE_STATS: return CommonLib.Scene3DNative.Stats(args.Length > 0 ? args[0]?.ToString() ?? "" : "");
+            case BuiltInFunction.SCENE_STATS: return CommonLib.Scene3DNative.Stats(ArgOr(args, 0)?.ToString() ?? "");
+            // P6/M-SND: gain 0..1 e pan −1..1 (−1 / −2 se lo slot è vuoto).
+            case BuiltInFunction.SCENE_SOUNDGAIN:
+                return CommonLib.Scene3DNative.SoundGain((long)ToDouble(args, 0));
+            case BuiltInFunction.SCENE_SOUNDPAN:
+                return CommonLib.Scene3DNative.SoundPan((long)ToDouble(args, 0));
         }
         return null;
     }

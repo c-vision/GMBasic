@@ -1083,6 +1083,15 @@ internal sealed partial class PCodeProcessor
                 CommonLib.Scene3DNative.AnimTrs(b, t, x, y, z, yaw, pitch, roll);
                 break;
             }
+            // P6/M-SND: sorgente audio posizionale (stack al contrario, 8 argomenti).
+            case SysCall.SCENE_SOUND:
+            {
+                var vol = PopNum(task); var dist = PopNum(task); var z = PopNum(task);
+                var y = PopNum(task); var x = PopNum(task); var dur = PopNum(task);
+                var freq = PopNum(task); var n = (long)PopNum(task);
+                CommonLib.Scene3DNative.Sound(n, freq, dur, x, y, z, dist, vol);
+                break;
+            }
             case SysCall.SCENE_FOG:
                 CommonLib.Scene3DNative.Fog(PopNum(task));
                 break;

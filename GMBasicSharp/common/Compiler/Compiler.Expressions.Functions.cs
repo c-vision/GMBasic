@@ -952,6 +952,9 @@ public sealed partial class Compiler
         { TokenKind.SceneShoot, BuiltInFunction.SCENE_SHOOT }, { TokenKind.SceneUse, BuiltInFunction.SCENE_USE },
         { TokenKind.SceneStats, BuiltInFunction.SCENE_STATS },
         { TokenKind.SceneSees, BuiltInFunction.SCENE_SEES },
+        // P6/M-SND: gain e pan della sorgente posizionale.
+        { TokenKind.SceneSoundGain, BuiltInFunction.SCENE_SOUNDGAIN },
+        { TokenKind.SceneSoundPan, BuiltInFunction.SCENE_SOUNDPAN },
         { TokenKind.SceneShotKind, BuiltInFunction.SCENE_SHOTKIND }, { TokenKind.SceneShotObj, BuiltInFunction.SCENE_SHOTOBJ },
         { TokenKind.SceneShotDist, BuiltInFunction.SCENE_SHOTDIST },
         { TokenKind.SceneShotX, BuiltInFunction.SCENE_SHOTX }, { TokenKind.SceneShotY, BuiltInFunction.SCENE_SHOTY },

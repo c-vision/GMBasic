@@ -11509,6 +11509,18 @@ static void gmb_bf_scene_stats(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, 
                        ? ((gmb_obj_string_t*)args[0].ref)->data : "";
     bout->result = gmb_scene_stats(name);
 }
+/* P6/M-SND: gain e pan della sorgente posizionale, calcolati dalla camera
+ * (listener). Sentinelle -1 (gain) / -2 (pan) per slot vuoto: sono letture. */
+static void gmb_bf_scene_soundgain(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    bout->result = gmb_scene_sound_gain((int64_t)scene_arg(args, argc, 0));
+}
+static void gmb_bf_scene_soundpan(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
+{
+    (void)vm; (void)func_code; (void)task;
+    bout->result = gmb_scene_sound_pan((int64_t)scene_arg(args, argc, 0));
+}
 static void gmb_bf_scene_zonetag(gmb_vm_t* vm, gmb_stack_entry_t* args, int argc, int func_code, gmb_builtin_out_t* bout, gmb_task_t* task)
 {
     (void)vm; (void)func_code; (void)task;
@@ -17064,6 +17076,9 @@ static const gmb_bf_impl_t gmb_bf_impl_core[] = {
     { 3939, gmb_bf_scene_sees },
     /* P5/M-STATS — misure della scena per nome (BuiltInFunction 3940). */
     { 3940, gmb_bf_scene_stats },
+    /* P6/M-SND — audio posizionale: gain e pan della sorgente (BuiltInFunction 3941..3942). */
+    { 3941, gmb_bf_scene_soundgain },
+    { 3942, gmb_bf_scene_soundpan },
     { 826, gmb_bf_796_c826 },
     { 827, gmb_bf_796_c827 },
     { 828, gmb_bf_796_c828 },

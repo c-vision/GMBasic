@@ -2805,9 +2805,15 @@ typedef enum gmb_tokenkind {
     /* P5/M-SKIN-KEY — `SCENE ANIM b, t, x, y, z, yaw [, pitch, roll]`: chiave
      * dell'osso b al tempo t (le piste le campiona RENDER). */
     GMB_TOK_SceneAnim,
+    /* P6/M-SND — audio posizionale: SOUND (8 argomenti) e le due letture
+     * SOUNDGAIN/SOUNDPAN dei valori calcolati dalla camera (listener).
+     * Stessi TokenKind del lato C#, nello stesso ordine. */
+    GMB_TOK_SceneSound,
+    GMB_TOK_SceneSoundGain,
+    GMB_TOK_SceneSoundPan,
 } gmb_tokenkind_t;
   
-  #define GMB_TOK_COUNT 2757
+  #define GMB_TOK_COUNT 2760
 
 /* 2026-09-09 (direttiva 2026-09-08): gmb_tokenkind_name()/gmb_tokenkind_from_name() e la
  * tabella gmb_token_names[] sono state RIMOSSE — dispatch solo per TokenKind; la risoluzione

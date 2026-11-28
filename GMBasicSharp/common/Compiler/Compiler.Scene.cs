@@ -55,6 +55,8 @@ public sealed partial class Compiler
         TokenKind.SceneWeight => SysCall.SCENE_WEIGHT,
         // P5/M-SKIN-KEY: chiave dell'osso (6 o 8 argomenti).
         TokenKind.SceneAnim => argc == 8 ? SysCall.SCENE_ANIM_TRS : SysCall.SCENE_ANIM,
+        // P6/M-SND: sorgente audio posizionale (listener = camera).
+        TokenKind.SceneSound => SysCall.SCENE_SOUND,
         _ => throw new NotImplementedException($"SCENE: verbo '{kind}' non supportato dalla PCodeVM.")
     };
 

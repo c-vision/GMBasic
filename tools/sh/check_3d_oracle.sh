@@ -146,6 +146,15 @@ if ! "$BIN" --skincheck; then
   exit 1
 fi
 
+# 3quinquies-quinquies) P6: audio posizionale (M-SND). Gain e pan calcolati dalla
+# camera (listener), attenuazione lineare con clamp, pan applicato al PCM che
+# sintetizziamo (la tabella dlopen del mixer non cambia: nessun Mix_SetPanning),
+# sentinelle degli slot vuoti, errori espliciti e RESET che svuota le sorgenti.
+if ! "$BIN" --audiocheck; then
+  echo "check_3d_oracle: audio posizionale FALLITO" >&2
+  exit 1
+fi
+
 # 3quater) P5: banco della scena. 500 oggetti a 640x360, accettazione >= 30 fps
 # (mediana <= 33,3 ms). Il numero stampato e' quello misurato, non una stima.
 if ! P5_OUT="$("$BIN" --bench-scene --objects 500 --size 640x360 --frames 60)"; then

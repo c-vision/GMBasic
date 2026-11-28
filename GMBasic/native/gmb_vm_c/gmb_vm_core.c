@@ -6123,6 +6123,21 @@ static void vm_sys_scene_anim(gmb_vm_t* vm, gmb_task_t* task, int code, int argc
                              vm_world_num(&a[2]), vm_world_num(&a[3]),
                              vm_world_num(&a[4]), vm_world_num(&a[5]));
 }
+/* SCENE SOUND n, freq, dur, x, y, z, dist, vol (P6/M-SND): sorgente audio
+ * posizionale. Stesso ordine di stack di SCENE KEY (slot intero, poi i sei
+ * decimali); il listener e' la camera e il pan va sul PCM che sintetizziamo,
+ * quindi il mixer non cambia (nessun simbolo dlopen in piu'). */
+static void vm_sys_scene_sound(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
+    (void)vm; (void)code;
+    gmb_stack_entry_t a[8];
+    int n = argc > 8 ? 8 : argc;
+    vm_pop_args_ordered(task, a, n);
+    if (n >= 8)
+        (void)gmb_scene_sound((int64_t)vm_world_num(&a[0]), vm_world_num(&a[1]),
+                              vm_world_num(&a[2]), vm_world_num(&a[3]),
+                              vm_world_num(&a[4]), vm_world_num(&a[5]),
+                              vm_world_num(&a[6]), vm_world_num(&a[7]));
+}
 /* SCENE WEIGHT o, v, bone, w (P5/M-SKIN): lega il vertice all'osso col peso.
  * Range, massimo due influenze e normalizzazione li valida gmb_3d_skin.c. */
 static void vm_sys_scene_weight(gmb_vm_t* vm, gmb_task_t* task, int code, int argc) {
@@ -7501,6 +7516,8 @@ static const vm_sys_row VM_SYS_TBL[] = {
     { GMB_SC_SCENE_WEIGHT, vm_sys_scene_weight },
     { GMB_SC_SCENE_ANIM, vm_sys_scene_anim },
     { GMB_SC_SCENE_ANIM_TRS, vm_sys_scene_anim },
+    /* P6/M-SND: audio posizionale (listener = camera, pan sul PCM). */
+    { GMB_SC_SCENE_SOUND, vm_sys_scene_sound },
     { GMB_SC_CLOCK_PAUSE, vm_sys_clock_pause },
     { GMB_SC_CLOCK_RESUME, vm_sys_clock_resume },
     { GMB_SC_CLOCK_SCALE, vm_sys_clock_scale },
