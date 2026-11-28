@@ -7,6 +7,7 @@
 #include "gmb_c99_emit_internal.h"
 #include "gmb_ambiguous.h"
 #include "gmb_members.h"
+#include "gmb_lexer.h"
 typedef int (*ma_sp)(ctx_t*, gmb_expr_t**, int);
 /* TY_VAL non è nell'enum condiviso (gmb_c99_emit_internal.h definisce solo TY_NUM/TY_STR):
  * il valore coincide con l'enum di gmb_c99_emit.c { TY_NUM=0, TY_STR=1, TY_VAL=2 }. */
@@ -995,7 +996,17 @@ static long gmb_sizeof_arg(ctx_t* c, gmb_expr_t* e) {
      * NON può cambiare la risposta di questa gamba: nelle gambe gestite FLOAT arriva come
      * identificatore implicito → DOUBLE di default (8), il valore che WORD/NUMERIC (che il lexer C
      * non keyword-a) già producono qui. DATE/TIME restano -1: keyword in ENTRAMBI i lessichi. */
-    if (e->tk != GMB_TOK_Identifier && e->tk != GMB_TOK_Unknown && e->tk != GMB_TOK_RddFloat) return -1;
+    /* Il test è sulla KEYWORD del LESSICO (la stessa tabella del lexer C#), NON sul
+     * TokenKind risolto dalla tabella delle FUNZIONI: `Z` è SCENE.Z (funzione di libreria)
+     * ma non è una keyword del linguaggio (`gmb_keyword_tok` = 0), quindi un `z` nudo resta
+     * la VARIABILE implicita DOUBLE di default (8) — canone regola 4/5, come fanno le gambe
+     * gestite. Prima il token `GMB_TOK_SceneZ` faceva scattare `-1` e
+     * `system/system_sizeof_implicit` divergeva (SIZEOF(z): 8 su IL/PCode/VM-C, -1 su C99).
+     * DATE/TIME sono keyword in ENTRAMBI i lessichi e restano -1. FLOAT è l'eccezione del
+     * solo mondo C (alias RDD.FLOAT, `e->tk == RddFloat`): la tabella condivisa non lo
+     * keyword-a, quindi vale 8. */
+    int kw = gmb_keyword_tok(e->var);
+    if (kw != 0 && kw != GMB_TOK_Identifier && e->tk != GMB_TOK_RddFloat) return -1;
     var_t* v = lookup_var(c, e->var);
     if (v && (v->type != 0 || v->vclass[0] || v->gkind || v->is_array || v->boxed_val)) return -1;
     return gmb_scalar_bytes("DOUBLE");

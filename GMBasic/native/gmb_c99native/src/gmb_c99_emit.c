@@ -4982,7 +4982,14 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
             }
             char dtypekey[40];
             const char* dkey = gmb_name_no_suffix(v->name, dtypekey, sizeof dtypekey);
-            if (dtype && dkey[0] && !v->is_array && c->n_var_type_text < 64) {
+            /* Il tipo dichiarato per-VAR si registra SEMPRE (anche oltre il cap della mappa
+             * globale): `gmb_var_declared_type` è la fonte scope-aware usata da SIZEOF,
+             * arrotondamenti e detection DATETIME. Prima, con `c->n_var_type_text` già a 64
+             * (programmi grandi/moduli importati), la var non aveva `decl_type` e il fallback
+             * sulla mappa GLOBALE per nome contaminava il tipo: un `DIM c AS DOUBLE` dentro
+             * Segmented.bas veniva arrotondato come un `c AS INTEGER` di un altro file
+             * (`controls/segmented_uc`: Hit(15,1)=2 invece di 1). */
+            if (dtype && dkey[0] && !v->is_array) {
                 /* `DIM s AS STRING * 10`: il parser tiene la lunghezza in dim_fixed_len e
                  * dim_type resta "STRING" — ricomponi il testo, è quello che legge il canone. */
                 char dt[32];
@@ -4990,18 +4997,20 @@ if (s->dim_var) {            int ty = suffix_type(s->dim_var);
                     snprintf(dt, sizeof dt, "%s * %d", dtype, s->dim_fixed_len);
                 else
                     snprintf(dt, sizeof dt, "%s", dtype);
-                int dup = 0;
-                for (int i = 0; i < c->n_var_type_text; i++)
-                    if (strcasecmp(c->var_type_text[i][0], dkey) == 0) { dup = 1; break; }
                 /* Tipo dichiarato LEGATO ALLA VAR (scope-aware): la mappa globale per nome
                  * resta per SIZEOF/suffissi, ma due `__r` in funzioni diverse non devono
                  * sovrascriversi (bug: __r LONG di multivariate.inc faceva arrotondare
                  * l'MSE di HOLTWINTERS in timeseries.inc). */
                 snprintf(v->decl_type, sizeof v->decl_type, "%s", dt);
-                if (!dup) {
-                    snprintf(c->var_type_text[c->n_var_type_text][0], 32, "%s", dkey);
-                    snprintf(c->var_type_text[c->n_var_type_text][1], 32, "%s", dt);
-                    c->n_var_type_text++;
+                if (c->n_var_type_text < 64) {
+                    int dup = 0;
+                    for (int i = 0; i < c->n_var_type_text; i++)
+                        if (strcasecmp(c->var_type_text[i][0], dkey) == 0) { dup = 1; break; }
+                    if (!dup) {
+                        snprintf(c->var_type_text[c->n_var_type_text][0], 32, "%s", dkey);
+                        snprintf(c->var_type_text[c->n_var_type_text][1], 32, "%s", dt);
+                        c->n_var_type_text++;
+                    }
                 }
             }
             /* ANALYSIS result-UDT (RegressionResult/KMeansResult/PcaResult/AnovaResult/

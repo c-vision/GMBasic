@@ -420,6 +420,10 @@ double gmb_world_ceil(int sector);
  */
 int64_t gmb_scene_reset(void);                       /* azzera geometria e camera */
 int64_t gmb_scene_view(int64_t w, int64_t h, double fov_deg);   /* target + fov */
+/* Chiude/libera il target di render (VIEW) senza toccare geometria/camera: usato dagli
+ * harness per riportare il processo allo stato di una gamba "fresca" (il target, come i
+ * flag AA/PICK, sopravvive di proposito a SCENE RESET). Non è un comando BASIC. */
+int64_t gmb_scene_target_close(void);
 int64_t gmb_scene_checker(int64_t cells);            /* texture a scacchi in scala di grigi */
 /* SCENE TEXTURE "file.png": texture da un PNG su disco (RGBA8, riga 0 in alto, la
  * convenzione di gm_tex). Usa `png_decode`, l'unico decoder del runtime: il file si

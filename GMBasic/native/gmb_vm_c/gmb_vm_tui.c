@@ -535,6 +535,29 @@ static void vm_pixel_ctrl(gmb_vm_t* vm, gmb_task_t* task)
         {
             gmb_val_t v = l->items[i];
             if (v.kind == GMB_TYPE_STRING) { av[ac] = 0; snprintf(ab[ac], 256, "%s", v.v_string.data ? v.v_string.data : ""); }
+            else if (v.kind == GMB_TYPE_OBJECT && v.v_ptr
+                     && ((gmb_obj_t*)v.v_ptr)->kind == GMB_OBJ_LIST
+                     && ((gmb_obj_shared_val_t*)v.v_ptr)->list)
+            {
+                /* Voce LISTA annidata (LISTBOX/TAB/…: `x, y, w, h, ["A","B"]`): il C runtime
+                 * vuole la stringa "A|B" (identica a quella che riceve da C99Native/IL), non
+                 * un oggetto. Prima ab[ac] restava "" → `CONTROL GETS "lb","items"` vuoto su
+                 * VM/C (tui/control_props_coda_parity). */
+                gmb_list_t* inner = ((gmb_obj_shared_val_t*)v.v_ptr)->list;
+                size_t used = 0;
+                ab[ac][0] = 0;
+                for (size_t k = 0; k < inner->count && used < 255; k++)
+                {
+                    gmb_val_t iv = inner->items[k];
+                    const char* s = (iv.kind == GMB_TYPE_STRING && iv.v_string.data) ? iv.v_string.data : "";
+                    if (k > 0 && used < 255) ab[ac][used++] = '|';
+                    size_t sl = strlen(s);
+                    if (sl > 255 - used) sl = 255 - used;
+                    memcpy(ab[ac] + used, s, sl); used += sl;
+                }
+                ab[ac][used] = 0;
+                av[ac] = 0;
+            }
             else { av[ac] = v.v_double; }
             ac++;
         }

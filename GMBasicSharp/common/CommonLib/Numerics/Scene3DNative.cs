@@ -66,6 +66,12 @@ public static class Scene3DNative
     private static extern long ViewRaw(long w, long h, double fovDeg);
     public static long View(long w, long h, double fovDeg) { var rc = ViewRaw(w, h, fovDeg); Check(rc); return rc; }
 
+    [DllImport(Lib, EntryPoint = "gmb_scene_target_close", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long CloseTargetRaw();
+    /// <summary>Chiude il target di render (VIEW) senza toccare geometria/camera. Solo harness:
+    /// riporta il processo allo stato di una gamba fresca.</summary>
+    public static long CloseTarget() { var rc = CloseTargetRaw(); Check(rc); return rc; }
+
     [DllImport(Lib, EntryPoint = "gmb_scene_checker", CallingConvention = CallingConvention.Cdecl)]
     private static extern long TextureRaw(long cells);
     public static long Texture(long cells) { var rc = TextureRaw(cells); Check(rc); return rc; }

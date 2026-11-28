@@ -380,6 +380,15 @@ int64_t gmb_scene_reset(void)
     return GMB_3D_OK;
 }
 
+int64_t gmb_scene_target_close(void)
+{
+    gmb_3d_target_free(&g_scene_target);
+    memset(&g_scene_target, 0, sizeof(g_scene_target));
+    gmb_scene_pick_attach(&g_scene_target);   /* distacca il buffer di pick dal target chiuso */
+    gmb_3d_set_error("");
+    return GMB_3D_OK;
+}
+
 int64_t gmb_scene_view(int64_t w, int64_t h, double fov_deg)
 {
     if (w <= 0 || h <= 0 || w > 8192 || h > 8192)

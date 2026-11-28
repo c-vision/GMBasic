@@ -139,6 +139,63 @@ void gmb_p_collect_imports(gmb_parser_t* p)
             }
         }
     }
+    /* PARAMETRI di una LAMBDA ANONIMA: `FN(a, b) => …` / `SUB(a, b) { … }` (il token
+     * Function/Sub seguito SUBITO da '('). Sono nomi DICHIARATI nello scope della lambda:
+     * senza, `z(0)` nel corpo veniva scambiato per la funzione di libreria SCENE.Z e il gate
+     * dei namespace faceva fallire `ffi/ffi_callback_vv_return` ("Simbolo non trovato: 'z'…").
+     * Stessa raccolta della lista parametri di una procedura nominata, qui per la forma
+     * anonima (incluse le voci con parentesi di array: `z() AS DOUBLE`). */
+    for (int i = 0; i + 1 < p->n; i++) {
+        if (p->toks[i].kind != GMB_TOK_Function) continue;
+        if (p->toks[i + 1].kind != GMB_TOK_LeftParen) continue;
+        int depth = 0, expect = 1;
+        for (int j = i + 1; j < p->n; j++) {
+            const gmb_token_t* q = &p->toks[j];
+            if (q->kind == GMB_TOK_Eof) break;
+            if (q->kind == GMB_TOK_LeftParen) { depth++; continue; }
+            if (q->kind == GMB_TOK_RightParen) { depth--; if (depth <= 0) break; continue; }
+            if (depth != 1) continue;
+            if (q->kind == GMB_TOK_Comma) { expect = 1; continue; }
+            if (!expect) continue;
+            if (!q->lexeme || q->length <= 0 || q->length >= 64) continue;
+            char q0 = q->lexeme[0];
+            if (!(q0 == '_' || (q0 >= 'A' && q0 <= 'Z') || (q0 >= 'a' && q0 <= 'z'))) continue;
+            if (p->n_decl_names < 1024) {
+                memcpy(p->decl_names[p->n_decl_names], q->lexeme, (size_t)q->length);
+                p->decl_names[p->n_decl_names][q->length] = 0;
+                p->n_decl_names++;
+            }
+            expect = 0;
+        }
+    }
+    /* PARAMETRI della forma a GRAFFE `{ |a, b| … }`: i nomi stanno fra i due `|`. */
+    for (int i = 0; i < p->n; i++) {
+        gmb_tokenkind_t bk = p->toks[i].kind;
+        int is_bar = (bk == GMB_TOK_Bar)
+                  || (bk == GMB_TOK_Unknown && p->toks[i].lexeme && p->toks[i].length == 1
+                      && p->toks[i].lexeme[0] == '|');
+        if (!is_bar) continue;
+        int expect = 1;
+        for (int j = i + 1; j < p->n; j++) {
+            const gmb_token_t* t = &p->toks[j];
+            if (t->kind == GMB_TOK_Eof || t->kind == GMB_TOK_Newline) break;
+            int t_bar = (t->kind == GMB_TOK_Bar)
+                     || (t->kind == GMB_TOK_Unknown && t->lexeme && t->length == 1
+                         && t->lexeme[0] == '|');
+            if (t_bar) break;
+            if (t->kind == GMB_TOK_Comma) { expect = 1; continue; }
+            if (!expect) continue;
+            if (!t->lexeme || t->length <= 0 || t->length >= 64) continue;
+            char c0 = t->lexeme[0];
+            if (!(c0 == '_' || (c0 >= 'A' && c0 <= 'Z') || (c0 >= 'a' && c0 <= 'z'))) continue;
+            if (p->n_decl_names < 1024) {
+                memcpy(p->decl_names[p->n_decl_names], t->lexeme, (size_t)t->length);
+                p->decl_names[p->n_decl_names][t->length] = 0;
+                p->n_decl_names++;
+            }
+            expect = 0;
+        }
+    }
     /* Nomi DICHIARATI da DIM/REDIM/GLOBAL/LOCAL/STATIC (anche MULTIPLI: `DIM a(2), b(2)` e
      * `DIM g(7) AS T, info(0) AS LONG`). Il parser registra in p->declared solo la PRIMA di un
      * DIM multiplo e la tabella ha cap 512: qui si raccolgono tutti, così un accesso a elemento

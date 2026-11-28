@@ -16,7 +16,22 @@ internal sealed partial class PCodeProcessor
         var name = PopS(task);
         var kind = PopS(task);
         var args = new List<object>();
-        if (listRef is System.Collections.IEnumerable en) foreach (var o in en) args.Add(o);
+        if (listRef is System.Collections.IEnumerable en)
+            foreach (var o in en)
+            {
+                /* Voce LISTA annidata (LISTBOX/TAB/…: `x, y, w, h, ["A","B"]`): il runtime
+                 * condiviso vuole la stringa "A|B" (come C99Native/IL), non l'oggetto lista —
+                 * `Convert.ToString(List<object>)` finiva in `CONTROL GETS "lb","items"`
+                 * (tui/control_props_coda_parity). */
+                if (o is string or null) args.Add(o);
+                else if (o is System.Collections.IEnumerable nested && o is not string)
+                {
+                    var parts = new List<string>();
+                    foreach (var x in nested) parts.Add(Convert.ToString(x) ?? "");
+                    args.Add(string.Join("|", parts));
+                }
+                else args.Add(o);
+            }
         try
         {
             IlRuntime.FormAddControl(kind, args.ToArray(), name);

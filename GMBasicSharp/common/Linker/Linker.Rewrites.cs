@@ -168,8 +168,11 @@ public static partial class Linker
                     var (fmBareT, _) = FindFieldInHierarchy(ccBareT, variableName);
                     if (fmBareT is FieldMember fieldMemBare)
                     {
-                        // Ombreggiato se risolto a un simbolo DIVERSO dal campo (param/locale/globale).
-                        var shadowedByLocal = resolvedId >= 0 && resolvedId != fieldMemBare.Declaration.SymbolId;
+                        // Ombreggiato se risolto a un simbolo DIVERSO dal campo (param/locale/globale),
+                        // ma NON se è una PROCEDURA omonima (Kind=First/Last/Count…): in quel caso il
+                        // campo dichiarato vince e la PROCEDURA non deve dirottare l'assegnazione.
+                        var shadowedByLocal = resolvedId >= 0 && resolvedId != fieldMemBare.Declaration.SymbolId
+                                              && !IsProcedureSymbol(program, resolvedId);
                         if (!shadowedByLocal)
                         {
                             var selfTokBare = new Token(TokenKind.Self, "SELF", null, vt.Position);

@@ -45,6 +45,22 @@ public class MiniTestsParityTests
         // Aree DBF/ISAM e mappe alias statiche: un programma che non chiude le sue aree (alias `C`,
         // `A`…) altrimenti le lascia risolvere al programma successivo (isam_all dopo dbf_select).
         try { Basic.IlBackend.IlRuntime.ResetDatabaseState(); } catch { }
+        /* SCENA 3D: la geometria/camera/pick/alpha/colormap vivono in GLOBALI C della dylib
+         * condivisa, quindi PCode (prima) e IL (dopo) nello stesso processo si vedono lo stato
+         * del leg precedente: `scene_aa` leggeva l'alpha rimasto ON, `scene_pick` un target
+         * ancora aperto, `scene_colormap`/`scene_normals` le impostazioni del leg prima. Le
+         * gambe C (VM/C, C99) girano in processi freschi. Reset al confine fra i leg. */
+        try { CommonLib.Scene3DNative.Reset(); } catch { }
+        /* Il TARGET (VIEW) sopravvive al reset (come AA/PICK): va chiuso per ripartire come in
+         * un processo fresco. Senza, `scene_pick` (IL) trovava il target del leg precedente e
+         * `SCENE.PICK` senza VIEW rendeva -2 ("buffer spento su un target") invece di -1. */
+        try { CommonLib.Scene3DNative.CloseTarget(); } catch { }
+        /* AA e PICK sopravvivono di proposito a SCENE RESET (sono flag "di sessione", canone
+         * del test scene_aa), quindi tra una gamba e l'altra vanno riportati al DEFAULT di un
+         * processo fresco: spenti. Senza, `scene_aa` (IL) leggeva l'AA rimasto acceso dal leg
+         * precedente e `scene_pick` (IL) trovava il pick ancora abilitato. */
+        try { CommonLib.Scene3DNative.Aa(0); } catch { }
+        try { CommonLib.Scene3DNative.PickEnable(0); } catch { }
         try
         {
             var server = Basic.Agents.AgentServer.Instance;

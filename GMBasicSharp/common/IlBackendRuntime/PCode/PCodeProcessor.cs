@@ -2201,11 +2201,16 @@ internal sealed partial class PCodeProcessor
                         || string.Equals(fieldName, "Last", StringComparison.OrdinalIgnoreCase))
                     {
                         /* First/Last su mappa = [chiave,valore] (canone IL/VM-C/C99) —
-                         * prima l'accesso-proprietà dava null. */
-                        task.PushRef(string.Equals(fieldName, "First", StringComparison.OrdinalIgnoreCase)
-                            ? Basic.IlBackend.IlRuntime.CollectionFirst(dict)
-                            : Basic.IlBackend.IlRuntime.CollectionLast(dict));
-                        return true;
+                         * prima l'accesso-proprietà dava null. Ma un CAMPO dichiarato
+                         * `first`/`last` in una classe ha la precedenza: la sua chiave
+                         * esiste nella dict dell'istanza (arrays/dim_to_class_params). */
+                        if (fieldName == null || !dict.Contains(fieldName))
+                        {
+                            task.PushRef(string.Equals(fieldName, "First", StringComparison.OrdinalIgnoreCase)
+                                ? Basic.IlBackend.IlRuntime.CollectionFirst(dict)
+                                : Basic.IlBackend.IlRuntime.CollectionLast(dict));
+                            return true;
+                        }
                     }
                     var val = dict.Contains(fieldName ?? "") ? dict[fieldName ?? ""] : null;
                     if (val == null && dict.Contains("__class__") && dict["__class__"] is System.Collections.IDictionary cd &&
@@ -2764,10 +2769,19 @@ internal sealed partial class PCodeProcessor
                         if (string.Equals(fieldName, "First", StringComparison.OrdinalIgnoreCase)
                             || string.Equals(fieldName, "Last", StringComparison.OrdinalIgnoreCase))
                         {
-                            task.PushRef(string.Equals(fieldName, "First", StringComparison.OrdinalIgnoreCase)
-                                ? Basic.IlBackend.IlRuntime.CollectionFirst(dict)
-                                : Basic.IlBackend.IlRuntime.CollectionLast(dict));
-                            return true;
+                            /* Solo per una COLLEZIONE (dict senza quel campo): un CAMPO
+                             * dichiarato `First`/`Last` (anche minuscolo: il nome arriva
+                             * dal simbolo del campo) deve leggere il SUO valore, non la
+                             * prima/ultima entry della dict dell'istanza. Prima
+                             * `DIM first` in una classe rendeva su PCode il dict
+                             * `[__class__, …]` (arrays/dim_to_class_params). */
+                            if (!dict.Contains(fieldName))
+                            {
+                                task.PushRef(string.Equals(fieldName, "First", StringComparison.OrdinalIgnoreCase)
+                                    ? Basic.IlBackend.IlRuntime.CollectionFirst(dict)
+                                    : Basic.IlBackend.IlRuntime.CollectionLast(dict));
+                                return true;
+                            }
                         }
                         // Check if this field has a property getter (higher priority than field access)
                         if (dict["__class__"] is System.Collections.IDictionary classDescG

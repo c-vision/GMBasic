@@ -5,6 +5,16 @@ namespace Basic;
 
 public static partial class Linker
 {
+    /// <summary>Il simbolo risolto per un nome è una PROCEDURA (builtin o utente), non una
+    /// variabile: in un metodo di classe non deve ombreggiare un CAMPO omonimo. `first` ha
+    /// TokenKind.First e il parser lo risolve al simbolo della procedura FIRST; trattarlo
+    /// come "simbolo locale che ombreggia il campo" trasformava `SELF.first` in FIRST()
+    /// (PCode: la prima entry del dict dell'istanza al posto del valore del campo).</summary>
+    private static bool IsProcedureSymbol(BasicProgram program, int symbolId)
+    {
+        if (symbolId < 0) return false;
+        return program.Symbols.GetSymbol(symbolId)?.DeclarationNode is ProcedureDefinition;
+    }
     /// <summary>
     /// Riscrive un nodo VariableExpr. Questa è la funzione orchestratore critica del Rewriter.
     /// Gestisce la risoluzione dei simboli in un ordine di priorità rigoroso per garantire la
@@ -88,6 +98,29 @@ public static partial class Linker
 
         string varName = ve.NameCleaned.Lexeme;
 
+        // 0c. PROCEDURA omonima di un CAMPO (Kind=First/Last/Count/…): il parser risolve
+        // `first` al simbolo della procedura FIRST, ma in un metodo di classe il nome nudo è
+        // il CAMPO dichiarato (la variabile vince). Senza, PCode emetteva FIRST() a zero
+        // argomenti su SELF e `first` restituiva la prima entry del dict dell'istanza
+        // (arrays/dim_to_class_params: ctor= 1 , 3 ,[__class__, …] invece di 10).
+        if (ve.SymbolId >= 0 && context.CurrentClass is { } ccProcField
+            && IsProcedureSymbol(program, ve.SymbolId))
+        {
+            var (fmProc, _) = FindFieldInHierarchy(ccProcField, ve.NameCleaned.Lexeme);
+            if (fmProc is FieldMember fmProcField)
+            {
+                var selfTokProc = new Token(TokenKind.Self, "SELF", null, ve.Position);
+                var selfIdProc = FindSymbolIdInScopeChain("SELF", ve.ScopeId, ve.Position, program);
+                var selfVarProc = new VariableExpr(selfIdProc, selfTokProc, selfTokProc) { ScopeId = ve.ScopeId };
+                return new FieldAccessExpr(selfVarProc, ve.NameCleaned)
+                {
+                    FieldSymbolId = fmProcField.Declaration.SymbolId,
+                    ResolvedType = fmProcField.Declaration.DataType,
+                    ScopeId = ve.ScopeId
+                };
+            }
+        }
+
         // 1. Lambda Scope (Priorità assoluta interna)
         if (TryResolveLambdaParameter(ve, context, program) is { } lambdaResult)
         {
@@ -138,7 +171,8 @@ public static partial class Linker
                 var scopedReadId = ve.ScopeId >= 0
                     ? FindSymbolIdInScopeChain(varName, ve.ScopeId, ve.Position, program)
                     : -1;
-                var shadowedRead = scopedReadId >= 0 && scopedReadId != fieldMemReadBare.Declaration.SymbolId;
+                var shadowedRead = scopedReadId >= 0 && scopedReadId != fieldMemReadBare.Declaration.SymbolId
+                                   && !IsProcedureSymbol(program, scopedReadId);
                 if (!shadowedRead)
                 {
                     var selfTokRead = new Token(TokenKind.Self, "SELF", null, ve.Position);
