@@ -102,4 +102,49 @@ SUB Main()
   u2(0)=1 : u2(1)=1
   DIM ang(0) AS DOUBLE
   PRINT "sub="; LINALG.SUBSPACEANGLES(u1, 2, 1, u2, 2, 1, ang); " ang0="; ROUND(ang(0), 6)
+
+  PRINT "== delta: spazi, minimi quadrati, tridiagonali, iterativi"
+  PRINT "trace="; ROUND(LINALG.TRACE(a, 2), 6)
+
+  ' RREF di [[1,2],[2,4]] (rango 1)
+  DIM qrr(3) AS DOUBLE
+  qrr(0)=1 : qrr(1)=2 : qrr(2)=2 : qrr(3)=4
+  DIM qro(3) AS DOUBLE
+  PRINT "rref="; LINALG.RREF(qrr, 2, 2, qro); " o01="; ROUND(qro(1), 6)
+
+  ' minimi quadrati [[1,0],[0,1],[1,1]] x = [1,2,3] -> [1,2]
+  DIM qa(5) AS DOUBLE
+  qa(0)=1 : qa(1)=0
+  qa(2)=0 : qa(3)=1
+  qa(4)=1 : qa(5)=1
+  DIM qb(2) AS DOUBLE
+  qb(0)=1 : qb(1)=2 : qb(2)=3
+  DIM qx(1) AS DOUBLE
+  PRINT "lstsq="; LINALG.LSTSQ(qa, 3, 2, qb, qx); " x0="; ROUND(qx(0), 6); " x1="; ROUND(qx(1), 6)
+
+  ' tridiagonale [[2,1,0],[1,2,1],[0,1,2]] x = [3,4,3]
+  DIM ql(2) AS DOUBLE, qd(2) AS DOUBLE, qu(2) AS DOUBLE, qrhs(2) AS DOUBLE
+  ql(0)=1 : ql(1)=1 : ql(2)=0
+  qd(0)=2 : qd(1)=2 : qd(2)=2
+  qu(0)=1 : qu(1)=1 : qu(2)=0
+  qrhs(0)=3 : qrhs(1)=4 : qrhs(2)=3
+  DIM qtx(2) AS DOUBLE
+  PRINT "thomas="; LINALG.THOMAS(ql, qd, qu, qrhs, 3, qtx); " x1="; ROUND(qtx(1), 6)
+
+  ' LDLᵀ di [[4,2],[2,3]]
+  DIM qs(3) AS DOUBLE
+  qs(0)=4 : qs(1)=2 : qs(2)=2 : qs(3)=3
+  DIM qll(3) AS DOUBLE, qld(1) AS DOUBLE
+  PRINT "ldlt="; LINALG.LDLT(qs, 2, qll, qld); " d1="; ROUND(qld(1), 6)
+
+  ' CG su [[4,1],[1,3]] b=[6,5]
+  DIM qcb(1) AS DOUBLE, qcx(1) AS DOUBLE
+  qcb(0)=6 : qcb(1)=5
+  PRINT "cg="; LINALG.CG(a, 2, qcb, qcx, 50, 1e-12); " x0="; ROUND(qcx(0), 6)
+
+  ' autovalore dominante di diag(2,1)
+  DIM qp(3) AS DOUBLE
+  qp(0)=2 : qp(1)=0 : qp(2)=0 : qp(3)=1
+  DIM qlam(0) AS DOUBLE, qv(1) AS DOUBLE
+  PRINT "power="; LINALG.POWER(qp, 2, 200, 1e-10, qlam, qv); " lam="; ROUND(qlam(0), 6)
 END SUB

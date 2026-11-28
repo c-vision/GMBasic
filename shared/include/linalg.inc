@@ -97,3 +97,39 @@ DECLARE FUNCTION FRACTIONALPOWER LIB "gmbmath" ALIAS "ofx_linalg_fractionalpower
 DECLARE FUNCTION SUBSPACEANGLES LIB "gmbmath" ALIAS "ofx_linalg_subspace_angles" (a() AS DOUBLE, rows_a AS LONG, cols_a AS LONG, b() AS DOUBLE, rows_b AS LONG, cols_b AS LONG, out_() AS DOUBLE) AS LONG
 ' Risolve A x = b con A triangolare n×n (lower<>0 = inferiore): x ha n valori.
 DECLARE FUNCTION SOLVETRIANGULAR LIB "gmbmath" ALIAS "ofx_linalg_solve_triangular" (a() AS DOUBLE, n AS LONG, b() AS DOUBLE, lower AS LONG, x() AS DOUBLE) AS LONG
+
+' ═══════════════════════════════════════════════════════════════════════════
+' QUARTA ONDATA — delta gmbmath: traccia, spazi, minimi quadrati, tridiagonali,
+' LDLᵀ, Gauss-Jordan, solver iterativi, power iteration.
+' ═══════════════════════════════════════════════════════════════════════════
+
+' Somma della diagonale di A (n×n).
+DECLARE FUNCTION TRACE LIB "gmbmath" ALIAS "ofx_linalg_trace" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+' Forma ridotta a scala (RREF): out rows×cols, rende il rango.
+DECLARE FUNCTION RREF LIB "gmbmath" ALIAS "ofx_linalg_rref" (a() AS DOUBLE, rows AS LONG, cols AS LONG, out_() AS DOUBLE) AS LONG
+' Base dello spazio delle colonne: out rows×cols (usa rows×r), rende il rango r.
+DECLARE FUNCTION COLSPACE LIB "gmbmath" ALIAS "ofx_linalg_colspace" (a() AS DOUBLE, rows AS LONG, cols AS LONG, out_() AS DOUBLE) AS LONG
+' Base dello spazio delle righe: out rows×cols (usa r×cols), rende il rango r.
+DECLARE FUNCTION ROWSPACE LIB "gmbmath" ALIAS "ofx_linalg_rowspace" (a() AS DOUBLE, rows AS LONG, cols AS LONG, out_() AS DOUBLE) AS LONG
+' Minimi quadrati A x = b (rows>=cols): x ha cols valori.
+DECLARE FUNCTION LSTSQ LIB "gmbmath" ALIAS "ofx_linalg_lstsq" (a() AS DOUBLE, rows AS LONG, cols AS LONG, b() AS DOUBLE, x() AS DOUBLE) AS LONG
+' Riduzione simmetrica tridiagonale: d,e hanno n valori.
+DECLARE FUNCTION SYMTRIDIAG LIB "gmbmath" ALIAS "ofx_linalg_symtridiag" (a() AS DOUBLE, n AS LONG, d() AS DOUBLE, e() AS DOUBLE) AS LONG
+' Autovalori di una tridiagonale simmetrica (d,e non modificati): eval n valori.
+DECLARE FUNCTION TRIDIAGEIG LIB "gmbmath" ALIAS "ofx_linalg_tridiageig" (d() AS DOUBLE, e() AS DOUBLE, n AS LONG, eval_() AS DOUBLE) AS LONG
+' Sistema tridiagonale (lower, diag, upper, rhs di n valori): x n valori.
+DECLARE FUNCTION THOMAS LIB "gmbmath" ALIAS "ofx_linalg_thomas" (lower() AS DOUBLE, diag() AS DOUBLE, upper() AS DOUBLE, rhs() AS DOUBLE, n AS LONG, x() AS DOUBLE) AS LONG
+' A = L·diag(d)·Lᵀ (simmetrica): l n×n unit-lower, d n valori.
+DECLARE FUNCTION LDLT LIB "gmbmath" ALIAS "ofx_linalg_ldlt" (a() AS DOUBLE, n AS LONG, l() AS DOUBLE, d() AS DOUBLE) AS LONG
+' Risolve L·diag(d)·Lᵀ x = b.
+DECLARE FUNCTION LDLTSOLVE LIB "gmbmath" ALIAS "ofx_linalg_ldltsolve" (l() AS DOUBLE, d() AS DOUBLE, b() AS DOUBLE, n AS LONG, x() AS DOUBLE) AS LONG
+' Eliminazione di Gauss-Jordan: risolve A x = b (A non modificato).
+DECLARE FUNCTION GAUSSJORDAN LIB "gmbmath" ALIAS "ofx_linalg_gaussjordan" (a() AS DOUBLE, n AS LONG, b() AS DOUBLE, x() AS DOUBLE) AS LONG
+' Omega ottimale per SOR (stima del raggio spettrale di Jacobi).
+DECLARE FUNCTION OPTIMALOMEGA LIB "gmbmath" ALIAS "ofx_linalg_optimalomega" (a() AS DOUBLE, n AS LONG) AS DOUBLE
+' Gradiente coniugato (A simmetrica definita positiva): rende le iterazioni o -1.
+DECLARE FUNCTION CG LIB "gmbmath" ALIAS "ofx_linalg_cg" (a() AS DOUBLE, n AS LONG, b() AS DOUBLE, x() AS DOUBLE, maxit AS LONG, tol AS DOUBLE) AS LONG
+' GMRES: rende le iterazioni o -1.
+DECLARE FUNCTION GMRES LIB "gmbmath" ALIAS "ofx_linalg_gmres" (a() AS DOUBLE, n AS LONG, b() AS DOUBLE, x() AS DOUBLE, restart AS LONG, maxit AS LONG, tol AS DOUBLE) AS LONG
+' Autovalore dominante e autovettore (power iteration).
+DECLARE FUNCTION POWER LIB "gmbmath" ALIAS "ofx_linalg_power" (a() AS DOUBLE, n AS LONG, iters AS LONG, tol AS DOUBLE, lambda_() AS DOUBLE, v() AS DOUBLE) AS LONG

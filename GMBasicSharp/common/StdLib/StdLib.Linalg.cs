@@ -111,8 +111,10 @@ public sealed partial class StdLib
     // ========================================================================
 
     /// <summary>
-    /// Crea e registra tutte le definizioni per il namespace 'MATRIX'.
-    /// Contiene comandi e funzioni per le matrici, con registrazioni che usano delegati semplici.
+    /// Crea e registra tutte le definizioni per il namespace 'LINALG' (API a valori MATRIX:
+    /// decomposizioni con campi, FACTOR, norme, funzioni matriciali). Il namespace `LINALG`
+    /// FFI su array è in `shared/include/linalg.inc`; le due superfici convivono per arità
+    /// disgiunte.
     /// </summary>
     private void CreateLinalgNamespace()
     {

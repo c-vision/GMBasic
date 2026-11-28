@@ -28,6 +28,7 @@
 #include "gm_matfun.h"
 #include "gm_eig.h"
 #include "gm_sparse_linalg.h"
+#include "gm_iter.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -798,4 +799,166 @@ i64 ofx_linalg_solve_triangular(const double *a, i64 a_n, i64 n,
         }
     }
     return 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * QUARTA ONDATA — delta di gmbmath: traccia/RREF/spazi, minimi quadrati,
+ * tridiagonali, LDLᵀ, Gauss-Jordan, solver iterativi e power iteration.
+ * Convenzioni: 0/-1 per le procedure; le funzioni con dimensione variabile
+ * (RREF/COLSPACE/ROWSPACE) rendono il rango; i solver iterativi rendono il
+ * numero di iterazioni (>=0) o -1.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* TRACE(a, n) — somma della diagonale. */
+double ofx_linalg_trace(const double *a, i64 a_n, i64 n)
+{
+    (void)a_n;
+    if (!a || n <= 0 || n > 100000) return -1.0;
+    return gm_linalg_trace((int)n, a);
+}
+
+/* RREF(a, rows, cols, out) — forma ridotta a scala; out rows×cols, rende il rango. */
+i64 ofx_linalg_rref(const double *a, i64 a_n, i64 rows, i64 cols, double *out, i64 out_n)
+{
+    (void)a_n;
+    if (!a || !out || rows <= 0 || cols <= 0 || out_n < rows * cols) return -1;
+    memcpy(out, a, (size_t)(rows * cols) * sizeof(double));
+    int r = gm_linalg_rref((int)rows, (int)cols, out, NULL);
+    return r < 0 ? -1 : (i64)r;
+}
+
+/* COLSPACE(a, rows, cols, out) — base dello spazio delle colonne (out rows×r,
+ * dimensionare rows×cols); rende il rango r. */
+i64 ofx_linalg_colspace(const double *a, i64 a_n, i64 rows, i64 cols, double *out, i64 out_n)
+{
+    (void)a_n;
+    if (!a || !out || rows <= 0 || cols <= 0 || out_n < rows * cols) return -1;
+    int r = gm_linalg_col_space((int)rows, (int)cols, a, out);
+    return r < 0 ? -1 : (i64)r;
+}
+
+/* ROWSPACE(a, rows, cols, out) — base dello spazio delle righe (out r×cols,
+ * dimensionare rows×cols); rende il rango r. */
+i64 ofx_linalg_rowspace(const double *a, i64 a_n, i64 rows, i64 cols, double *out, i64 out_n)
+{
+    (void)a_n;
+    if (!a || !out || rows <= 0 || cols <= 0 || out_n < rows * cols) return -1;
+    int r = gm_linalg_row_space((int)rows, (int)cols, a, out);
+    return r < 0 ? -1 : (i64)r;
+}
+
+/* LSTSQ(a, rows, cols, b, x) — minimi quadrati (rows>=cols), x ha cols valori. */
+i64 ofx_linalg_lstsq(const double *a, i64 a_n, i64 rows, i64 cols,
+                     const double *b, i64 b_n, double *x, i64 x_n)
+{
+    (void)a_n;
+    if (!a || !b || !x || rows <= 0 || cols <= 0 || rows < cols
+        || b_n < rows || x_n < cols) return -1;
+    return gm_linalg_lstsq((int)rows, (int)cols, a, b, x) == GM_OK ? 0 : -1;
+}
+
+/* SYMTRIDIAG(a, n, d, e) — riduzione simmetrica tridiagonale: d,e n valori. */
+i64 ofx_linalg_symtridiag(const double *a, i64 a_n, i64 n, double *d, i64 d_n,
+                          double *e, i64 e_n)
+{
+    (void)a_n;
+    if (!a || !d || !e || n <= 0 || n > 100000 || d_n < n || e_n < n) return -1;
+    return gm_linalg_sym_tridiag((int)n, a, d, e) == GM_OK ? 0 : -1;
+}
+
+/* TRIDIAGEIG(d, e, n, eval) — autovalori di una tridiagonale simmetrica
+ * (d,e non modificati), eval n valori. */
+i64 ofx_linalg_tridiageig(const double *d, i64 d_n, const double *e, i64 e_n,
+                          i64 n, double *eval, i64 eval_n)
+{
+    if (!d || !e || !eval || n <= 0 || n > 100000
+        || d_n < n || e_n < n || eval_n < n) return -1;
+    double *dc = (double *)malloc((size_t)n * sizeof(double));
+    double *ec = (double *)malloc((size_t)n * sizeof(double));
+    if (!dc || !ec) { free(dc); free(ec); return -1; }
+    memcpy(dc, d, (size_t)n * sizeof(double));
+    memcpy(ec, e, (size_t)n * sizeof(double));
+    int rc = gm_linalg_tridiag_eig((int)n, dc, ec, eval) == GM_OK ? 0 : -1;
+    free(dc); free(ec);
+    return rc;
+}
+
+/* THOMAS(lower, diag, upper, rhs, n, x) — sistema tridiagonale. */
+i64 ofx_linalg_thomas(const double *lower, i64 lo_n, const double *diag, i64 di_n,
+                      const double *upper, i64 up_n, const double *rhs, i64 rh_n,
+                      i64 n, double *x, i64 x_n)
+{
+    if (!lower || !diag || !upper || !rhs || !x || n <= 0 || n > 100000
+        || lo_n < n || di_n < n || up_n < n || rh_n < n || x_n < n) return -1;
+    return gm_linalg_thomas((int)n, lower, diag, upper, rhs, x) == GM_OK ? 0 : -1;
+}
+
+/* LDLT(a, n, l, d) — A = L·diag(d)·Lᵀ (simmetrica); L n×n unit-lower, d n. */
+i64 ofx_linalg_ldlt(const double *a, i64 a_n, i64 n, double *l, i64 l_n,
+                    double *d, i64 d_n)
+{
+    (void)a_n;
+    if (!a || !l || !d || n <= 0 || n > 100000 || l_n < n * n || d_n < n) return -1;
+    memcpy(l, a, (size_t)(n * n) * sizeof(double));
+    if (gm_linalg_ldlt((int)n, l, d) != GM_OK) return -1;
+    for (i64 i = 0; i < n; i++)
+        for (i64 j = i + 1; j < n; j++) l[i * n + j] = 0.0;
+    return 0;
+}
+
+/* LDLTSOLVE(l, d, b, n, x) — risolve L·diag(d)·Lᵀ x = b. */
+i64 ofx_linalg_ldltsolve(const double *l, i64 l_n, const double *d, i64 d_n,
+                         const double *b, i64 b_n, i64 n, double *x, i64 x_n)
+{
+    if (!l || !d || !b || !x || n <= 0 || n > 100000
+        || l_n < n * n || d_n < n || b_n < n || x_n < n) return -1;
+    return gm_linalg_ldlt_solve((int)n, l, d, b, x) == GM_OK ? 0 : -1;
+}
+
+/* GAUSSJORDAN(a, n, b, x) — eliminazione completa (A non modificato). */
+i64 ofx_linalg_gaussjordan(const double *a, i64 a_n, i64 n,
+                           const double *b, i64 b_n, double *x, i64 x_n)
+{
+    (void)a_n;
+    if (!a || !b || !x || n <= 0 || n > 100000 || b_n < n || x_n < n) return -1;
+    return gm_linalg_gauss_jordan((int)n, a, b, x) == GM_OK ? 0 : -1;
+}
+
+/* OPTIMALOMEGA(a, n) — omega ottimale per SOR (raggio spettrale di Jacobi). */
+double ofx_linalg_optimalomega(const double *a, i64 a_n, i64 n)
+{
+    (void)a_n;
+    if (!a || n <= 0 || n > 100000) return -1.0;
+    return gm_iter_optimal_omega((int)n, a);
+}
+
+/* CG(a, n, b, x, maxit, tol) — gradiente coniugato; rende le iterazioni o -1. */
+i64 ofx_linalg_cg(const double *a, i64 a_n, i64 n, const double *b, i64 b_n,
+                  double *x, i64 x_n, i64 maxit, double tol)
+{
+    (void)a_n;
+    if (!a || !b || !x || n <= 0 || n > 100000 || b_n < n || x_n < n) return -1;
+    int it = 0;
+    return gm_iter_cg((int)n, a, b, x, (int)maxit, tol, &it) == GM_OK ? (i64)it : -1;
+}
+
+/* GMRES(a, n, b, x, restart, maxit, tol) — rende le iterazioni o -1. */
+i64 ofx_linalg_gmres(const double *a, i64 a_n, i64 n, const double *b, i64 b_n,
+                     double *x, i64 x_n, i64 restart, i64 maxit, double tol)
+{
+    (void)a_n;
+    if (!a || !b || !x || n <= 0 || n > 100000 || b_n < n || x_n < n) return -1;
+    int it = 0;
+    return gm_iter_gmres((int)n, a, b, x, (int)restart, (int)maxit, tol, &it) == GM_OK
+           ? (i64)it : -1;
+}
+
+/* POWER(a, n, iters, tol, lambda, v) — autovalore dominante e autovettore.
+ * Nota: il kernel parte dal vettore di tutti uni e scrive v in uscita. */
+i64 ofx_linalg_power(const double *a, i64 a_n, i64 n, i64 iters, double tol,
+                     double *lambda, i64 lambda_n, double *v, i64 v_n)
+{
+    (void)a_n;
+    if (!a || !lambda || !v || n <= 0 || n > 100000 || lambda_n < 1 || v_n < n) return -1;
+    return gm_eig_power((int)n, a, lambda, v, (int)iters, tol) == GM_OK ? 0 : -1;
 }
