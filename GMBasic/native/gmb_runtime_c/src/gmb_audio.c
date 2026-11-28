@@ -371,25 +371,47 @@ static void apply_biquad(double* buf, int n, const gmb_audio_filter_t* f)
 #define GMB_AUDIO_MAX_CHUNKS 64
 static gmb_mix_chunk* g_chunks[GMB_AUDIO_MAX_CHUNKS]; /* handle 1..63 (0 = errore) */
 
-void gmb_audio_sound(int frequency, double duration, int volume)
+/* Un tono avviato sul mixer: il CHUNK e il PCM da cui è stato costruito. Mix_QuickLoad_RAW
+ * NON copia il buffer, quindi il PCM vive quanto il chunk (va liberato insieme). */
+typedef struct {
+    gmb_mix_chunk* chunk;
+    int16_t* pcm;
+    int channel;          /* canale scelto dal mixer; -1 = non avviato */
+} gmb_audio_voice_t;
+
+/* Sintetizza e AVVIA il tono: NON attende e non libera nulla (lo fa il chiamante, o il reap
+ * delle varianti asincrone). Ritorna 1 se il tono è partito. */
+static int gmb_audio_start_tone(int frequency, double duration, int volume, gmb_audio_voice_t* out)
 {
-    if (gmb_mix_ensure() != 1 || frequency <= 0 || duration <= 0) return;
+    out->chunk = NULL; out->pcm = NULL; out->channel = -1;
+    if (gmb_mix_ensure() != 1 || frequency <= 0 || duration <= 0) return 0;
     int samples = (int)(GMB_AUDIO_RATE * duration);
-    if (samples <= 0) return;
+    if (samples <= 0) return 0;
     double* buf = (double*)malloc((size_t)samples * sizeof(double));
-    if (!buf) return;
+    if (!buf) return 0;
     int n = gmb_audio_synth(frequency, duration, 0, 0.01, 0.0, 1.0, 0.02, 0.25, 0, 0, 0, buf, samples);
     if (g_filter_set[0]) apply_biquad(buf, n, &g_filters[0]); /* SOUND usa il voice 0 */
     int16_t* pcm = (int16_t*)malloc((size_t)n * sizeof(int16_t) * 2);
-    if (!pcm) { free(buf); return; }
+    if (!pcm) { free(buf); return 0; }
     for (int i = 0; i < n; i++) { int16_t v = (int16_t)(buf[i] * (volume > 0 ? volume / 100.0 : 1.0)); if (v > 32767) v = 32767; if (v < -32768) v = -32768; pcm[i*2] = v; pcm[i*2+1] = v; }
+    free(buf);
     gmb_mix_chunk* ch = g_mix.QuickLoadRAW ? g_mix.QuickLoadRAW((unsigned char*)pcm, (unsigned int)(n * 4)) : NULL;
-    if (ch) {
-        g_mix.PlayChannel(-1, ch, 0);
-        while (g_mix.Playing(-1) > 0) gmb_sleep_ms(10);
-        if (g_mix.FreeChunk) g_mix.FreeChunk(ch);
-    }
-    free(pcm); free(buf);
+    if (!ch) { free(pcm); return 0; }
+    int channel = g_mix.PlayChannel(-1, ch, 0);
+    if (channel < 0) { if (g_mix.FreeChunk) g_mix.FreeChunk(ch); free(pcm); return 0; }
+    out->chunk = ch; out->pcm = pcm; out->channel = channel;
+    return 1;
+}
+
+void gmb_audio_sound(int frequency, double duration, int volume)
+{
+    gmb_audio_voice_t v;
+    if (!gmb_audio_start_tone(frequency, duration, volume, &v)) return;
+    /* §0ter: attesa cooperativa — dentro un task GPM il worker viene liberato (C99: park della
+     * coroutine). Chi non sa parcheggiare usa gmb_audio_sound_async + park del task. */
+    while (g_mix.Playing(-1) > 0) gmb_gpm_sleep(10);
+    if (g_mix.FreeChunk) g_mix.FreeChunk(v.chunk);
+    free(v.pcm);
 }
 
 void gmb_audio_play_mml(const char* mml)
@@ -404,6 +426,137 @@ void gmb_audio_play_mml(const char* mml)
         if (type[i] == 0) gmb_audio_sound_voice(0, freq[i], dur[i], vol[i], 0, 0.10, 0.0, 1.0, 0.20, 0.25);
         else gmb_gpm_sleep((int)(dur[i] * 1000));   /* §0ter: park, non worker bloccato */
     }
+}
+
+int gmb_audio_load_sound(const char* path)
+{
+    if (gmb_mix_ensure() != 1 || !path || !*path || !g_mix.LoadWAV) return 0;
+    gmb_mix_chunk* ch = g_mix.LoadWAV(path);
+    if (!ch) return 0;
+    for (int i = 1; i < GMB_AUDIO_MAX_CHUNKS; i++)
+    {
+        if (!g_chunks[i]) { g_chunks[i] = ch; return i; }
+    }
+    if (g_mix.FreeChunk) g_mix.FreeChunk(ch);
+    return 0;
+}
+
+void gmb_audio_play_sound(int handle, int channel, int loops)
+{
+    if (handle <= 0 || handle >= GMB_AUDIO_MAX_CHUNKS || !g_chunks[handle]) return;
+    if (gmb_mix_ensure() != 1 || !g_mix.PlayChannel) return;
+    if (loops < 0) loops = -1;
+    g_mix.PlayChannel(channel < 0 ? -1 : channel, g_chunks[handle], loops);
+}
+
+void gmb_audio_set_volume(int volume, int channel)
+{
+    if (gmb_mix_ensure() != 1 || !g_mix.Volume) return;
+    if (volume < 0) volume = 0;
+    if (volume > 100) volume = 100;
+    int sdl_vol = volume * GMB_MIX_MAX_VOLUME / 100;
+    if (channel >= 0) { g_mix.Volume(channel, sdl_vol); return; }
+    int nch = g_mix.AllocateChannels ? g_mix.AllocateChannels(-1) : 16;
+    for (int ch = 0; ch < nch; ch++) g_mix.Volume(ch, sdl_vol);
+}
+
+void gmb_audio_control(int action, int channel)
+{
+    if (gmb_mix_ensure() != 1) return;
+    int ch = channel < 0 ? -1 : channel;
+    switch (action)
+    {
+        case 0: if (g_mix.HaltChannel) g_mix.HaltChannel(ch); break;
+        case 1: if (g_mix.Pause) g_mix.Pause(ch); break;
+        case 2: if (g_mix.Resume) g_mix.Resume(ch); break;
+        default: break; /* 3 = clear queue: il motore C non ha coda (PLAY bloccante) */
+    }
+}
+
+int gmb_audio_is_playing(void)
+{
+    if (gmb_mix_ensure() != 1 || !g_mix.Playing) return 0;
+    return g_mix.Playing(-1) > 0 ? 1 : 0;
+}
+
+/* ── SOUND posizionale (P6/M-SND) ───────────────────────────────────────────────────────
+ * Il pan NON passa dal mixer (nessun Mix_SetPanning nella tabella dlopen dei simboli): si
+ * applica ai campioni che sintetizziamo, con un pan LINEARE — centro a piena ampiezza, gli
+ * estremi lasciano un solo canale. `gain` 0..1 porta gia' l'attenuazione e il volume.
+ *
+ * NON attende: e' un effetto one-shot, non uno statement bloccante. La §0ter vieta di
+ * dormire dentro un worker GPM (VM/C: nessuna coroutine per il frame C del syscall), e un
+ * effetto posizionale non deve comunque fermare il gioco. Il chunk si libera al primo
+ * SOUND posizionale successivo in cui il canale ha finito (spazi finiti: 8 toni
+ * sovrapposti; oltre, si perde la sola referenza al buffer di quel tono, come fa gia' il
+ * reap delle varianti asincrone). Senza device (headless) ritorna subito. */
+#define GMB_AUDIO_PAN_SLOTS 8
+static struct { gmb_mix_chunk* chunk; int16_t* pcm; int channel; } g_pan_play[GMB_AUDIO_PAN_SLOTS];
+
+/* Libera i toni posizionali gia' finiti: nessuna attesa, nessun thread di servizio. */
+static void gmb_audio_pan_reap(void)
+{
+    if (!g_mix.Playing) return;
+    for (int i = 0; i < GMB_AUDIO_PAN_SLOTS; i++)
+    {
+        if (!g_pan_play[i].chunk) continue;
+        if (g_mix.Playing(g_pan_play[i].channel) > 0) continue;
+        if (g_mix.FreeChunk) g_mix.FreeChunk(g_pan_play[i].chunk);
+        free(g_pan_play[i].pcm);
+        g_pan_play[i].chunk = NULL; g_pan_play[i].pcm = NULL; g_pan_play[i].channel = -1;
+    }
+}
+
+void gmb_audio_sound_panned(int frequency, double duration, double gain, double pan)
+{
+    if (gmb_mix_ensure() != 1 || frequency <= 0 || duration <= 0) return;
+    if (!(gain > 0.0)) return;
+    gmb_audio_pan_reap();
+    if (gain > 1.0) gain = 1.0;
+    if (pan < -1.0) pan = -1.0;
+    if (pan > 1.0) pan = 1.0;
+    int samples = (int)(GMB_AUDIO_RATE * duration);
+    if (samples <= 0) return;
+    double* buf = (double*)malloc((size_t)samples * sizeof(double));
+    if (!buf) return;
+    int n = gmb_audio_synth(frequency, duration, 0, 0.01, 0.0, 1.0, 0.02, 0.25, 0, 0, 0, buf, samples);
+    if (n <= 0) { free(buf); return; }
+    if (g_filter_set[0]) apply_biquad(buf, n, &g_filters[0]);   /* il voice 0 di SOUND */
+    int16_t* pcm = (int16_t*)malloc((size_t)n * sizeof(int16_t) * 2);
+    if (!pcm) { free(buf); return; }
+    /* Pan lineare: a pan 0 entrambi i canali a piena ampiezza (nessuna perdita al centro). */
+    double gl = pan > 0.0 ? 1.0 - pan : 1.0;
+    double gr = pan < 0.0 ? 1.0 + pan : 1.0;
+    for (int i = 0; i < n; i++)
+    {
+        double v = buf[i] * gain;
+        double l = v * gl * 32767.0, r = v * gr * 32767.0;
+        if (l > 32767.0) l = 32767.0; if (l < -32768.0) l = -32768.0;
+        if (r > 32767.0) r = 32767.0; if (r < -32768.0) r = -32768.0;
+        pcm[i * 2] = (int16_t)l;
+        pcm[i * 2 + 1] = (int16_t)r;
+    }
+    free(buf);
+    gmb_mix_chunk* ch = g_mix.QuickLoadRAW
+        ? g_mix.QuickLoadRAW((unsigned char*)pcm, (unsigned int)(n * 4)) : NULL;
+    if (!ch) { free(pcm); return; }
+    int channel = g_mix.PlayChannel(-1, ch, 0);
+    if (channel < 0)
+    {
+        if (g_mix.FreeChunk) g_mix.FreeChunk(ch);
+        free(pcm);
+        return;
+    }
+    for (int i = 0; i < GMB_AUDIO_PAN_SLOTS; i++)
+    {
+        if (g_pan_play[i].chunk) continue;
+        g_pan_play[i].chunk = ch;
+        g_pan_play[i].pcm = pcm;
+        g_pan_play[i].channel = channel;
+        return;
+    }
+    /* Tutti i posti occupati: il chunk e' IN RIPRODUZIONE, liberarlo ora sarebbe un
+     * use-after-free nel mixer. Si perde la referenza (nessun leak di canali). */
 }
 
 /* ── SOUND con voice, timbro e ADSR (parità AudioManager.SoundOnVoiceAsync) ─────────────
