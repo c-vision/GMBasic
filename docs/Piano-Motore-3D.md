@@ -1,6 +1,6 @@
 # Piano — Motore 3D di GMBasic (parità Engine1999 e oltre)
 
-> **Stato**: piano di lavoro. **P0–P4 sono chiusi e le quattro gambe li eseguono**: target 3D e cattura headless nel runtime (`include/gmb_3d.h`, `src/gmb_3d_frame.c`), renderer a settori (`shared/libs/graphics/src/gm_gfx_sector.c`), tempo (`src/gmb_3d_time.c`), collisione, **rasterizzatore mesh** (`gmb_3d_mesh_draw`: clip, z-buffer, UV prospettici), oracolo `tools/gmb_3d_oracle.c` con **18 golden** per RID, la mappa demo di P2 e il dominio `SCENE` agganciato al linguaggio su tutte e quattro le gambe. **P4 è chiuso (2026-11-25)**: luce **per pixel** con **lampade point/spot**, **fog**, **FAR**, **SKY**, **COLORMAP** a 32 livelli e **THING**, con l'ordine sky → opachi → thing → traslucidi; 6 MiniTest e 6 golden nuove, stessi valori su tutte e quattro le gambe. Documento di riferimento per le fasi **P0–P9**, che si eseguono in quest'ordine, più `PH` (hardware) fuori numerazione. Il **ponte C#** dei comandi 3D è chiuso: i 20 MiniTest del dominio `WORLD` girano su C99Native, IL, PCode e VM/C. **P5 ha consegnato** culling per oggetto, superficie interattiva, buffer a capacità dinamica (200k triangoli) e, il 2026-11-27, i **raggi** (`SHOOT`/`USE`/`SEES`) e le **statistiche** (`SCENE.STATS`).
+> **Stato**: piano di lavoro. **P0–P4 sono chiusi e le quattro gambe li eseguono**: target 3D e cattura headless nel runtime (`include/gmb_3d.h`, `src/gmb_3d_frame.c`), renderer a settori (`shared/libs/graphics/src/gm_gfx_sector.c`), tempo (`src/gmb_3d_time.c`), collisione, **rasterizzatore mesh** (`gmb_3d_mesh_draw`: clip, z-buffer, UV prospettici), oracolo `tools/gmb_3d_oracle.c` con **18 golden** per RID, la mappa demo di P2 e il dominio `SCENE` agganciato al linguaggio su tutte e quattro le gambe. **P4 è chiuso (2026-11-25)**: luce **per pixel** con **lampade point/spot**, **fog**, **FAR**, **SKY**, **COLORMAP** a 32 livelli e **THING**, con l'ordine sky → opachi → thing → traslucidi; 6 MiniTest e 6 golden nuove, stessi valori su tutte e quattro le gambe. Documento di riferimento per le fasi **P0–P9**, che si eseguono in quest'ordine, più `PH` (hardware) fuori numerazione. Il **ponte C#** dei comandi 3D è chiuso: i 20 MiniTest del dominio `WORLD` girano su C99Native, IL, PCode e VM/C. **P5 ha consegnato** culling per oggetto, superficie interattiva, buffer a capacità dinamica (200k triangoli) e, il 2026-11-27, i **raggi** (`SHOOT`/`USE`/`SEES`) e le **statistiche** (`SCENE.STATS`). **P6 è chiuso (2026-11-28)**: audio posizionale (`SCENE SOUND`) e il controllore in prima persona — pad, mouse-look, salto, accovacciato — con `Samples3D/Walk.bas` e `shared/minitests/3d/scene_walk.bas` identici su quattro gambe.
 > **Base**: SDL2 (present di GMBasic) + `shared/libs/graphics` (vendored da `gmbsuite`) + `native/gmb_runtime_c`.
 > **Riferimento esterno**: [`ekkehard-morgenstern/Engine1999`](https://github.com/ekkehard-morgenstern/Engine1999) — engine SDL2 in C, **GPL-3.0**, con due renderer 3D.
 > **Regola di licenza**: di Engine1999 si replica il *comportamento*, mai il codice.
@@ -570,7 +570,7 @@ dichiarazione e riusato: `SCENE RESET` non libera e non rialloca.
 (`SCENE ANIM`), keyframe degli oggetti, LOD, instancing, raggi, zone, `SCENE.STATS`, culling. Restano
 i blocchi **P6+** (audio 3D posizionale e input).
 
-### P6 — Audio 3D e input (5–7 gg)
+### P6 — Audio 3D e input (5–7 gg) — **FATTO** (2026-11-28)
 
 * **Consegnato il 2026-11-28 — audio posizionale `SCENE SOUND`**: 16 sorgenti (slot 1..16),
   attenuazione lineare `(1 − d/dist) × vol/100` con clamp, pan sull'asse destro della camera
@@ -578,10 +578,26 @@ i blocchi **P6+** (audio 3D posizionale e input).
   non cambia (nessun `Mix_SetPanning`), quindi nessun simbolo in più e nessun fallback da
   documentare. Comando **non bloccante** (§0ter), letture deterministiche
   `SCENE.SOUNDGAIN(n)`/`SCENE.SOUNDPAN(n)` per i test headless, `--audiocheck` nel gate,
-  `scene_sound.bas` su quattro gambe. Restano per il blocco: input (mouse-look, pad,
-  jump/crouch) e il synth 8 canali + MML di §5 (in gran parte già in `gmb_audio.c`).
-* Mouse-look, pad, jump/crouch; handler solo su task GPM.
-* **Accettazione**: MiniTest deterministici su attenuazione/pan; sample "walk".
+  `scene_sound.bas` su quattro gambe. Il **synth a 8 canali** di §5 è consegnato con la fase 1
+  dell'ADR audio (`docs/ADR-Audio-Confine-Synth.md`, `gmb_synth.c`): non è un lavoro di P6.
+* **Consegnato il 2026-11-28 — input (mouse-look, pad, jump/crouch)**: nessun comando nuovo, il
+  ciclo usa i verbi di P5 e i lettori che esistono (`JOY.MASK`, `MOUSE.X/Y`, `MOUSE.PRESENT`).
+
+| Pezzo | Dove | Verifica |
+|---|---|---|
+| Controllore in prima persona: mask → vettore (le direzioni opposte si annullano), mouse-look con clamp del pitch a ±88 (TURN rifiuta ±89), salto = `vy` con gravità e atterraggio sulla quota di `FLOORAT`, **`MOVE` sospeso in aria** (riappoggia a terra entro lo step: da in aria annullerebbe il salto), accovacciato = `PLAYER` con occhio più basso (i piedi restano) | `Samples3D/Walk.bas` (sample, con `LIVE` 0/1) e `shared/minitests/3d/scene_walk.bas` (MiniTest) | `scene_walk.bas` PASS su C99Native; `parity4 Samples3D/Walk.bas` = 4 gambe identiche |
+| Input **headless-safe**: senza device `MOUSE.PRESENT`/`JOY.PORTS`/`MOUSE.X/Y`/`JOY.MASK` valgono 0 e non aprono niente | `gmb_gfx_input.c`, `gmb_joy.c` (nessuna modifica) | il MiniTest gira in CI senza finestra né pad |
+| Semantica dichiarata, niente seconda strada: la fisica verticale resta del gioco, l'atterraggio è `FLOORAT` | `docs/3D-Specifica-Comportamenti.md` §3.3 (`M-INPUT-*`) | specifica allineata al sample |
+| Superficie invariata | — | nessun TokenKind/syscall nuovo; §4.2 non cambia |
+
+**Perché così.** Un `SCENE JUMP`/`SCENE LOOK` nel motore sarebbe una seconda strada per cose che
+`LIFT`/`TURN`/`FLOORAT` già fanno, e la fisica del gioco (gravità, sensibilità, corsa, passo)
+è una **scelta del gioco**, non del renderer. Il motore deve garantire le regole
+(`M-INPUT-LOOK`: il clamp è di chi chiama, perché `TURN` a ±89 è un errore) e i lettori
+devono essere leggibili in headless: è quello che verificano il sample e il MiniTest.
+
+**P6 è chiuso**: audio posizionale e input. Restano P7 (parità 2D Engine1999), P8 (tooling) e
+P9 (guide e release).
 
 ### P7 — Parità 2D Engine1999 (12–18 gg)
 

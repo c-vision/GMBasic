@@ -1048,7 +1048,80 @@ MiniTest che bloccano i numeri: `shared/minitests/3d/scene_mesh.bas`,
 la P3, `scene_lamp_point_spot.bas`, `scene_fog.bas`, `scene_far.bas`, `scene_sky.bas`,
 `scene_colormap.bas`, `scene_thing.bas` per la P4, e `scene_move.bas` (corpo, `MOVE`/`TURN`/
 `LIFT`, `HIT`, letture camera), `scene_zones.bas` (zone, tag, `FLOORAT`/`CEILAT`, passabile) e
-`scene_rays.bas` (raggi, flag 8 contro flag 4, linea di vista) e `scene_stats.bas` (`SCENE.STATS`,
-`renders`/`renders_max`, `RESET`) per la superficie interattiva — tutti con gli stessi valori su
+`scene_rays.bas` (raggi, flag 8 contro flag 4, linea di vista), `scene_stats.bas` (`SCENE.STATS`,
+`renders`/`renders_max`, `RESET`) e `scene_walk.bas` (controllore di input: mask, mouse-look,
+salto, accovacciato) per la superficie interattiva — tutti con gli stessi valori su
 C99Native, IL, PCode e VM/C. Sample: `Samples3D/MeshBasics.bas`, `TextureFile.bas`, `LightFaces.bas`,
-`MaterialFlags.bas`, `PresentLoop.bas`.
+`MaterialFlags.bas`, `PresentLoop.bas`, `Walk.bas`.
+
+### Ciclo di gioco: pad, mouse-look, salto, accovacciato
+
+Il motore non ha un "controller": ha i verbi del corpo (`PLAYER`, `MOVE`, `TURN`, `LIFT`), le
+quote (`FLOORAT`) e i lettori di input del linguaggio — `JOY.MASK(0)` (**1** su, **2** giù,
+**4** sinistra, **8** destra, **16** fuoco, **32** secondo tasto) e `MOUSE.X/Y` con
+`MOUSE.PRESENT()`. Il primo passo di un gioco sta in poche righe, dentro il task GPM che
+disegna il frame:
+
+```
+SCENE PLAYER 14, 56, 46, 24           ' raggio, altezza, occhio, step
+m = JOY.MASK(0)
+fwd = (m MOD 2) - ((m \ 2) MOD 2)     ' su − giù: le opposte si annullano
+side = ((m \ 8) MOD 2) - ((m \ 4) MOD 2)
+dx = MOUSE.X - lastx                  ' mouse-look: il DELTA, non la posizione
+dy = MOUSE.Y - lasty
+lastx = MOUSE.X
+lasty = MOUSE.Y
+pitch = SCENE.PITCH() - dy * 2        ' 2 gradi per pixel
+IF pitch > 88 THEN pitch = 88         ' TURN rifiuta ±89: il clamp è qui
+IF pitch < -88 THEN pitch = -88
+SCENE TURN dx * 2, pitch - SCENE.PITCH()
+SCENE MOVE fwd, side
+```
+
+Il **salto** non è un comando: è una velocità verticale che il gioco integra e che atterra sulla
+quota chiesta a `FLOORAT` (i piedi sono `SCENE.Y() - SCENE.EYE()`):
+
+```
+IF fuoco = 1 AND grounded = 1 THEN
+  vy = 10
+  grounded = 0
+END IF
+IF grounded = 0 THEN
+  vy = vy - 2                         ' gravità per frame
+  SCENE LIFT vy
+  feet = SCENE.Y() - SCENE.EYE()
+  fl = SCENE.FLOORAT(SCENE.X(), feet, SCENE.Z())
+  IF fl > -1000000 THEN
+    IF feet <= fl THEN
+      SCENE LIFT fl - feet
+      vy = 0
+      grounded = 1
+    END IF
+  END IF
+END IF
+```
+
+L'**accovacciato** è `SCENE PLAYER` con l'occhio più basso (`PLAYER 14, 56, 20, 24`): `PLAYER`
+conserva i piedi, quindi la testa scende e il corpo non sprofonda. La collisione non cambia — è
+una scelta di telecamera, dichiarata in specifica (`M-INPUT-CROUCH`).
+
+**Il passo va sospeso in aria.** `MOVE` riappoggia il corpo alla superficie calpestabile entro lo
+`step`: è ciò che fa scendere le scale senza fisica, ma da in aria riporta giù, e un salto che
+continua a chiamare `MOVE` non si stacca mai. Il salto si fa con `LIFT`, il passo si dà solo a
+piedi a terra:
+
+```
+IF grounded = 1 THEN
+  SCENE MOVE fwd, side
+END IF
+```
+
+Senza device i lettori valgono `0` e non aprono niente, quindi lo stesso codice gira in CI. Il
+sample `Samples3D/Walk.bas` tiene il controllore identico e cambia una sola cosa: `LIVE` a `1`
+legge pad e mouse veri, a `0` segue un copione deterministico. Il MiniTest
+`shared/minitests/3d/scene_walk.bas` blinda la matematica (mask → vettore, clamp del pitch,
+salto e atterraggio, accovacciato) sulle quattro gambe.
+
+**Un dettaglio che fa perdere un pomeriggio**: l'AABB di un oggetto è l'**unione** dei suoi `BOX`.
+Due pareti lontane nello stesso `SCENE OBJECT` fanno una scatola che contiene il giocatore, e la
+collisione lo espelle lontano. Una parete, un oggetto.

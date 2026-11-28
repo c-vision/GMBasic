@@ -325,6 +325,30 @@ Verifica: `gmb_3d_oracle --audiocheck` (**P6-SND ok=32 fail=0**, dentro `check_3
 A/B `cc`+`zcc` su `gmb_3d_audio.c`) e `shared/minitests/3d/scene_sound.bas`, identico su C99Native,
 IL, PCode e VM-C.
 
+#### Ciclo di gioco: input (P6, 2026-11-28)
+
+Non ci sono comandi nuovi: il primo passo di un gioco è un **controllore** scritto in BASIC con i
+verbi che esistono già (`PLAYER`/`MOVE`/`TURN`/`LIFT`, `FLOORAT`) e i lettori di input del
+linguaggio (`JOY.MASK`, `MOUSE.X/Y`, `MOUSE.PRESENT`). Qui è dichiarato cosa quei verbi
+**garantiscono** quando li guida l'input:
+
+| ID | Comportamento |
+|---|---|
+| `M-INPUT-MASK` | `JOY.MASK(id)` è una maschera stabile: **1** su, **2** giù, **4** sinistra, **8** destra, **16** fuoco, **32** secondo tasto. Il vettore di movimento è `avanti = bit0 − bit1`, `destra = bit3 − bit2`: le direzioni opposte si **annullano** (nessuna priorità, nessun "ultimo vince") |
+| `M-INPUT-LOOK` | mouse-look = delta di `MOUSE.X/Y` (posizione, quindi differenza fra frame) × sensibilità → `TURN` in gradi. Il limite del pitch è **±88**: `TURN` **rifiuta** ±89 con errore esplicito (`M-COLLIDE`), quindi il **clamp è del controllore** — un gioco non deve poter fermare il worker per un pitch troppo alto |
+| `M-INPUT-JUMP` | il motore **non** ha una fisica verticale: il salto è `vy` + `LIFT vy` per frame con la gravità del gioco. L'atterraggio si chiede a `FLOORAT(x, piedi, z)` e il corpo ci si mette con `LIFT fl − piedi`; `−1000000` = nessuna superficie (si continua a cadere) |
+| `M-INPUT-CROUCH` | accovacciarsi = `PLAYER raggio, altezza, occhio, step` con l'occhio più basso: `PLAYER` **conserva i piedi** (`M-PLAYER`), quindi la testa scende e il corpo non sprofonda. Non cambia la collisione ed è una scelta di telecamera, dichiarata |
+| `M-INPUT-AIR` | `MOVE` **riappoggia il corpo** alla superficie calpestabile entro lo `step` (`M-COLLIDE`: è ciò che fa scendere le scale), quindi da in aria riporta giù: un salto che continua a chiamare `MOVE` non si stacca mai. Il controllore sospende `MOVE` mentre è in aria; `LIFT` invece non riappoggia (il salto si fa con `LIFT`) |
+| `M-INPUT-HEADLESS` | senza device `MOUSE.PRESENT`, `JOY.PORTS`, `MOUSE.X/Y` e `JOY.MASK` valgono **0** e non aprono niente: lo stesso controllore gira in CI senza finestra e senza pad |
+| `M-INPUT-GPM` | il controllore gira **dentro il task GPM** che disegna il frame: l'input si legge e non si aspetta, nessun handler su thread esterni (`C-GPM`, §0ter) |
+| `M-INPUT-AABB` | l'AABB di un oggetto è l'**unione** dei suoi `BOX`: due pareti lontane nello stesso `OBJECT` fanno una scatola che contiene il giocatore e la collisione lo espelle. Una parete, un oggetto |
+
+Verifica: `shared/minitests/3d/scene_walk.bas` (mask → vettore, mouse-look con clamp, salto con
+gravità e atterraggio su `FLOORAT`, `MOVE` da in aria che riappoggia a terra con `HIT` bit 4,
+accovacciato) identico su C99Native, IL, PCode e VM/C, e il
+sample `Samples3D/Walk.bas` (stesso controllore: `LIVE = 0` copione deterministico, `LIVE = 1`
+pad e mouse veri), pari su quattro gambe.
+
 ### 3.3 Collisione, raggi, zone
 
 | ID | Comportamento |
