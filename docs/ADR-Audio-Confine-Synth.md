@@ -1,6 +1,7 @@
 # ADR — Confine del synth a 8 voci: device, mixer, voce → canale
 
-> **Stato**: accettato il 2026-11-28. **Solo decisioni e documentazione: nessuna riga di codice.**
+> **Stato**: accettato il 2026-11-28, **rev. 2026-11-28** (D-1/D-2 in due fasi: in fase 1 il device è
+> quello del mixer). **Solo decisioni e documentazione: nessuna riga di codice.**
 > **Ambito**: chi possiede il device audio, se il synth assorbe il mixer `dlopen` o resta separato,
 > e la semantica voce → canale che deve restare compatibile con l'audio posizionale **P6**
 > (`M-SND*`, `docs/3D-Specifica-Comportamenti.md` §3.2).
@@ -35,7 +36,10 @@
 4. **I file WAV sono usati pochissimo.** `SOUND LOAD` / `SOUND PLAY #h` / `SOUND VOLUME` compaiono in
    **2 sample** (`shared/samples/Audio/AudioControls.bas`, `AudioFileLoading.bas`) per **7 righe** in
    tutto. Il loro parse esiste solo in C# (`ParseSoundLoadStatement`, `ParseSoundPlayFileStatement`,
-   `ParseSoundVolumeStatement`); sulle gambe C quei comandi sono oggi **saltati**.
+   `ParseSoundVolumeStatement`); sulle gambe C quei comandi sono oggi **saltati**: il parser C99 li
+   riduce a `REM` (`gmb_parser_stmt_audio.c`), mentre il runtime C ha già `gmb_audio_load_sound`,
+   `gmb_audio_play_sound` e `gmb_audio_set_volume` sul mixer e VM/C ha i codici
+   `GMB_SC_SOUND_LOAD`/`PLAY_FILE`/`VOLUME`.
 5. **Il parser C# di `SOUND` copre solo il tono**: `SOUND [ON v,] freq, dur, vol, wave, att, dec, sus,
    rel, pw`. `SOUND VOLUME` ha la forma **`volume[, channel]`** (`IAudioService.SetVolume(int volume,
    int? channel)`), quindi `SOUND VOLUME 50` = master, non «voce 50».
@@ -47,81 +51,118 @@
 
 ## 2. Decisioni
 
-### D-1 — Il device è **uno**, del synth, ed è SDL2 **core** audio in `dlopen`
+### D-1 — Un device **solo**: in fase 1 è quello del mixer (pull via `Mix_HookMusic`), in fase 2 quello di SDL2 core
 
-**Decisione.** Il synth apre **un solo** device audio, tramite `SDL_OpenAudioDevice` **caricato a
-runtime** (`dlopen`/`LoadLibrary` di SDL2 **core**, non di SDL2_mixer), in un nuovo file
-`gmb_audio_dev.c` che entra in `GMB_ALL_SRCS` (core). Il device è **pull**: il callback di SDL chiama
-`gmb_synth_render(stream, n)`; nessuna coda di push, nessun thread nostro.
+> **Rev. 2026-11-28 — due fasi.** La prima stesura diceva «il device è del synth, ed è SDL2 core» in un
+> colpo solo, e rifiutava «il mixer come device» perché «il mixer non espone un callback che possiamo
+> rendere noi»: **premessa falsa**. `Mix_HookMusic` e `Mix_SetPostMix` esistono da SDL_mixer 2.0.0 e sono
+> esattamente quel callback. La revisione separa il device dal costo dell'assorbimento dei WAV.
 
-**Perché.**
-- **Il core non deve linkare SDL** (fatto 2): il device poteva stare solo in `dlopen` o nella
-  variante UI. `dlopen` di SDL2 core costa una manciata di simboli e **non** trascina la catena dei
-  codec, quindi rispetta l'invariante del runtime minimo.
-- **Pull e non push.** Il render è una **funzione pura** di `(stato, n)`; è la stessa funzione che i
-  MiniTest chiamano offline. Con `SDL_QueueAudio` avremmo bisogno di un secondo thread che rende "a
-  tempo", cioè un altro orologio da sincronizzare: esattamente ciò che stiamo eliminando.
-- **Un device per processo.** `SDL_InitSubSystem(SDL_INIT_AUDIO)` è già un singleton SDL: due device
-  aperti contemporaneamente (synth + mixer) renderebbero impossibile definire master, saturazione e
-  latenza comuni.
+**Decisione.** Un **solo** device audio per processo, in entrambe le fasi. Cambia chi lo apre:
+
+| | **fase 1** (questo lavoro) | **fase 2** (pulizia, dopo P6 verde) |
+|---|---|---|
+| device | quello di **SDL2_mixer** (`dlopen`, come oggi) | **SDL2 core**, `SDL_OpenAudioDevice` in `dlopen` |
+| chi tira il render | **`Mix_HookMusic`**: gira per **primo** su ogni buffer, che è **silenzioso** in ingresso — si scrive, non si somma | il callback del nostro device |
+| WAV | chunk del mixer, come oggi | voce campione del synth (`gmb_audio_wav.c`) |
+| simboli `Mix_*` | restano, **+2** (`Mix_HookMusic`, `Mix_QuerySpec`) | **0** |
+
+In entrambe `gmb_synth_render(stream, n)` è l'**unica** funzione di render — la stessa che i MiniTest
+chiamano offline (`M-AUD-MODE`) — e il file che apre il device è `gmb_audio_dev.c` in `GMB_ALL_SRCS`
+(core): nessun thread nostro, nessuna coda di push.
+
+**Formato e blocco (fase 1).** Il hook riceve il buffer nel formato **ottenuto**, non in quello chiesto:
+si apre con `Mix_OpenAudioDevice(44100, AUDIO_S16SYS, 2, 512, NULL, 0)` (`allowed_changes` = 0) e si
+**verifica** con `Mix_QuerySpec(&freq, &fmt, &ch)`. Simbolo assente, richiesta non onorata o formato
+diverso da 44100/S16/2 → **offline automatico**: mai rendere a un rate diverso da quello del device
+(cambierebbe l'altezza, non la latenza). Blocco **512** frame ≈ 11,6 ms; con il `Mix_OpenAudio` legacy,
+1024 come oggi.
+
+**Perché (fase 1).**
+- **Il device resta uno, e l'orologio pure**: il hook è dentro il callback del device, quindi il
+  render vede lo stesso tempo, lo stesso master e lo stesso contatore per il synth e per i WAV. Due
+  device (synth + mixer) renderebbero master, saturazione e latenza non definibili.
+- **Il core continua a non linkare SDL** (fatto 2): la fase 1 dlopena SDL2_mixer (come già fa), la
+  fase 2 SDL2 core; in nessuna delle due SDL entra nel link.
+- **Pull e non push.** Il render è una **funzione pura** di `(stato, n)`, la stessa che i MiniTest
+  chiamano offline: il hook la chiama una volta per blocco. Con `SDL_QueueAudio` servirebbe un secondo
+  thread che rende "a tempo", cioè un altro orologio da sincronizzare.
+- **Il synth non dipende da un decoder che non esiste**: P6 nasce e diventa verde con i WAV
+  esattamente come sono oggi. Il decoder è fase 2 (D-2).
 
 **Conseguenze.**
-- Se `dlopen` o `SDL_OpenAudioDevice` falliscono → **modalità offline automatica** (`M-AUD-MODE`):
-  nessun errore fatale, nessun device, tutte le letture di `AUDIO.*` restano valide. Non è un
-  ripiego silenzioso: è la modalità con cui girano CI e MiniTest.
-- Blocco del device: **512 campioni** (≈ 11,6 ms a 44100 Hz), 1024 solo se il driver lo impone. Il
+- `Mix_HookMusic` **sostituisce il music player** di SDL_mixer: nella tabella `g_mix` non c'è **nessun**
+  simbolo `Mix_Music*` (i WAV sono `Mix_Chunk`), quindi non si perde nulla — va scritto nel commento del
+  file, perché è l'unica cosa che il hook disabilita.
+- Il hook **non prende lock, non chiama funzioni del mixer, non esegue BASIC** (D-7, §0ter): scrive nel
+  buffer e pubblica lo snapshot. I comandi che chiamano il mixer per i WAV (`Mix_Volume`,
+  `Mix_HaltChannel`) prendono il lock audio di SDL e possono attendere **al più un blocco**: bounded, e
+  dal lato comandi, non dal lato render.
+- Se `dlopen`, l'apertura o il formato falliscono → **modalità offline automatica** (`M-AUD-MODE`):
+  nessun errore fatale, nessun device, tutte le letture di `AUDIO.*` restano valide.
+- Latenza dichiarata: 512 frame di buffer + il buffer del driver; non è un target "pro audio". Il
   render resta indipendente dal blocco (`M-AUD-BLOCK`).
-- Latenza dichiarata: 512 campioni di buffer + il buffer del driver; non è un target "pro audio",
-  è un target di gioco con test deterministici.
 
 **Alternative rifiutate.**
 1. **Linkare SDL2** nel core: rompe l'invariante del runtime minimo (fatto 2) e trascina SDL in ogni
    processo che vuole solo il synth.
-2. **Tenere SDL2_mixer come device** e aggiungere le voci sopra: il mixer non espone un callback che
-   possiamo rendere noi; si resta su chunk e su `Mix_Volume`, cioè sul modello che vogliamo togliere.
-3. **Due device (uno del synth, uno del mixer)**: due orologi, due livelli, master e contatore di
-   clipping non definibili. Rifiutato in radice.
+2. ~~**Tenere SDL2_mixer come device**: il mixer non espone un callback che possiamo rendere noi.~~
+   **Ritirata: la premessa è falsa.** `Mix_HookMusic` è quel callback (fire su ogni buffer, buffer
+   silenzioso in ingresso) e `Mix_SetPostMix` è la variante che gira dopo il mix; entrambe esistono da
+   SDL_mixer 2.0.0. Il costo vero di tenere il mixer non è «niente callback», è: la catena `dlopen` dei
+   ~18 lib resta, i WAV restano fuori da master e contatore di clipping, un canale del mixer non è una
+   delle 8 voci. Sono i costi che paga la **fase 2**, non quelli che giustificano di pagarli **tutti
+   adesso**.
+3. **Due device** (synth su SDL2 core + mixer per i WAV): due orologi, due buffer, due livelli, master
+   e contatore di clipping non definibili; e la fattibilità dipende dalla versione di SDL_mixer
+   (`Mix_OpenAudio` storico passa da `SDL_OpenAudio`, documentata «you can only have one device open at
+   a time with this function»). È la fase 1 **peggiore**: un device in più e zero semplificazioni.
+   Rifiutata in radice.
 
 ---
 
-### D-2 — Il synth **assorbe** il mixer `dlopen`: la tabella `gmb_mix_api` esce dal percorso audio
+### D-2 — L'assorbimento del mixer è **fase 2**: la fase 1 lo tiene come device e per i WAV
 
-**Decisione.** Il synth sostituisce il mixer, non ci convive:
-- `g_mix`, `gmb_mix_api`, `gmb_mix_open()` e l'`dlopen` di **SDL2_mixer** vengono **rimossi** dal
-  percorso audio; a migrazione finita il file non contiene **nessun** simbolo `Mix_*`.
-- I WAV diventano una **voce campione**: `SOUND LOAD "f" AS #h` decodifica il file **una volta** in
-  memoria (PCM lineare), `SOUND PLAY #h` avvia una voce che legge quel buffer.
-- Decoder minimo in `gmb_audio_wav.c`: **RIFF/WAVE PCM** 8/16/24/32 bit, mono/stereo, qualunque
-  sample rate con ricampionamento lineare a 44100. Formati compressi (MP3/OGG/ADPCM) → **errore
-  esplicito** (`M-AUD-ERR`), mai silenzio.
-- `SOUND VOLUME v` = master (`M-AUD-MASTER`), `SOUND VOLUME v, n` = volume della voce `n`
-  (forma del C#, fatto 5). `SOUND PLAY #h [, channel] [, LOOPS n]`: `channel` numerico = voce,
-  stringa = ignorata (code nominate fuori perimetro, `M-AUD-PLAY`).
+**Decisione.** `g_mix`, `gmb_mix_api` e i simboli `Mix_*` **non** escono dal percorso audio nella fase
+1: il mixer è il device (D-1) e il riproduttore dei WAV, come oggi. La fase 2 lo assorbe e lo cancella.
 
-**Perché.**
-- **Due device sono già esclusi da D-1**, quindi «tenere il mixer per i WAV» non è un'opzione
-  separata: sarebbe la terza alternativa già rifiutata.
-- Il **costo è misurato**: 2 sample, 7 righe, nessuna gamba C che già li esegua (fatto 4). Un decoder
-  PCM WAV è ~150 righe di C puro; assorbire costa meno che mantenere due percorsi e due semantichè di
-  volume.
-- Si guadagna una **dipendenza in meno** (`SDL2_mixer` + la sua catena) e una classe di fallimenti in
-  meno in CI (mixer assente → oggi playback disabilitato, domani nessun problema).
+| punto | **fase 1** | **fase 2** |
+|---|---|---|
+| `SOUND`/`PLAY`/`FILTER`/`SCENE SOUND` | **synth a 8 voci**, nessun chunk | uguale |
+| `SOUND LOAD` / `PLAY #h` / `VOLUME` | chunk del mixer, **comportamento di oggi** | voce campione con decoder PCM (`gmb_audio_wav.c`) |
+| `g_mix` + 11 simboli | restano, **+2** (`Mix_HookMusic`, `Mix_QuerySpec`) | rimossi, `grep -c "Mix_"` = 0 |
+| master (`SOUND VOLUME v`) | **un valore, due punti**: gain del synth e `Mix_Volume` sui canali WAV | un punto |
+| clipping | contato sul synth; la saturazione dei WAV la fa SDL_mixer, **invisibile** | contato su tutto |
 
-**Conseguenze.**
-- `SOUND LOAD/PLAY/VOLUME` passano dalle gambe C# **e** C allo stesso motore: prima volta che questi
-  comandi hanno un comportamento unico.
-- Il gate cambia segno: da «la tabella `dlopen` non cresce» (`M-AUD-DLOPEN`, vecchia promessa di P6) a
-  **«la tabella non esiste più»**: `grep -c "Mix_" gmb_audio.c` = **0**.
-- Il master e il contatore di clipping (`M-AUD-CLIP`) valgono anche per i WAV e per l'audio
-  posizionale: un solo punto in cui si può saturare.
+**Perché (e cosa cambia rispetto alla prima stesura).**
+- La prima stesura addebitava a questo punto **tre** cose che non gli appartengono: (a) il decoder WAV;
+  (b) l'implementazione di `SOUND LOAD/PLAY #h/VOLUME` sulla gamba **C99**, che oggi il parser **salta**
+  esplicitamente e che per §4.1 di `AGENTS.md` significa MiniTest + sample + guida; (c) la **delega
+  C#**, che però è imposta da D-6 + §4.1 (le letture `AUDIO.*` devono esistere su IL/PCode) e si paga
+  in **ogni** opzione. Il costo marginale dell'assorbimento è (a)+(b)+la cancellazione: reale, ma **non**
+  un prerequisito del synth.
+- Assorbire adesso obbligherebbe a un **PR unico** (vecchio §3: «nessun passo rilasciabile da solo»),
+  perché il mixer sparirebbe prima che il decoder esista. Con la fase 1 il PR del synth non tocca né i
+  WAV né i simboli.
+- Resta vero che la fase 2 **conviene**: una dipendenza in meno (`SDL2_mixer` + catena codec), un solo
+  master e un solo contatore, WAV come voce, gate `Mix_` = 0. È pulizia, e si fa quando P6 è verde.
+
+**Conseguenze (fase 1, dichiarate).**
+- I due sample WAV continuano a suonare come oggi, tramite il mixer: nessuna regressione e nessuna
+  verifica nuova sul loro audio.
+- `SOUND PLAY #h, n` usa il **canale del mixer** `n`, non la voce `n`: i WAV non entrano nel pool delle
+  8 voci finché non c'è la fase 2 (`M-AUD-SOUND-WAV`, e l'eccezione in D-9).
+- `M-AUD-CLIP` non vede la saturazione dei WAV e `M-AUD-SOUND-VOL` ha due punti di applicazione: sono i
+  due prezzi della fase 1, scritti nella specifica.
+- Il master resta **uno** come valore: `SOUND VOLUME v` scrive il gain del synth **e** `Mix_Volume` sui
+  canali del mixer, con lo stesso numero. Non è un secondo master, è lo stesso applicato in due punti.
 
 **Alternative rifiutate.**
-1. **Synth accanto al mixer** (separato): due device (vietato da D-1), oppure un solo device con due
-   percorsi di mix, cioè due master e due contatori. Il confine diventerebbe indefinibile: quale
-   percorso risponde a `SOUND VOLUME`?
-2. **Assorbire solo il device e lasciare i WAV al mixer**: non è tecnicamente possibile con un device
-   solo.
-3. **Tenere il mixer e non fare il synth**: fuori richiesta (P6 vuole il synth a 8 voci).
+1. **Assorbire subito** (prima stesura): paga (a)+(b)+(c) prima che il synth esista e impone il PR
+   unico; il guadagno — una dipendenza in meno — non serve a P6.
+2. **Synth accanto al mixer con due device**: vietato da D-1 alternativa 3, e non semplifica nulla.
+3. **Non assorbire mai**: possibile, ma lascia due punti per il master, un contatore parziale e un
+   canale che non è una voce; la fase 2 esiste per questo ed è dichiarata opzionale, senza una data.
 
 ---
 
@@ -285,8 +326,9 @@ la documentazione lo dice; `gmb_audio_is_playing` legge `AUDIO.VOICE(v, 2)`.
 ### D-9 — Otto voci, **un proprietario per voce**: retrigger uniforme, nessuna priorità, nessuna prenotazione
 
 **Decisione.** Le 8 voci sono **un solo pool** condiviso dai quattro proprietari (tono posizionale,
-`SOUND`, sequenza `PLAY`/`CONCURRENT`, voce campione di `SOUND PLAY #h`). La regola è una sola, senza
-eccezioni di classe:
+`SOUND`, sequenza `PLAY`/`CONCURRENT`, voce campione di `SOUND PLAY #h` — quest'ultima solo dalla
+**fase 2**: in fase 1 i WAV sono canali del mixer e restano fuori dal pool, D-2). La regola è una sola,
+senza eccezioni di classe:
 
 1. **Un proprietario per voce.** La voce è occupata esattamente quando `AUDIO.VOICE(v, 2) = 1`
    (campioni rimanenti > 0): la prenotazione **non è uno stato nuovo**, è il busy che esiste già. Il
@@ -357,22 +399,28 @@ eccezioni di classe:
 
 ---
 
-## 3. Ordine di migrazione (un solo passo: nessuno stato misto in HEAD)
+## 3. Ordine di migrazione: **due fasi**, la prima rilasciabile da sola
 
-Due device aperti insieme sono esclusi da D-1, quindi **non esiste un commit intermedio** in cui il
-synth apre il proprio device e il mixer il suo. L'ordine interno a un PR è libero; il punto di arrivo
-è uno solo:
+**Fase 1 — il synth, con il device del mixer.** Rilasciabile da sola: non lascia due motori né due
+device, e i WAV si comportano come prima.
+1. `gmb_synth.c` — voci, mix, inviluppo, forme, filtro, sequencer MML, eventi in campioni (nessuna
+   allocazione per campione).
+2. `gmb_audio_dev.c` — `dlopen` di SDL2_mixer (già presente), `Mix_OpenAudioDevice` + `Mix_QuerySpec` +
+   `Mix_HookMusic`, coda SPSC dei comandi, seqlock, offline.
+3. Facade (D-8) e comandi riimplementati sopra il motore; `AUDIO.*` (D-6).
+4. P6: `gmb_audio_sound_panned` → voce dello slot (D-4, D-9); `gmb_3d_audio.c` invariato nei numeri.
+5. `g_mix` **resta** (11 + 2 simboli); `SOUND LOAD/PLAY #h/VOLUME` invariati: C# li implementa, la gamba
+   C99 li salta come oggi — gap dichiarato, non peggiorato.
 
-1. `gmb_synth.c` — voci, mix, inviluppo, forme, filtro, sequencer MML, eventi in campioni (nessun
-   device, nessuna allocazione per campione).
-2. `gmb_audio_dev.c` — `dlopen` SDL2 core, `SDL_OpenAudioDevice` pull, coda SPSC, seqlock, offline.
-3. `gmb_audio_wav.c` — decoder PCM WAV + voce campione.
-4. Riimplementazione dei comandi e della facade (D-8) sopra il motore; `AUDIO.*` (D-6).
-5. Rimozione di `gmb_mix_api`, dell'`dlopen` di SDL2_mixer e dei simboli `Mix_*`; rimozione di
-   `GMB_GFX_SDL_MIXER` dal CMake se resta senza consumatori.
-6. P6: `gmb_audio_sound_panned` → voce dello slot (D-4, D-9); `gmb_3d_audio.c` invariato nei numeri.
+**Fase 2 — la pulizia, dopo P6 verde.** Non tocca le letture né i numeri di P6.
+6. `gmb_audio_wav.c` — decoder PCM WAV + voce campione; `SOUND LOAD/PLAY #h/VOLUME` portati anche sulla
+   gamba C99 (parse + emit + wire, con MiniTest, sample e guida §4.1).
+7. Device proprio: `SDL_OpenAudioDevice` di SDL2 **core** in `dlopen`, stesso `gmb_synth_render`.
+8. Rimozione di `gmb_mix_api`, dell'`dlopen` di SDL2_mixer e dei simboli `Mix_*`; `GMB_GFX_SDL_MIXER`
+   esce dal CMake se resta senza consumatori.
 
-Nessun passo può essere rilasciato da solo se lascia due motori accesi: si può fare in un PR unico.
+La fase 2 è **opzionale e dichiarata**: se non si fa, lo stato resta coerente (un device, un motore, un
+master come valore). Non esiste un «metà» fra le due.
 
 ---
 
@@ -387,8 +435,11 @@ Nessun passo può essere rilasciato da solo se lascia due motori accesi: si può
 | Filtro | energia prima/dopo, cambio a nota in corso | `synth_filter.bas` |
 | **P6 non rotto** | `--audiocheck` e `scene_sound.bas` | `P6-SND ok=32`, stessi valori di gain/pan |
 | **8 voci condivise** | MiniTest offline `synth_race.bas`: `SOUND`/`PLAY`/`SCENE SOUND` sulla stessa voce | vince l'ultimo comando, `VOICE(v, 3)` è il nuovo, il preempted non migra (D-9) |
-| WAV | `SOUND LOAD/PLAY/VOLUME` sui 2 sample esistenti | suonano; formato compresso → errore esplicito |
-| Mixer rimosso | `grep -c "Mix_" gmb_audio.c` | **0** |
+| WAV invariati (fase 1) | i 2 sample esistenti (`AudioControls.bas`, `AudioFileLoading.bas`) | suonano come oggi via mixer; nessuna verifica audio nuova |
+| Formato del device (fase 1) | `Mix_QuerySpec` all'apertura | 44100/S16/2, altrimenti `STATUS(4)` = 0 (offline); mai render a un rate diverso |
+| Hook senza lock (fase 1) | ispezione del corpo del hook | nessuna chiamata `Mix_*`, nessun `SDL_LockAudio` |
+| WAV assorbito (fase 2) | `SOUND LOAD/PLAY/VOLUME` sui 2 sample | voce campione; formato compresso → errore esplicito |
+| Mixer rimosso (fase 2) | `grep -c "Mix_" gmb_audio.c` | **0** |
 | Niente env | `grep -n getenv` sui file audio | **0** |
 | A/B C | `cc` e `tools/sh/zcc` sul MiniTest toccato | stesso esito |
 | Dimensioni | `bash tools/sh/check_file_size.sh --quiet` | nessun file > 1200 righe |
@@ -417,7 +468,8 @@ Nessun passo può essere rilasciato da solo se lascia due motori accesi: si può
 | Un effetto posizionale taglia la musica (e un `SOUND` spegne un tono 3D) | **dichiarato**: una voce, un proprietario, l'ultimo comando vince (D-9); per tenerle separate si usano voci diverse (convenzione); priorità di classe e bus sono rinviati (§7) |
 | Test che aprono il device su una macchina con scheda audio | `AUDIO OFFLINE` come primo comando dei MiniTest, **documentato** come obbligatorio |
 | `dlopen` di SDL2 assente | offline automatico; il synth resta testabile e nessun comando fallisce |
-| Migrazione grande in un PR unico | confine per file (D-1/D-2/D-3/D-8) e verifica per ID: ogni passo ha il suo oracolo |
+| Fase 1: il mixer resta (`dlopen` dei ~18 lib, due punti per il master, clipping dei WAV non contato) | **dichiarato** (D-2); la fase 2 è opzionale e non ha una data |
+| Le due fasi si allontanano | la fase 1 è un punto d'arrivo valido: un device, un motore, un master come **valore**; non esiste uno stato «metà» |
 
 ---
 
